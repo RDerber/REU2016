@@ -18,30 +18,50 @@ int twoBit(const char * filename,const char * outFileName){
 	}	
 	fprintf(ofp, "%c", '\n');
 	char byt;
-	while((byt = getc(ifp)) != EOF){
-		int i;
-		for(i = 3; i>0; --i){	//get next three nucleotides shifting
-					//left accordingly
-			char temp = byt & ('\x03' << (2*i));
-			temp = temp >> (i*2)-1;
-			if(!(temp^'\x04')){//if temp is a T, not A,G,C
-				temp = 'T';
-                        }
-			else{
-				temp = temp | '\x41';
+	int eof = 0;
+	while(!eof){
+		byt = getc(ifp);
+		if(!(byt & '\x80')){
+			int i;
+			for(i = 3; i>0; --i){	//get next three nucleotides shifting
+						//left accordingly
+				char temp = byt & ('\x03' << (2*i));
+				temp =  (temp >> (i*2)-1)&'\x06';
+				if(!(temp^'\x04')){//if temp is a T, not A,G,C
+					temp = 'T';
+				}
+				else{
+					temp = temp | '\x41';
+				}
+				fprintf(ofp, "%c", temp);
 			}
-			fprintf(ofp, "%c", temp);
+			byt = byt & 3;
+			byt = byt << 1;
+			if(!(byt^'\x04')){//if temp is a T, not A,G,C
+				byt = 'T';
+			}
+			else{
+				byt = byt | '\x41';
+			}
+			fprintf(ofp, "%c", byt);
+			fprintf(ofp, "%c", '\n');
+		}else{
+			int i;
+                        char checkeof;
+                        char eofarr[30];
+                        while(((checkeof=getc(ifp))&'\x80') && i < 30){
+                                checkeof = getc(ifp);
+                                eofarr[i]=checkeof;
+                                ++i;
+                        }
+                        if(i!=30){
+                                for(i = i-1; i=0;--i){
+                                        ungetc(eofarr[i],ifp);
+                                }
+                        }else{
+                                eof = 1;
+                        }
 		}
-		byt = byt & 3;
-		byt = byt << 1;
-		if(!(byt^'\x04')){//if temp is a T, not A,G,C
-			byt = 'T';
-		}
-		else{
-                	byt = byt | '\x41';
-		}
-		fprintf(ofp, "%c", byt);
-		fprintf(ofp, "%c", '\n');
 	}
 	fclose(ofp);
 	fclose(ifp);
