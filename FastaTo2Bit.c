@@ -17,28 +17,35 @@ int twoBit(const char * filename,const char * outFileName){
 		fprintf(ofp, "%c", flinec);
 	}
 	fprintf(ofp, "%c", '\n');
+	fflush(ofp);
 	char byt;
 	while(!((byt = getc(ifp))&'\x80')){//get first char and shift right
 //	if(byt != '\n' && byt != '\r'){ // mask with x40
 		if(byt & '\x40'){ // x40 is 0100 0000, performs above test without comparisons
 			byt = byt & '\x06';
-			byt = byt >> 1;
+			byt = byt << 5;
 		}
+		char temp;
 		int i;
-		for(i = 1; i<4;++i){//get next three nucleotides shifting
+		for(i = 2; i>0;--i){//get next two nucleotides shifting
 					//left accordingly
-			char temp = getc(ifp);
+			temp = getc(ifp);
 //			if(temp != EOF && temp != '\n' && temp != '\r'){
-			if(temp != EOF){
-			if(temp&'\x40' && !(temp&'\x80')){//performs above test w/o comparisons
+			if(temp&'\x40'){//performs above test w/o comparisons
 				temp = temp & '\x06';
 				temp = temp << (i*2)-1;
 				byt = byt|temp;
+			}else{
+				++i;
 			}
 		}
-		}
-		
+		while(!((temp=getc(ifp)) & '\x40')){}	//while temp is null, \n or \r
+							//extract characters
+		temp = temp&'\x06';
+		temp = temp >> 1;
+		byt = byt|temp;
 		fprintf(ofp, "%c", byt);
+		fflush(ofp);
 	}
 	fclose(ofp);
 	fclose(ifp);
