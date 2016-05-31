@@ -21,16 +21,18 @@ int twoBit(const char * filename,const char * outFileName){
 	char byt;
 	while(!((byt = getc(ifp))&'\x80')){//get first char and shift right
 //	if(byt != '\n' && byt != '\r'){ // mask with x40
-		if(byt & '\x40'){ // x40 is 0100 0000, performs above test without comparisons
-			byt = byt & '\x06';
-			byt = byt << 5;
+		while(!(byt&'\x40')){
+			byt = getc(ifp);
 		}
+		if(byt&'\x80') break;
+		byt = byt & '\x06';
+		byt = byt << 5;
 		char temp;
 		int i;
 		for(i = 2; i>0;--i){//get next two nucleotides shifting
 					//left accordingly
 			temp = getc(ifp);
-//			if(temp != EOF && temp != '\n' && temp != '\r'){
+//			if(temp != '\n' && temp != '\r'){
 			if(temp&'\x40'){//performs above test w/o comparisons
 				temp = temp & '\x06';
 				temp = temp << (i*2)-1;
@@ -40,7 +42,7 @@ int twoBit(const char * filename,const char * outFileName){
 			}
 		}
 		while(!((temp=getc(ifp)) & '\x40')){}	//while temp is null, \n or \r
-							//extract characters
+									//extract characters
 		temp = temp&'\x06';
 		temp = temp >> 1;
 		byt = byt|temp;
