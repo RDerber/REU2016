@@ -46,12 +46,37 @@ long denom(int x, int points[], int numPoints){
 	return den;
 }
 
+int findMod(long denoms [], int size){
+	int mersenne[] = {7,31,127,8191};
+	int i;
+	int j;
+	int count;
+	for(i=0; i<4;++i){
+ 		
+		for(j=0; j<size; ++j){
+			if(denoms[j]%mersenne[i]!= 0){
+				++count; 
+			} else{
+			continue; 	
+			}		
+		}
+		if(count==size){
+			printf("%d %c", mersenne[i], '\n');
+			return mersenne[i];
+		}
+	}
+	printf("%s", "no prime found");
+	return 0;
+}
+
 int main(int argc, char * argv){
 	int points[] = {-65,-67,-71,-84};
 	int prod[5];
 	int numPoints = sizeof(points)/sizeof(points[0]);
 	polyMult(points,prod,numPoints);
-	denom(-68, points, numPoints);
-	int i;
+	long denoms[numPoints];
+	denoms[0] = denom(-68, points, numPoints);
+	denoms[1] = denom(-75, points, numPoints);
+	findMod(denoms, 2);
 	return 0;
 }
