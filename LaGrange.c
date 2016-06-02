@@ -2,7 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 
-int* polyMult(int points[], int prod[], int numPoints){
+int* polyMult(int points[], int prod[], int numPoints){ //Takes in an array of points (with one already removed) and the size of this array
+							//and modifies prod[] so it contains the coefficients of the numerators of each line
 	int i;
 	prod[0] = 1;
 	prod[1] = points[0] + points[1];
@@ -10,7 +11,7 @@ int* polyMult(int points[], int prod[], int numPoints){
 //	printf("%d %c",numPoints, '\n');
 	for(i = 2; i< numPoints; ++i){
 		int j;
-		int prodTemp[5];
+		int prodTemp[numPoints+1];
 		int k;
 		for(k=0;k<numPoints+1;++k){
 			prodTemp[k]=prod[k];
@@ -32,15 +33,16 @@ int* polyMult(int points[], int prod[], int numPoints){
 //			printf("%c",'\n');
 //		}
 	}
-	return prod;
+	return 0;
 }
 
-long denom(int x, int points[], int numPoints){
+long denom(int x, int tempPoints[], int numPoints){ // Takes in the removed point, the array of points without the removed point, and the
+						// size of that array, returns the denominator of that line 
 	int i;
 	long den = 1;
 	long temp;
 	for(i = 0; i < numPoints; ++i){
-		temp = x-points[i];
+		temp = -x+tempPoints[i];
 		den *= temp;
 	}
 //	printf("%d %c", den, '\n');
@@ -49,7 +51,7 @@ long denom(int x, int points[], int numPoints){
 
 
 
-int findMod(long denoms [], int size){
+int findMod(long denoms [], int size){ // Takes in all denominators and finds a mersenne prime that is not a factor of any of them
 	int mersenne[] = {7,31,127,8191};
 	int i;
 	int j;
@@ -72,20 +74,22 @@ int findMod(long denoms [], int size){
 	return 1;
 }
 
-int modInverse(int num, int mod){
+int modInverse(int num, int mod){ // Takes in a number A  and a modulus number B; returns the inverse mod of AmodB 
+				  // So that (inversMod * A) mod B =1 
 	int inverse=1;
-	int denom = num;
-	denom = denom%mod; // a value in Flt
-	int modm2= mod-2;
-	int mult=1;
+	num = num % mod; // a value in Flt
+	printf("%s %d %c", "num: ", num, '\n');
+	int modm2= mod - 2;
+	int mult = (num+mod) % mod;
+//	printf("%s %d %c", "mult: ", mult, '\n');
 	int i;
-	for(i=0;i<(sizeof(mod)*8); ++i){
-
+	for(i=0;i<(sizeof(modm2)*8); ++i){
 		if((modm2>>i) & '\x01'){
 			inverse = (inverse * mult) % mod;
+			printf("%s %d %s", "i: ", i, ", ");
 		}
 		
-		mult = (mult*denom) % mod;
+		mult = (mult*mult) % mod;
 
 	}
 	
@@ -95,26 +99,39 @@ int modInverse(int num, int mod){
 
 }
 
-int main(int argc, char * argv){
-
-	int num = ((-15048 % 7)*(-2));
+int evaluate(int x, int poly []){
 	
-	int points[] = {-65,-67,-71,-84};
-	int yValues[] = {0,1,2,3};
-	int size = sizeof(points)/sizeof(points[0]);
+
+}
+
+int * polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes in all points, their correspoding y-values, the size
+									// of the points array, and the poly array to store the coeffs in
+
 	int i=0;
-	int pointsTemp[size][size-1];// size of pointsTemp is one less than number of Points as we remove one point during each iteration
-	long denoms[size];
-	int poly[size+1];
-	memset(denoms, 0, sizeof(denoms));
+	int polyTemp[size][size];
+	long denoms[size]; // keeps track of denomenator of each row
+	memset(denoms, 0, sizeof(denoms)); // Initializes arrays to all 0s in memory 
 	memset(poly, 0, sizeof(poly));
 
 	for(i=0; i<size; ++i){
 		int j;
+		int pointsTemp[size-1];// size of pointsTemp is one less than number of Points as we remove one point during each iteration
 		for(j = 1; j < size; ++j){
-			pointsTemp[i][j-1] = points[(j+i)%size];
+			pointsTemp[j-1] = points[(j+i)%size]; // store the coefficients in order for each row
+		
+	//		printf("%d %s", pointsTemp[j-1],", "); // pointsTemp is working
 		}
-		denoms[i] = denom(points[i], pointsTemp[i], size-1);//The size of the pointsTemp array is one less than the number of points
+	//	printf("%c", '\n');
+		polyMult(pointsTemp,polyTemp[i], size-1);
+	
+	//	for(j=0;j<size;++j){      			// polyMult is working
+	//		printf("%d %s", polyTemp[i][j],", ");
+	//	}
+	//	printf("%c",'\n');
+
+		denoms[i] = denom(points[i], pointsTemp, size-1);//The size of the pointsTemp array is one less than the number of points
+
+	 	printf("%d %c", denoms[i],'\n');		// denom is working
 	}
 	//	int i;
 //	for(i=0; i < 2; ++i){
@@ -122,25 +139,51 @@ int main(int argc, char * argv){
 //	}
 //
 	int mod = findMod(denoms, size);
-
+	printf("%d %c", mod, '\n');
+	
 	int j;
 	for(i=0; i<size;++i){
-		int modin = modInverse(denoms[i],mod);
-		for(j=0; j < size-1; ++j){
+		int modin = modInverse(denoms[i], mod);
+		printf("%d %c", modin, '\n');
+		for(j=0; j < size; ++j){
 			polyTemp[i][j] = polyTemp[i][j] * modin;
-			poly[i] += yValues[i] * polytTemp[i][j];
+			poly[j]= ((yValues[i] * polyTemp[i][j])%mod + poly[j])%mod;
 		}
 	}
-	
-	int check=1;
-	int k;
-	for(k=0; k<5; ++k){
-		check = (check * denoms[1]) % mod;
-	}
-	
-	check = (check+7) % mod;
-	
-	printf("%d %c %d %c %d %c %d %c %d %c",denoms[1] % mod,'\n',mod,'\n',modin,'\n',(check),'\n', num, '\n');
-	
+
+
 	return 0;
+
+	
+//	int check=1;
+//	int k;
+//	for(k=0; k<5; ++k){
+//		check = (check * denoms[1]) % mod;
+//	}
+	
+//	check = (check+7) % mod;
+	
+//	printf("%d %c %d %c %d %c %d %c",denoms[1] % mod,'\n',mod,'\n',modin,'\n',(check),'\n');
+	
 }
+
+int main (int argc, char *argv[]){
+	
+        int points[] = {-65,-67,-71,-84,-83};
+        int yValues[] = {0,1,2,3,4};
+        int size = sizeof(points)/sizeof(points[0]);
+	int poly[size];
+
+	polyGenerator(points, yValues, size, poly);
+
+	int i;
+		
+	for(i=0; i<size; ++i){
+                printf("%d %s", poly[i],", ");
+
+        }
+
+
+}
+
+
