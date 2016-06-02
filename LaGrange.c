@@ -55,10 +55,10 @@ int findMod(long denoms [], int size){ // Takes in all denominators and finds a 
 	int mersenne[] = {7,31,127,8191};
 	int i;
 	int j;
-	int count = 0;
+	int count;
 
 	for(i=0; i<4;++i){
- 		
+ 		count = 0;
 		for(j=0; j<size; ++j){
 			if((denoms[j]%mersenne[i])!= 0){
 				++count; 
@@ -68,6 +68,23 @@ int findMod(long denoms [], int size){ // Takes in all denominators and finds a 
 		if(count==size){
 	//		printf("%d %c", mersenne[i], '\n');
 			return mersenne[i];
+		}
+	}
+
+	int primes[] = {2,3,5,11,13,17,19,23,29,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113};
+	int primeSize = sizeof(primes)/sizeof(primes[1]);
+	
+        for(i=0; i < primeSize;++i){
+        count = 0;
+	        for(j=0; j<size; ++j){
+                        if((denoms[j]%primes[i])!= 0){
+                                ++count;
+			}
+//             printf("%d %c %d %c %d %c", denoms[j],'\n', denoms[j]%mersenne[i], '\n', count, '\n');
+		}
+		if(count == size){
+     //              printf("%d %c", mersenne[i], '\n');
+			return primes[i];
 		}
 	}
 	printf("%s", "no prime found");
@@ -86,7 +103,7 @@ int modInverse(int num, int mod){ // Takes in a number A  and a modulus number B
 	for(i=0;i<(sizeof(modm2)*8); ++i){
 		if((modm2>>i) & '\x01'){
 			inverse = (inverse * mult) % mod;
-			printf("%s %d %s", "i: ", i, ", ");
+//			printf("%s %d %s", "i: ", i, ", ");
 		}
 		
 		mult = (mult*mult) % mod;
@@ -99,12 +116,26 @@ int modInverse(int num, int mod){ // Takes in a number A  and a modulus number B
 
 }
 
-int evaluate(int x, int poly []){
-	
-
+int evaluate(int x, int polys[], int polysize, int mod){ // evaluate method not working - alters memory, changing polynomial coeff values
+	int i;
+	int sum;
+	for(i = 0; i < polysize; ++i){
+		int poly = (polysize - i) - 1;
+		int j;
+		int product = 1;
+		int mult = (x + mod) % mod;
+		for(j = 0; j < sizeof(poly)*8; ++j){
+			if(((poly) >> j) & '\x01'){
+				product = (product * mult) % mod;
+			}
+			mult = (mult*mult)%mod;
+		}
+		sum = (sum + (product * polys[i]) % mod) % mod;
+	}
+	return (sum+mod) % mod;
 }
 
-int * polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes in all points, their correspoding y-values, the size
+int polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes in all points, their correspoding y-values, the size
 									// of the points array, and the poly array to store the coeffs in
 
 	int i=0;
@@ -152,7 +183,7 @@ int * polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes
 	}
 
 
-	return 0;
+	return mod;
 
 	
 //	int check=1;
@@ -174,7 +205,7 @@ int main (int argc, char *argv[]){
         int size = sizeof(points)/sizeof(points[0]);
 	int poly[size];
 
-	polyGenerator(points, yValues, size, poly);
+	int mod = polyGenerator(points, yValues, size, poly);
 
 	int i;
 		
@@ -182,7 +213,9 @@ int main (int argc, char *argv[]){
                 printf("%d %s", poly[i],", ");
 
         }
-
+	
+//	int ans = evaluate(67, poly, size, mod);
+//	printf("%c %d %c", '\n', ans, '\n');
 
 }
 
