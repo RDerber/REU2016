@@ -100,7 +100,7 @@ int modInverse(int num, int mod){ // Takes in a number A  and a modulus number B
 	int mult = (num+mod) % mod;
 //	printf("%s %d %c", "mult: ", mult, '\n');
 	int i;
-	for(i=0;i<(sizeof(modm2)*8); ++i){
+	for(i = 0; i < (sizeof(modm2)*8); ++i){
 		if((modm2>>i) & '\x01'){
 			inverse = (inverse * mult) % mod;
 //			printf("%s %d %s", "i: ", i, ", ");
@@ -118,7 +118,8 @@ int modInverse(int num, int mod){ // Takes in a number A  and a modulus number B
 
 int evaluate(int x, int polys[], int polysize, int mod){ // evaluate method not working - alters memory, changing polynomial coeff values
 	int i;
-	int sum;
+	int sum = 0;
+//	printf("%s %d %c", "size of poly: ", polysize, '\n');
 	for(i = 0; i < polysize; ++i){
 		int poly = (polysize - i) - 1;
 		int j;
@@ -132,12 +133,12 @@ int evaluate(int x, int polys[], int polysize, int mod){ // evaluate method not 
 		}
 		sum = (sum + (product * polys[i]) % mod) % mod;
 	}
-	return (sum+mod) % mod;
+	sum = (sum + mod) % mod;
+	return sum;
 }
 
 int polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes in all points, their correspoding y-values, the size
 									// of the points array, and the poly array to store the coeffs in
-
 	int i=0;
 	int polyTemp[size][size];
 	long denoms[size]; // keeps track of denomenator of each row
@@ -148,7 +149,7 @@ int polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes i
 		int j;
 		int pointsTemp[size-1];// size of pointsTemp is one less than number of Points as we remove one point during each iteration
 		for(j = 1; j < size; ++j){
-			pointsTemp[j-1] = points[(j+i)%size]; // store the coefficients in order for each row
+			pointsTemp[j-1] = points[(j+i)%size]; // store the coefficients in order for each row, negative because (x-point)
 		
 	//		printf("%d %s", pointsTemp[j-1],", "); // pointsTemp is working
 		}
@@ -199,24 +200,52 @@ int polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes i
 }
 
 int main (int argc, char *argv[]){
-	
-        int points[] = {-65,-67,-71,-84,-83};
-        int yValues[] = {0,1,2,3,4};
-        int size = sizeof(points)/sizeof(points[0]);
-	int poly[size];
-
-	int mod = polyGenerator(points, yValues, size, poly);
+	FILE * ifp;
+	FILE * ofp;
+	ifp = fopen(argv[1], "r");
+	ofp = fopen(argv[2], "w");
+	int size = (argc - 3)/2;
+	int points[size];
+	int yValues[size];
+//	int size = sizeof(points)/sizeof(points[0]);
+	printf("%s %d", "Size: ", size);
+	printf("%s %d", "ArgC: ", argc);
 
 	int i;
-		
-	for(i=0; i<size; ++i){
-                printf("%d %s", poly[i],", ");
+	for(i = 0; i < size; ++i){
+		points[i] = - *argv[i+3];
+		yValues[i] = atoi(argv[i + 3 + size]);
+		printf("%s %d %s %d %c","Point: ", points[i], "yValue: ", yValues[i],'\n');
+	}
 
-        }
+//	int points[] = {-65, -67, -71, -84};
+//	int yValues[] = {0, 1, 2, 3};
+	int poly[size];
+	memset(poly,0,sizeof(poly));
+	int mod = polyGenerator(points, yValues, size, poly);
 	
-//	int ans = evaluate(67, poly, size, mod);
-//	printf("%c %d %c", '\n', ans, '\n');
+	for(i = 0; i < size; ++i){
+		printf("%d %s", poly[i],", ");
+	}
 
+	int ch;
+	char flinec;
+	while((flinec = getc(ifp)) != '\n'){
+		fprintf(ofp, "%c", flinec);
+	}
+	fprintf(ofp, "%c", '\n');
+
+	while((ch = getc(ifp)) != EOF){
+		char temp = evaluate(ch, poly, size, mod);
+		fprintf(ofp, "%d",temp);
+	}
+	int ans = 0;
+	ans = evaluate(13, poly, size, mod);
+	printf("%c %d %c", '\n', ans, '\n');
+
+	fclose(ofp);
+	fclose(ifp);
+	return 0;
 }
 
 
