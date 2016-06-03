@@ -236,8 +236,13 @@ int main (int argc, char *argv[]){
 	fprintf(ofp, "%c", '\n');
 
 	while((ch = getc(ifp)) != EOF){
-		char temp = evaluate(ch, poly, size, mod);
-		fprintf(ofp, "%d",temp);
+
+		if(ch & '\x40' ){
+
+			char temp = evaluate(ch, poly, size, mod);
+			fprintf(ofp, "%d",temp);
+		}
+
 	}
 	int ans = 0;
 	ans = evaluate(13, poly, size, mod);
