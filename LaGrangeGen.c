@@ -1,8 +1,31 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+/*
+ *LaGrangeGen.c
+ *
+ *Generalized LaGrange function
+ *
+ *Inputs: input.txt, output.txt, [char1] [char2]..., [yValue1] [yValue2]...,
+ *
+ *Creates Lagrange polynomial that maps the characters (char1, char2, ...) to their corresponding yValues (yValue1, yValue2, ...)
+ *
+ *Reads in characters from input.txt, then converts them using the generated polynomial into yValues, and outputs the yValues to output.txt
+ *
+ *
+ * CURRENT PROBLEMS: 
+ *	- Overflow error corrupts number data for more than 10 characters (depending on the character's ascii decimal value) 
+ *
+ *	-Evaluate Function is being redone to be more efficient in reusing computed values of X raised to each power
+ */
 
-int* polyMult(int points[], int prod[], int numPoints){ //Takes in an array of points (with one already removed) and the size of this array
+
+
+
+
+
+
+int* polyMult(int points[], long long prod[], int numPoints){ //Takes in an array of points (with one already removed) and the size of this array
 							//and modifies prod[] so it contains the coefficients of the numerators of each line
 	int i;
 	prod[0] = 1;
@@ -11,13 +34,13 @@ int* polyMult(int points[], int prod[], int numPoints){ //Takes in an array of p
 //	printf("%d %c",numPoints, '\n');
 	for(i = 2; i< numPoints; ++i){
 		int j;
-		int prodTemp[numPoints+1];
+		long long prodTemp[numPoints+1];
 		int k;
 		for(k=0;k<numPoints+1;++k){
 			prodTemp[k]=prod[k];
 		}
 		for(j = 1;j <= i;++j){
-			int last = prod[i];
+			long long last = prod[i];
 			if(j==1){
 				prod[j] = prod[j] + points[i];
                         }else {
@@ -36,11 +59,11 @@ int* polyMult(int points[], int prod[], int numPoints){ //Takes in an array of p
 	return 0;
 }
 
-long denom(int x, int tempPoints[], int numPoints){ // Takes in the removed point, the array of points without the removed point, and the
+long long denom(int x, int tempPoints[], int numPoints){ // Takes in the removed point, the array of points without the removed point, and the
 						// size of that array, returns the denominator of that line 
 	int i;
-	long den = 1;
-	long temp;
+	long long den = 1;
+	long long temp;
 	for(i = 0; i < numPoints; ++i){
 		temp = -x+tempPoints[i];
 		den *= temp;
@@ -51,7 +74,7 @@ long denom(int x, int tempPoints[], int numPoints){ // Takes in the removed poin
 
 
 
-int findMod(long denoms [], int size){ // Takes in all denominators and finds a mersenne prime that is not a factor of any of them
+int findMod(long long denoms [], int size){ // Takes in all denominators and finds a mersenne prime that is not a factor of any of them
 	int mersenne[] = {7,31,127,8191};
 	int i;
 	int j;
@@ -91,9 +114,9 @@ int findMod(long denoms [], int size){ // Takes in all denominators and finds a 
 	return 1;
 }
 
-int modInverse(int num, int mod){ // Takes in a number A  and a modulus number B; returns the inverse mod of AmodB 
+int modInverse(long long num, int mod){ // Takes in a number A  and a modulus number B; returns the inverse mod of AmodB 
 				  // So that (inversMod * A) mod B =1 
-	int inverse=1;
+	int inverse = 1;
 	num = num % mod; // a value in Flt
 	printf("%s %d %c", "num: ", num, '\n');
 	int modm2= mod - 2;
@@ -116,20 +139,30 @@ int modInverse(int num, int mod){ // Takes in a number A  and a modulus number B
 
 }
 
-int evaluate(int x, int polys[], int polysize, int mod){ // evaluate method not working - alters memory, changing polynomial coeff values
+int evaluate(int x, int polys[], int polysize, int mod){ // UNDER CONSTRUCTION - Modifying to save x,x^2,x^4,... x^(power of 2) in array
+							// to be used to compute all powers of X when evaluating function
+							// Problem: Currently polytable is being remade everytime evaluate is called
+							// Possible Solution: Create polytable outside of evaluate for each point and 
+							// 			pass it in as a parameter with its size
+							//
+							// - How costly is it to compute log2() and use it in evaluate 
+							// 	Have j iterate until log2(i) 	
 	int i;
 	int sum = 0;
+	int polyTable[polysize]; // Stores all X's with power of 2 exponent 
+	polyTable[0] = x;
 //	printf("%s %d %c", "size of poly: ", polysize, '\n');
 	for(i = 0; i < polysize; ++i){
 		int poly = (polysize - i) - 1;
 		int j;
 		int product = 1;
-		int mult = (x + mod) % mod;
-		for(j = 0; j < sizeof(poly)*8; ++j){
+		if(i>0){
+			polyTable[i] = (polyTable[i-1]*polyTable[i-1])%mod;
+		}
+		for(j = 0; j < i; ++j){
 			if(((poly) >> j) & '\x01'){
-				product = (product * mult) % mod;
+				product = (product * polyTable[j]) % mod;
 			}
-			mult = (mult*mult)%mod;
 		}
 		sum = (sum + (product * polys[i]) % mod) % mod;
 	}
@@ -140,8 +173,8 @@ int evaluate(int x, int polys[], int polysize, int mod){ // evaluate method not 
 int polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes in all points, their correspoding y-values, the size
 									// of the points array, and the poly array to store the coeffs in
 	int i=0;
-	int polyTemp[size][size];
-	long denoms[size]; // keeps track of denomenator of each row
+	long long polyTemp[size][size];
+	long long denoms[size]; // keeps track of denomenator of each row
 	memset(denoms, 0, sizeof(denoms)); // Initializes arrays to all 0s in memory 
 	memset(poly, 0, sizeof(poly));
 
@@ -163,7 +196,7 @@ int polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes i
 
 		denoms[i] = denom(points[i], pointsTemp, size-1);//The size of the pointsTemp array is one less than the number of points
 
-	 	printf("%d %c", denoms[i],'\n');		// denom is working
+//	 	printf("%d %c", denoms[i],'\n');		// denom is working
 	}
 	//	int i;
 //	for(i=0; i < 2; ++i){
@@ -171,14 +204,14 @@ int polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes i
 //	}
 //
 	int mod = findMod(denoms, size);
-	printf("%d %c", mod, '\n');
+//	printf("%d %c", mod, '\n');
 	
 	int j;
 	for(i=0; i<size;++i){
 		int modin = modInverse(denoms[i], mod);
 		printf("%d %c", modin, '\n');
 		for(j=0; j < size; ++j){
-			polyTemp[i][j] = polyTemp[i][j] * modin;
+			polyTemp[i][j] = (polyTemp[i][j] * modin) % mod;
 			poly[j]= ((yValues[i] * polyTemp[i][j])%mod + poly[j])%mod;
 		}
 	}
