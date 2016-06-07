@@ -105,23 +105,24 @@ int findMod(long long denoms [], int size, int maxY){ // Takes in all denominato
 				}
 		}
 	}
-
-	int primes[] = {2,3,5,11,13,17,19,23,29,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113};
-	int primeSize = sizeof(primes)/sizeof(primes[1]);
+//	int primes[] = {103,107,109,113};                        // These primes should not be needed as all characters in ascii have
+//								// a value of less than 8191, so no linear combination of them should
+//								// be divisible by 8191, as it is prime.
+//	int primeSize = sizeof(primes)/sizeof(primes[1]);
 	
-        for(i=0; i < primeSize;++i){
-        count = 0;
-	        for(j=0; j<size; ++j){
-                        if((denoms[j]%primes[i])!= 0){
-                                ++count;
-			}
+//    for(i=0; i < primeSize;++i){
+//      count = 0;
+//	        for(j=0; j<size; ++j){
+//                      if((denoms[j]%primes[i])!= 0){
+//                              ++count;
+//			}
 //             printf("%d %c %d %c %d %c", denoms[j],'\n', denoms[j]%mersenne[i], '\n', count, '\n');
-		}
-		if(count == size){
+//		}
+//		if(count == size){
      //              printf("%d %c", mersenne[i], '\n');
-			return primes[i];
-		}
-	}
+//			return primes[i];
+//		}
+//	}
 	printf("%s", "no prime found");
 	return 1;
 }
@@ -193,7 +194,8 @@ int polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes i
 	long long denoms[size]; // keeps track of denomenator of each row
 	memset(denoms, 0, sizeof(denoms)); // Initializes arrays to all 0s in memory 
 	memset(poly, 0, sizeof(poly));
-	long long mod =297501458944711;// we mod by the least common denominator of all possible primes that
+	long long mod =225735769; // Works as long as y-values do not exceed 8190 
+				//297501458944711;// we mod by the least common denominator of all possible primes that
 					// we could later mod by to retain information.
 					// old mod number that is multiple of all Mersenne Primes: 225735769;
 	for(i=0; i<size; ++i){
