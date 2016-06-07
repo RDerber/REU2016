@@ -15,8 +15,6 @@
  *
  * CURRENT PROBLEMS: 
  *	- Overflow error corrupts number data for more than 10 characters (depending on the character's ascii decimal value) 
- *
- *	-Evaluate Function is being redone to be more efficient in reusing computed values of X raised to each power
  */
 
 
@@ -68,7 +66,7 @@ int* polyMult(int points[], long long prod[], int numPoints, long long mod){ //T
 	return 0;
 }
 
-long long denom(int x, int tempPoints[], int numPoints){ // Takes in the removed point, the array of points without the removed point, and the
+long long denom(int x, int tempPoints[], int numPoints, long long mod){ // Takes in the removed point, the array of points without the removed point, and the
 						// size of that array, returns the denominator of that line 
 	int i;
 	long long den = 1;
@@ -216,7 +214,7 @@ int polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes i
 	//	}
 	//	printf("%c",'\n');
 
-		denoms[i] = denom(points[i], pointsTemp, size-1);//The size of the pointsTemp array is one less than the number of points
+		denoms[i] = denom(points[i], pointsTemp, size-1,mod);//The size of the pointsTemp array is one less than the number of points
 
 //	 	printf("%d %c", denoms[i],'\n');		// denom is working
 	}
