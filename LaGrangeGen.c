@@ -34,7 +34,7 @@ int* polyMult(int points[], long long prod[], int numPoints, long long mod){ //T
 	prod[0] = 1;
 	prod[1] = (points[0] + points[1]) % mod;
 	prod[2] = (points[0]*points[1]) % mod;
-	printf("%d %c",numPoints, '\n');
+//	printf("%d %c",numPoints, '\n');
 	for(i = 2; i< numPoints; ++i){
 		int j;
 		long long prodTemp[numPoints+1];
@@ -46,15 +46,15 @@ int* polyMult(int points[], long long prod[], int numPoints, long long mod){ //T
 		for(j = 1;j <= i;++j){
 			long long last = prod[i];
 			if(j==1){
-				prod[j] = (prod[j] + points[i]);
+				prod[j] = (prod[j] + points[i]) % mod;
                         }else {
 				if(j==i){
                                 	prod[i+1] = last;
 				}
-				prod[j] = ((prodTemp[j-1]*points[i]) + prodTemp[j]);
+				prod[j] = ((prodTemp[j-1]*points[i])%mod + prodTemp[j])%mod;
 			}
 		}
-		prod[i+1] = (prod[i+1] * points[i]);
+		prod[i+1] = (prod[i+1] * points[i])%mod;
 //		for(k=0;k<numPoints+1;++k){
 //			printf("%s %d %s", "Coefficient of X^",k,": ");
 //			printf("%lli",prod[k]);
@@ -62,7 +62,7 @@ int* polyMult(int points[], long long prod[], int numPoints, long long mod){ //T
 //		}
 	}
 
-	printf("%s %c", "End PolyMult.", '\n');
+//	printf("%s %c", "End PolyMult.", '\n');
 	return 0;
 }
 
@@ -73,7 +73,7 @@ long long denom(int x, int tempPoints[], int numPoints, long long mod){ // Takes
 	long long temp;
 	for(i = 0; i < numPoints; ++i){
 		temp = -x+tempPoints[i];
-		den = (den * temp) % 225735769;//modded by the product of mersenne primes to maintain information but avoid overflow
+		den = (den * temp) % mod ;//modded by the product of mersenne primes to maintain information but avoid overflow
 	}
 //	printf("%d %c", den, '\n');
 	return den;
@@ -81,7 +81,8 @@ long long denom(int x, int tempPoints[], int numPoints, long long mod){ // Takes
 
 
 
-int findMod(long long denoms [], int size, int maxY){ // Takes in all denominators and finds a mersenne prime that is not a factor of any of them
+int findMod(long long denoms [], int size, int maxY){ // Takes in all denominators and finds a mersenne prime that is
+							// not a factor of any of them
 	int mersenne[] = {7,31,127,8191};
 	int i;
 	int j;
@@ -126,9 +127,10 @@ int findMod(long long denoms [], int size, int maxY){ // Takes in all denominato
 }
 
 int modInverse(long long num, int mod){ // Takes in a number A  and a modulus number B; returns the inverse mod of AmodB 
-				  // So that (inversMod * A) mod B =1 
+				 	 // So that (inversMod * A) mod B =1
+				 	 // As B is prime, we use Fermat's little theorem (Flt) to find this inverse 
 	int inverse = 1;
-	num = num % mod; // a value in Flt
+	num = num % mod; // the "a" value in Flt
 //	printf("%s %d %c", "num: ", num, '\n');
 	int modm2= mod - 2;
 	int mult = (num+mod) % mod;
@@ -150,14 +152,8 @@ int modInverse(long long num, int mod){ // Takes in a number A  and a modulus nu
 
 }
 
-int evaluate(int x, int polys[], int polysize, int mod){ // UNDER CONSTRUCTION - Modifying to save x,x^2,x^4,... x^(power of 2) in array
-							// to be used to compute all powers of X when evaluating function
-							// Problem: Currently polytable is being remade everytime evaluate is called
-							// Possible Solution: Create polytable outside of evaluate for each point and 
-							// 			pass it in as a parameter with its size
-							//
-							// - How costly is it to compute log2() and use it in evaluate 
-							// 	Have j iterate until log2(i) 	
+int evaluate(int x, int polys[], int polysize, int mod){ // evaluates the polynomial in polys with argument x
+                                                 	 // uses fast exponentiation to compute x^n
 	int i;
 	int sum = 0;
 	int polyTable[polysize]; // Stores all X's with power of 2 exponent 
@@ -165,24 +161,24 @@ int evaluate(int x, int polys[], int polysize, int mod){ // UNDER CONSTRUCTION -
 	polyTable[0] = x;
 	int check = 1;
 	int log = 0;
-	printf("%s %d %c", "size of poly: ", polysize, '\n');
+//	printf("%s %d %c", "size of poly: ", polysize, '\n');
 	for(i = 0; i < polysize; ++i){
 		int poly = i;
 		int j;
 		int product = 1;
-		printf("%s %d \n", "check: ", check);
+	//	printf("%s %d \n", "check: ", check);
 		if(i & check){
 			++log;
 			polyTable[log] = (polyTable[log-1]*polyTable[log-1])%mod;
 			check <<= 1;
 		}
 		for(j = 0; j < log; ++j){
-			printf("%s %d \n", "polyTable: ", polyTable[j]);
+//			printf("%s %d \n", "polyTable: ", polyTable[j]);
 			if(((poly) >> j) & '\x01'){
 				product = (product * polyTable[j]) % mod;
 			}
 		}
-		printf(" %s \n", "-------");
+	//	printf(" %s \n", "-------");
 		sum = (sum + (product * (polys[polysize - i - 1] % mod)) % mod) % mod;
 //		printf("%s %d %s %d %s %d %s %d \n","Product: ",product,", Sum: ",sum, "polys: ", polys[polysize-i-1],"polyTable: ", polyTable[i]);
 	}
@@ -197,7 +193,9 @@ int polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes i
 	long long denoms[size]; // keeps track of denomenator of each row
 	memset(denoms, 0, sizeof(denoms)); // Initializes arrays to all 0s in memory 
 	memset(poly, 0, sizeof(poly));
-	long long mod = 225735769;
+	long long mod =297501458944711;// we mod by the least common denominator of all possible primes that
+					// we could later mod by to retain information.
+					// old mod number that is multiple of all Mersenne Primes: 225735769;
 	for(i=0; i<size; ++i){
 		int j;
 		int pointsTemp[size-1];// size of pointsTemp is one less than number of Points as we remove one point during each iteration
@@ -292,7 +290,7 @@ int main (int argc, char *argv[]){
 	char temp = 0;
 	while((ch = getc(ifp)) != EOF){
 		temp = evaluate(ch, poly, size, mod);
-		printf("%s %d %s %d \n","Ch: ", ch, ", temp: ",temp);
+//		printf("%s %d %s %d \n","Ch: ", ch, ", temp: ",temp);
 		fprintf(ofp, "%d",temp);
 	}
 	int ans = 0;
