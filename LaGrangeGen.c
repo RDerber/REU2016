@@ -87,7 +87,8 @@ int findMod(long long denoms [], int size, int maxY){ // Takes in all denominato
 	int i;
 	int j;
 	int count;
-	for(i=0; i<4;++i){
+	int mersenneSize = sizeof(mersenne)/sizeof(mersenne[0]);
+	for(i=0; i<mersenneSize;++i){
 //		printf( "%d %c", maxY, '\n');
 		if(mersenne[i] <= maxY){
 		}
