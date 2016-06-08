@@ -1,7 +1,7 @@
 /*
  * 2BitToFasta.c
  *
- *
+ * EOF issue is resolved 
  *
  * 
  */
@@ -54,12 +54,10 @@ int twoBit(const char * filename,const char * outFileName){
 		fprintf(ofp, "%c", flinec);
 	}	
 	fprintf(ofp, "%c", '\n');
-	char byt;
+	int byt;
 	int eof = 0;//not end of file
-	while(!eof){
-		byt = getc(ifp);
-		if((~ byt)){//check if eof or all Gs
-
+	while((byt=getc(ifp))!= EOF){
+	
 
 	bitSeparator(byt, ofp); // helped function for commented-out code below
 
@@ -89,30 +87,30 @@ int twoBit(const char * filename,const char * outFileName){
 //			}
 //			fprintf(ofp, "%c", byt);
 //			fprintf(ofp, "%c", '\n');
-		}else{
-			int i=1;
-			char checkeof;
-			char eofarr[30];
-			eofarr[0] = byt;
-			while(!((checkeof=getc(ifp)) ^ '\xff') && i < 30){//extract up to 30 bytes of -1
-			//	checkeof = getc(ifp);
-				eofarr[i]=checkeof;
-				++i;
-			}
-
-			if(i!=30){
-				int k=0;
-				for(k;k<i;++k){
-				//	ungetc(eofarr[i],ifp);	//if a non -1 byte was extracted undo extraction of last i bytes
-				
-				bitSeparator(eofarr[k],ofp);
+		//else{
+		//	int i=1;
+		//	char checkeof;
+		//	char eofarr[30];
+		//	eofarr[0] = byt;
+		//	while(!((checkeof=getc(ifp)) ^ '\xff') && i < 30){//extract up to 30 bytes of -1
+		//	//	checkeof = getc(ifp);
+		//		eofarr[i]=checkeof;
+		//		++i;
+		//	}
+//
+//			if(i!=30){
+//				int k=0;
+//				for(k;k<i;++k){
+//				//	ungetc(eofarr[i],ifp);	//if a non -1 byte was extracted undo extraction of last i bytes
+//				
+//				bitSeparator(eofarr[k],ofp);
 					
-				}
-				bitSeparator(checkeof, ofp);
-			}else{
-				eof = 1;//if 30 -1 bytes were extracted end of file is true
-			}
-		}
+//				}
+//				bitSeparator(checkeof, ofp);
+//			}else{
+//				eof = 1;//if 30 -1 bytes were extracted end of file is true
+//			}
+//		}
 	}
 	fclose(ofp);
 	fclose(ifp);

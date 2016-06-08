@@ -54,32 +54,61 @@ int twoBit(const char * filename,const char * outFileName){
 		fprintf(ofp, "%c", flinec);
 	}	
 	fprintf(ofp, "%c", '\n');
-	char byt;
+	int byt;
 	int eof = 0;//not end of file
 	char spacearray[8]; // Checking for spaces signifying new sequence
-	while(!eof){
-		int s = 0;
-		byt = getc(ifp);
-		if((~ byt)){//check if eof or all Gs
-
-		while(byt == ' '){
-		spacearray[s] = byt;
-		s++;
-		byt = getc(ifp);
-		}
-		if(s!=8){
-		int j;
-			for(j=0; j<s; ++j){
-			bitSeparator(spacearray[s],ofp);
-			}	
-		}
-		else{
-			char newSeq;
-			while((newSeq = getc(ifp))!= '\n'){
-				fprintf(ofp,"%c",newSeq);
+	char newSequence[] = {'N','e','w',' ','S','e','q','u','e','n','c','e',' ','S', 't','a','r','t','s',' ','B','e','l','o','w'};
+	int stringSize = sizeof(newSequence)/sizeof(newSequence[0]);
+	int s;
+	
+	while((byt=getc(ifp))!= EOF){
+	
+		if(byt==newSequence[0]){
+			for(s=1;s<stringSize;++s){
+				byt = getc(ifp);
+				printf("%c%s", byt, ", ");
+				if(byt != newSequence[s]){
+					int t;
+					for(t=0;t<s;++t){
+						bitSeparator(newSequence[t],ofp);
+					}
+					break;
+				}
+			
 			}
-
+			if(s==stringSize){
+				byt = getc(ifp);
+				fprintf(ofp,"%c",'\n');
+				while((byt=getc(ifp)) != '\n'){
+					fprintf(ofp,"%c",byt);
+				}
+				fprintf(ofp,"%c",'\n');
+				byt = getc(ifp);
+			}
 		}
+
+	//	byt = getc(ifp);
+	//	if((~ byt)){//check if eof or all Gs
+
+//		while(byt == ' '){
+//		spacearray[s] = byt;
+//		s++;
+//		byt = getc(ifp);
+//		}
+//		if(s!=8){
+//		int j;
+//			for(j=0; j<s; ++j){
+//			bitSeparator(spacearray[s],ofp);
+//			}	
+//		}
+//		else{
+//			char newSeq;
+//			while((newSeq = getc(ifp))!= '\n'){
+//				fprintf(ofp,"%c",newSeq);
+//			}
+
+//		}
+	
 		
 
 
@@ -111,30 +140,30 @@ int twoBit(const char * filename,const char * outFileName){
 //			}
 //			fprintf(ofp, "%c", byt);
 //			fprintf(ofp, "%c", '\n');
-		}else{
-			int i=1;
-			char checkeof;
-			char eofarr[30];
-			eofarr[0] = byt;
-			while(!((checkeof=getc(ifp)) ^ '\xff') && i < 30){//extract up to 30 bytes of -1
-			//	checkeof = getc(ifp);
-				eofarr[i]=checkeof;
-				++i;
-			}
-
-			if(i!=30){
-				int k=0;
-				for(k;k<i;++k){
-				//	ungetc(eofarr[i],ifp);	//if a non -1 byte was extracted undo extraction of last i bytes
-				
-				bitSeparator(eofarr[k],ofp);
-					
-				}
-				bitSeparator(checkeof, ofp);
-			}else{
-				eof = 1;//if 30 -1 bytes were extracted end of file is true
-			}
-		}
+//		}else{
+//			int i=1;
+//			char checkeof;
+//			char eofarr[30];
+//			eofarr[0] = byt;
+//			while(!((checkeof=getc(ifp)) ^ '\xff') && i < 30){//extract up to 30 bytes of -1
+//			//	checkeof = getc(ifp);
+//				eofarr[i]=checkeof;
+//				++i;
+//			}
+//
+//			if(i!=30){
+//				int k=0;
+//				for(k;k<i;++k){
+//				//	ungetc(eofarr[i],ifp);	//if a non -1 byte was extracted undo extraction of last i bytes
+//				
+//				bitSeparator(eofarr[k],ofp);
+//					
+//				}
+//				bitSeparator(checkeof, ofp);
+//			}else{
+//				eof = 1;//if 30 -1 bytes were extracted end of file is true
+//			}
+//		}
 	}
 	fclose(ofp);
 	fclose(ifp);

@@ -40,71 +40,77 @@ int twoBit(const char * filename,const char * outFileName){
 		int endseq = 0;
 		while(!(byt&'\x40')){ // Check for \n, \r characters
 			if(byt=='>'){ // Check for > Character
-				fprintf(ofp,"%c %c %c %c %c %c %c %c",' ',' ',' ',' ',' ',' ',' ',' '); // 8 spaces used to transfer back to 
+				fprintf(ofp,"%s","New Sequence Starts Below"); 
 													//FASTA
-				fprintf(ofp, "%c %c",'\n', '>');
+				fprintf(ofp, "%c%c",'\n', '>');
 				while((header = getc(ifp)) != '\n' && header != EOF){//
 					fprintf(ofp, "%c", header );
 			}
 
 			fprintf(ofp, "%c", '\n');
 			fflush(ofp);
-			byt = header; 
+		//	byt = header; 
 		}
-		else{
+	//	else{
 			byt = getc(ifp);
-		}	
+	//	}	
 		}
-		if(byt&'\x80') break; // EOF character check
+		if(byt== EOF){
+			break;
+		}
 		byt = byt & '\x06';
 		byt = byt << 5;
-		char temp;
+		int temp;
 		int i;
 		for(i = 2; i>0;--i){//get next two nucleotides shifting
 					//left accordingl
 			temp = getc(ifp);
 //			if(temp != '\n' && temp != '\r'){
-			if(temp&'\x40'){//performs above test w/o comparisons
+			if(temp & '\x40'){//performs above test w/o comparisons
+				if(temp == EOF){
+					fprintf(ofp,"%c",byt);
+					break;
+				}
 				temp = temp & '\x06';
 				temp = temp << (i*2)-1;
 				byt = byt|temp;
 			}else{
 				if(temp == '>'){
 					fprintf(ofp,"%c",byt);
-					 fprintf(ofp,"%c %c %c %c %c %c %c %c",' ',' ',' ',' ',' ',' ',' ',' '); // 8 spaces used to transfer
+					fprintf(ofp,"%s","New Sequence Starts Below"); 
+//					fprintf(ofp,"%c %c %c %c %c %c %c %c",' ',' ',' ',' ',' ',' ',' ',' '); // 8 spaces used to transfer
 														// back to FASTA
-                                        fprintf(ofp,"%c %c", '\n', '>');
+                                        fprintf(ofp,"%c%c", '\n', '>');
 					endseq = 1;
 					while((temp = getc(ifp)) != '\n'){
 						fprintf(ofp,"%c",temp);
 					}
-				fprintf(ofp,"%c",'\n');
+					fprintf(ofp,"%c",'\n');
 					break;
 				}
 				++i;
 			}
 		}
-		while(!((temp=getc(ifp)) & '\x40')){//while temp is null, \n or \r
+		if(!endseq){
+			while(!((temp=getc(ifp)) & '\x40')){//while temp is null, \n or \r
                                                                         //extract characters
                                                                         //
-			if(temp == '>'){
-				 fprintf(ofp,"%c %c %c %c %c %c %c %c",' ',' ',' ',' ',' ',' ',' ',' '); // 8 spaces used to transfer back to 														 //FASTA
-                                 fprintf(ofp, "%c %c", '\n', '>');
-                	       		while((header = getc(ifp)) != '\n' && header != EOF){
+				if(temp == '>'){
+					endseq = 1;
+					fprintf(ofp,"%c",byt);
+					fprintf(ofp,"%s","New Sequence Starts Below");
+					fprintf(ofp, "%c%c",'\n','>');
+					while((header = getc(ifp)) != '\n' && header != EOF){
                         	        	fprintf(ofp, "%c", header );
                         		}	
 
                         	fprintf(ofp, "%c", '\n');
-                  		 fflush(ofp);
-                	        temp = header;
-               		 }
-        	      else{
-                      
-	             }
-
-
+                  		fflush(ofp);
+				break;
+               			}	
+			}
 		}
-		if(!endseq){
+		if(!endseq && temp != EOF){
 			temp = temp&'\x06';
 			temp = temp >> 1;
 			byt = byt|temp;

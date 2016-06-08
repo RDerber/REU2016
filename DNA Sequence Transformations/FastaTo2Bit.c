@@ -1,3 +1,14 @@
+/*
+ * FastaTo2Bit.c
+ *
+ * Functional for regular FASTA
+ *
+ *
+ *
+ */
+
+
+
 #include <stdio.h>
 #include <stdlib.h>
 
