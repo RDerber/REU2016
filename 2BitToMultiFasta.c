@@ -1,11 +1,11 @@
 /*
- * 2BitToFasta.c
+ * 2BitToMultiFasta.c
  *
  *
  *
- * 
- */
-
+ *
+ *
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,9 +56,31 @@ int twoBit(const char * filename,const char * outFileName){
 	fprintf(ofp, "%c", '\n');
 	char byt;
 	int eof = 0;//not end of file
+	char spacearray[8]; // Checking for spaces signifying new sequence
 	while(!eof){
+		int s = 0;
 		byt = getc(ifp);
 		if((~ byt)){//check if eof or all Gs
+
+		while(byt == ' '){
+		spacearray[s] = byt;
+		s++;
+		byt = getc(ifp);
+		}
+		if(s!=8){
+		int j;
+			for(j=0; j<s; ++j){
+			bitSeparator(spacearray[s],ofp);
+			}	
+		}
+		else{
+			char newSeq;
+			while((newSeq = getc(ifp))!= '\n'){
+				fprintf(ofp,"%c",newSeq);
+			}
+
+		}
+		
 
 
 	bitSeparator(byt, ofp); // helped function for commented-out code below
