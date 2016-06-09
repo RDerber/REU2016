@@ -30,12 +30,12 @@ int twoBit(const char * filename,const char * outFileName){
 	fprintf(ofp, "%c", '\n');
 	fflush(ofp);
 	char byt;
-	while(!((byt = getc(ifp))&'\x80')){//get first char and shift right
+	while((byt = getc(ifp)!= EOF)){//get first char and shift right
 //	if(byt != '\n' && byt != '\r'){ // mask with x40
 		while(!(byt&'\x40')){
 			byt = getc(ifp);
 		}
-		if(byt&'\x80') break;
+		if(byt== EOF) break;
 		byt = byt & '\x06';
 		byt = byt << 5;
 		char temp;
