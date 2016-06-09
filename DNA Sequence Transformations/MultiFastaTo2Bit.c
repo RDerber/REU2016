@@ -19,13 +19,7 @@
 int twoBit(const char * filename,const char * outFileName){
 	FILE * ifp;
 	FILE * ofp;
-	ifp = fopen(filename,"r");
-//	char * lineptr = NULL;
-//	size_t * len = 0;
-//	getline(&lineptr,len, ifp);
-//	char newFileName[100];
-//	printf("Give a name to the file this program will create and write to:" );
-//	gets(newFileName);
+
 	ofp = fopen(outFileName, "w");
 	char flinec;
 	while((flinec = getc(ifp)) != '\n'){
@@ -67,10 +61,11 @@ int twoBit(const char * filename,const char * outFileName){
 			temp = getc(ifp);
 //			if(temp != '\n' && temp != '\r'){
 			if(temp & '\x40'){//performs above test w/o comparisons
-				if(temp == EOF){
-					fprintf(ofp,"%c",byt);
-					break;
-				}
+			//	if(temp == EOF){
+			//		fprintf(ofp,"%c",byt);
+			//		endseq = 1;
+			//		break;
+			//	}
 				temp = temp & '\x06';
 				temp = temp << (i*2)-1;
 				byt = byt|temp;
@@ -110,7 +105,7 @@ int twoBit(const char * filename,const char * outFileName){
                			}	
 			}
 		}
-		if(!endseq && temp != EOF){
+		if(!endseq){
 			temp = temp&'\x06';
 			temp = temp >> 1;
 			byt = byt|temp;
