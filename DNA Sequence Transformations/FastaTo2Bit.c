@@ -3,9 +3,9 @@
  *
  * Functional for regular FASTA
  *
- *  Issues: Prints \00 at beginning of 2Bit
+ * we now get time, need to add for loop with minheap to get minimum times.
  *
- * Once converted back: AAAA at beginning, extra T at end
+ * 
  */
 
 
@@ -17,90 +17,59 @@ int twoBit(char * input, char * output, long inputsize){
 	size_t firstlnlen;
 	for(firstlnlen = 0; input[firstlnlen] != '\n'; ++firstlnlen){
 		output[firstlnlen] = input[firstlnlen];
+//		printf("%c",input[firstlnlen]);
 	}
 	output[firstlnlen]='\n';
 	long i = firstlnlen + 1;
-	long k = i;
+//	printf("\n%c\n",input[i-1]);
+	long k = i-1;
 //	printf("%s %d %s %d \n","firstlnlen:",firstlnlen,"inputsize:",inputsize);
 	while(i < inputsize){
+//	printf("%s %d %s %c \n","i is:", i, "input[i] is:",input[i]);
 //	printf("%d \n",i);
 //	printf("%s %c \n","Input[i]:",input[i]);
-		while(!(input[i]&'\x40') && i < inputsize){
+		while(i<inputsize && !(input[i]&'\x40')){
 			++i;
 		}
+		if(i >= inputsize) break;
 		char byt = input[i];
+		++k;
+		++i;
 		byt = byt &'\x06';
 		byt = byt << 5;
 		char temp;
 		unsigned j;
 		for(j = 2; j > 0 && i < inputsize; --j){
-			++i;
+//			printf("%s %d \n","i in for loop:",i);
 			if(input[i] & '\x40'){
 				temp = input[i];
+				++i;
 				temp = temp & '\x06';
 				temp = temp << (j*2)-1;
 				byt = byt|temp;
 			} else {
 				++j;
+				++i;
 			}
 		}
 		while(i < inputsize && !(input[i] & '\x40')){
 			++i;
 		}
+
+			
 		if(i < inputsize){
-			++i;
 			temp = input[i];
-			++k;
+			++i;
 			temp = temp & '\x06';
 			temp = temp >> 1;
 			byt = byt|temp;
 		}
-		else{
-			++k;
-
-		}
+//	printf("\n%d\n", k);
 	output[k] = byt;
-	++i;
+//	printf("%s %d \n","i is:",i);
 	}
-
-	return k;
+	return k+1;
 }
-
-//	while((byt = getc(ifp))!= EOF){//get first char and shift right
-//	if(byt != '\n' && byt != '\r'){ // mask with x40
-//		while(!(byt&'\x40')){
-//			byt = getc(ifp);
-//		}
-//		if(byt== EOF) break;
-//		byt = byt & '\x06';
-//		byt = byt << 5;
-//		char temp;
-//		int i;
-//		for(i = 2; i>0;--i){//get next two nucleotides shifting
-//					//left accordingly
-//			temp = getc(ifp);
-//			if(temp != '\n' && temp != '\r'){
-//			if(temp&'\x40'){//performs above test w/o comparisons
-//				temp = temp & '\x06';
-//				temp = temp << (i*2)-1;
-//				byt = byt|temp;
-//			}else{
-//				++i;
-//			}
-//		}
-//		while(!((temp=getc(ifp)) & '\x40')){}	//while temp is null, \n or \r
-//									//extract characters
-//		temp = temp&'\x06';
-//		temp = temp >> 1;
-//		byt = byt|temp;
-//		fprintf(ofp, "%c", byt);
-//		fflush(ofp);
-//	}
-//	fclose(ofp);
-//	fclose(ifp);
-//	free(lineptr);
-//	return 0;
-//}
 
 int main(int argc, char *argv[]){
 	if(argc == 3){
@@ -137,20 +106,29 @@ int main(int argc, char *argv[]){
 			}
 		}			
 		fclose(ifp);
+	}else{
+		printf("%s\n", "the input file given does not exist");
+		return 1;
 	}
 
 		// Define Output Buffer;
-	char output[inputsize];
+	char * output = malloc(sizeof(char)* (inputsize+1));
 	int outputsize = 0;
 		// Read in all data from argv[1] and store in input memory buffer
 
 
+//	int k;
+//	for(k=0; k<inputsize; ++k){
+//	printf("%s %c \n","Input[k]:", input[k]);
+//	}
 		// In a for loop, run the twoBit Funtion using a timer function, reading from input memory buffer and writting to output 
 		// memory buffer. Store the run times in an array
 	
-		
+	clock_t start, diff;
+	start = clock();;
 	outputsize=twoBit(input,output,inputsize);
-
+	diff = clock() - start;
+	printf("\n%d\n",diff);
 		// Record fastest times from the 100 runs
 		// Write from output memory buffer to an output file
 		// Check for correctness
@@ -162,10 +140,10 @@ int main(int argc, char *argv[]){
 	FILE *ofp = fopen(argv[2],"w");
 	for(i=0; i<outputsize; ++i){
 		fprintf(ofp,"%c",output[i]);
-
 	}
 		fclose(ofp);
 		free(input); // Frees memory used for input buffer
+		free(output);
 		return 0;
 
 	
