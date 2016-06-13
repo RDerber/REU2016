@@ -12,6 +12,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
+#include <float.h>
 
 int twoBit(char * input, char * output, long inputsize){
 	size_t firstlnlen;
@@ -72,7 +74,7 @@ int twoBit(char * input, char * output, long inputsize){
 }
 
 int main(int argc, char *argv[]){
-	if(argc == 3){
+	if(argc == 3||argc == 4||argc == 5){
 
 		// Define Input Memory Buffer
 	char *input = NULL;
@@ -123,20 +125,76 @@ int main(int argc, char *argv[]){
 //	}
 		// In a for loop, run the twoBit Funtion using a timer function, reading from input memory buffer and writting to output 
 		// memory buffer. Store the run times in an array
-	
-	clock_t start, diff;
-	start = clock();;
-	outputsize=twoBit(input,output,inputsize);
-	diff = clock() - start;
-	printf("\n%d\n",diff);
-		// Record fastest times from the 100 runs
-		// Write from output memory buffer to an output file
-		// Check for correctness
-		//
-		//
-		//
-
+	float *times;
+	float *minTimes;
+	int numTimes = 0;
+	if(argc == 4){	//if a number of runs is given but no number of minimum times, default number of min times is 3
+		int runs = atoi(argv[3]);
+		numTimes = 3;
+		times = calloc(runs, sizeof(float)); 
+		minTimes = calloc(numTimes,sizeof(float));
+		struct timeval time0, time1; 
+		int i;
+		for(i=0;i<runs;i++){
+			gettimeofday(&time0,NULL);
+			outputsize = twoBit(input,output,inputsize);
+			gettimeofday(&time1,NULL);
+			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+		}
+		int k;
+		for(k=0;k < numTimes;++k){
+			float minTime = times[0];
+			int index = 0;
+			for(i=0;i < runs;++i){
+				if(times[i] < minTime){
+					minTime = times[i];
+					index = i;
+				}
+			minTimes[k] = minTime;
+			times[index] = 	FLT_MAX;
+			}
+		}
+	}
+	if(argc == 5){ //if both number of runs and the number of minimum times is given
+                int runs = atoi(argv[3]);
+                numTimes = atoi(argv[4]);
+                times = calloc(runs, sizeof(float));
+                minTimes = calloc(numTimes,sizeof(float));
+                struct timeval time0, time1;
+                int i;
+                for(i=0;i<runs;i++){
+                        gettimeofday(&time0,NULL);
+                        outputsize = twoBit(input,output,inputsize);
+                        gettimeofday(&time1,NULL);
+                        times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+                }
+                int k;
+                for(k=0;k < numTimes;++k){
+                        float minTime = times[0];
+                        int index = 0;
+                        for(i=0;i < runs;++i){
+                                if(times[i] < minTime){
+                                        minTime = times[i];
+                                        index = i;
+                                }
+                        minTimes[k] = minTime;
+                        times[index] =  FLT_MAX;
+                        }
+                }	
+	}
 	int i;
+	float aveTime = 0;
+	for( i = 0; i < numTimes; ++i){
+		aveTime += minTimes[i];
+	}
+	free(minTimes);
+	aveTime /= (float)numTimes;
+	
+	// Include JSON file formatting code and use it to print out report of data in JSON Output file
+	//
+	printf("%s %f","Average Time:", aveTime);
+
+	free(times);
 	FILE *ofp = fopen(argv[2],"w");
 	for(i=0; i<outputsize; ++i){
 		fprintf(ofp,"%c",output[i]);
