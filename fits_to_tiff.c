@@ -13,11 +13,6 @@
 /* read data from json file */
 /* document code */
 
-#define FITS_INPUT		"/Users/nobody1/Desktop/green.fits"
-#define TIFF_OUTPUT		"/Users/nobody1/Desktop/test.tiff"
-#define JSON_OUTPUT		"/Users/nobody1/Desktop/test.json"
-#define TIME_OUTPUT		"/Users/nobody1/Desktop/time.json"
-
 struct fits_convert {
 	const char *path_input;
 	const char *path_tiff;
@@ -67,7 +62,7 @@ struct ifd_header {
 	uint32_t value;	
 };
 
-int write_tiff_file_buf (unsigned char **out, unsigned char *src, int x, int y)
+int write_tiff_file (unsigned char **out, unsigned char *src, int x, int y)
 {
 	int total = (x * y), i;
 	struct tiff_header hdr;
@@ -268,7 +263,7 @@ int parse_header_unit (const char in[80], char *title, char *text)
 	return 1;
 }
 
-int write_json_title (char *file_buf, char *title, int *buf_pos)
+int write_json_title (char *file_buf, const char *title, int *buf_pos)
 {
 	int len;
 	
@@ -322,11 +317,9 @@ int write_num_json (int fd, int is_string, int nest_level, char *title,
 	return write(fd, file_buf, buf_len) == buf_len ? 0 : -1;
 }	
 
-
-/* TO DO: add support for arrays */
 /* only for use with .fits tag reader function */
 int write_tag_json (char *file_buf, int is_string, int nest_level, 
-			char *title, char *text, int *first)
+			const char *title, const char *text, int *first)
 {
 	int i, len, buf_pos = 0;
 	char tmp;
@@ -405,22 +398,17 @@ int count_fits_tags (const char *src)
 	return count;
 }
 
-int read_fits_tags (const char *src, int *bitpix, int *naxis1, int *naxis2, 
-	char *json_output, int *json_size)
+int read_fits_tags (const char *src, struct fits_convert *fts)
 {
-	int next_line = 0;
 	char title[9] = { 0 };
 	char text[80] = { 0 };
-	int cur = 0, tmp = 0, naxis = 0;
 	int *n_naxis = NULL;
-	int retn = 0;
+	int cur = 0, tmp = 0, naxis = 0, next_line = 0;
+	int retn = 0, out_bytes, first = 1, pos = 0;
 	const char *start = src;
 	char file_buf[512];
-	int out_bytes;
-	int first = 1;
-	int pos = 0;
 	
-	strncpy(json_output + pos, "{\n", 2);
+	strncpy(fts->metadata + pos, "{\n", 2);
 	pos += 2;
 	
 	while ((next_line = parse_header_unit(src, title, text)) >= 0) {
@@ -430,7 +418,7 @@ int read_fits_tags (const char *src, int *bitpix, int *naxis1, int *naxis2,
 		out_bytes = write_tag_json(file_buf, next_line, 1, title, text, &first);
 		
 		if (out_bytes > 0) {
-			strncpy(json_output + pos, file_buf, out_bytes);
+			strncpy(fts->metadata + pos, file_buf, out_bytes);
 			pos += out_bytes;
 		}
 		
@@ -442,7 +430,7 @@ int read_fits_tags (const char *src, int *bitpix, int *naxis1, int *naxis2,
 				return -1;
 			}
 		} else if (!strncmp(title, "BITPIX", 6)) {
-			sscanf(text, "%d", bitpix);
+			sscanf(text, "%d", &fts->bitpix);
 		} else if (!strncmp(title, "NAXIS", 6)) {
 			sscanf(text, "%d", &naxis);
 			
@@ -462,31 +450,32 @@ int read_fits_tags (const char *src, int *bitpix, int *naxis1, int *naxis2,
 		}
 	}
 	
-	strncpy(json_output + pos, "\n}", 2);
+	strncpy(fts->metadata + pos, "\n}", 2);
 	pos += 2;
 	
-	*naxis1 = n_naxis[0];	/* x */	
-	*naxis2 = n_naxis[1];	/* y */
+	fts->x = n_naxis[0];	/* x */	
+	fts->y = n_naxis[1];	/* y */
 	
 	free(n_naxis);
 	
-	*json_size = pos;
+	fts->metadata_size = pos;
 	
 	fprintf(stderr, "[%s]: read fits tags, (%d x %d) at %d bits/pix\n", __func__,
-		*naxis1, *naxis2, *bitpix);
+		fts->x, fts->y, fts->bitpix);
 	
 	return retn;
 }
 
+/* allocates *dst and populates it with the smallest k values from num values in src */
 int find_lowest_x_floats (float *src, int num, float **dst, int k)
 {
 	int i, o_pos = 0, mi;
+	char *used; 
 	
 	if (k >= num || !src || !dst)
 		return -1;
 		
-	char *used = calloc(1, num);
-	
+	used = calloc(1, num);
 	*dst = calloc(sizeof(float), k);
 	
 	for (i = 0; i < k; i++) {
@@ -501,67 +490,79 @@ int find_lowest_x_floats (float *src, int num, float **dst, int k)
 	return 0;
 }
 
+/* writes a string in .json format to fd: "title": "text" */
+int write_json_str_tof (const char *title, const char *text, int *first, int fd)
+{
+	int out_len;
+	char tmp_buf[512];
+	
+	if ((out_len = write_tag_json(tmp_buf, 1, 1, title, text, first)) <= 0)
+		return -1;
+		
+	return (write(fd, tmp_buf, out_len) == out_len) ? 0 : -1;
+}
+
+/* writes "k" lowest values from time_array, returns average of those values */
+double write_k_lowest_values (float *time_array, int runs, int k, int *first, int fd)
+{
+	float *low;
+	int i;
+	double avg_lowest = 0;
+	
+	find_lowest_x_floats(time_array, runs, &low, k);
+	
+	for (i = 0; i < k; i++) {
+		if (write_num_json(fd, 0, 1, "microseconds", (double)low[i], first) < 0)
+			return 0;
+			
+		avg_lowest += (low[i] / k);
+	}
+
+	free(low);
+
+	return avg_lowest;
+}
+
 /* writes timing data as .json, "k" is the number of quickest runs to save */
-int write_time_file (float *time_array, int runs, int k, int x, int y)
+int write_time_file (const char *path, float *time_array, int runs, 
+			int k, struct fits_convert fts)
 { 
-	int first = 1;
-	int time_fd, i;
-	float *lowest_times;
+	int first = 1, time_fd;
 	double avg_lowest = 0;
 	struct utsname un;
-	char tmp_buf[512];
-	int out_len;
 	time_t ts_val;
 	char time_buf[80];
 	
-	if ((time_fd = open(TIME_OUTPUT, O_CREAT|O_TRUNC|O_RDWR, 0777)) < 0)
+	if ((time_fd = open(path, O_CREAT|O_TRUNC|O_RDWR, 0777)) < 0) {
+		fprintf(stderr, "[%s]: error opening socket\n", __func__);
 		return -1;
+	}
 		
 	if (write(time_fd, "{\n", 2) != 2 ||
 		write_num_json(time_fd, 0, 1, "total # runs", (double)runs, &first) < 0 ||
 		write_num_json(time_fd, 0, 1, "# runs saved", (double)k, &first) < 0)
-		return -1;		
+		fprintf(stderr, "[%s]: error writing run info\n", __func__);
+		
+	if (!(avg_lowest = write_k_lowest_values(time_array, runs, k, &first, time_fd)))
+		fprintf(stderr, "[%s]: error writing run times\n", __func__);	
 	
-	find_lowest_x_floats(time_array, runs, &lowest_times, k);
-	
-	for (i = 0; i < k; i++) {
-		if (write_num_json(time_fd, 0, 1, "microseconds", 
-				   (double)lowest_times[i], &first) < 0)
-			return -1;
-			
-		avg_lowest += (lowest_times[i] / k);
-	}
+	if (uname(&un) ||
+		write_json_str_tof("sysname", un.sysname, &first, time_fd) ||
+		write_json_str_tof("release", un.release, &first, time_fd) ||
+		write_json_str_tof("machine", un.machine, &first, time_fd))
+		fprintf(stderr, "[%s]: error writing system info\n", __func__);
 
-	free(lowest_times);
-	
-	if (uname(&un))
-		printf("error getting OS data\n");
+	if (time(&ts_val) < 0 ||
+		!strftime(time_buf, 80, "%x - %I:%M%p", localtime(&ts_val))  ||
+		write_json_str_tof("time", time_buf, &first, time_fd))
+		fprintf(stderr, "[%s]: error writing stop time\n", __func__);
 
-	if ((out_len = write_tag_json (tmp_buf, 1, 1, "sysname", un.sysname, &first)) > 0)
-		if (write(time_fd, tmp_buf, out_len) != out_len)
-			printf("error writing tag\n");
-			
-	if ((out_len = write_tag_json (tmp_buf, 1, 1, "release", un.release, &first)) > 0)
-		if (write(time_fd, tmp_buf, out_len) != out_len)
-			printf("error writing tag\n");
-			
-	if ((out_len = write_tag_json (tmp_buf, 1, 1, "machine", un.machine, &first)) > 0)
-		if (write(time_fd, tmp_buf, out_len) != out_len)
-			printf("error writing tag\n");		
-
-	time(&ts_val);
-
-	strftime(time_buf, 80, "%x - %I:%M%p", localtime(&ts_val));
-	
-	if ((out_len = write_tag_json (tmp_buf, 1, 1, "time", time_buf, &first)) > 0)
-		if (write(time_fd, tmp_buf, out_len) != out_len)
-			printf("error writing tag\n");	
-	
 	if (write_num_json(time_fd, 0, 1, "avg. microseconds", avg_lowest, &first) < 0 ||
-		write_num_json(time_fd, 0, 1, "width (pixels)", (double)x, &first) < 0 ||
-		write_num_json(time_fd, 0, 1, "height (pixels)", (double)y, &first) < 0 ||
+		write_num_json(time_fd, 0, 1, "width (pixels)", (double)fts.x, &first) < 0 ||
+		write_num_json(time_fd, 0, 1, "height (pixels)", (double)fts.y, &first) < 0 ||
+		write_num_json(time_fd, 0, 1, "bits/pixel", (double)fts.bitpix, &first) < 0 ||
 		write(time_fd, "\n}", 2) != 2)
-		return -1;
+		fprintf(stderr, "[%s]: error writing image data\n", __func__);
 
 	close(time_fd);
 	
@@ -620,27 +621,24 @@ void f32_to_u8_scaled (float *big_endian, unsigned char *dst, int num)
 	free(src);
 }
 
-uint64_t run_conversion (unsigned char *buf, int file_size, struct fits_convert *fts, 
-			unsigned char **tiff_output, int *tiff_size, 
-			char **json_output, int *json_size)
+/* returns execution time in microseconds */
+uint64_t run_conversion (unsigned char *buf, int file_size, struct fits_convert *fts)
 {
 	int datapos = 0;
-	int bitpix = 0;
 	unsigned char *data;
 	struct timeval t0, t1;
 	
 	gettimeofday(&t0, NULL);
 	
 	if ((fts->metadata_size = count_fits_tags((const char *)buf)) < 0) {
-		printf("error\n");
+		fprintf(stderr, "[%s]: could not count fits tags\n", __func__);
 		return 0;
 	}
 	
-	*json_output = calloc(fts->metadata_size, 81);
+	fts->metadata = calloc(fts->metadata_size, 81);
 	
-	if ((datapos = read_fits_tags((const char *)buf, &bitpix, &fts->x, &fts->y, 
-		*json_output, &fts->metadata_size)) < 0) {
-		printf("error\n");
+	if ((datapos = read_fits_tags((const char *)buf, fts)) < 0) {
+		fprintf(stderr, "[%s]: could not read fits tags\n", __func__);		
 		return 0;
 	}
 	
@@ -648,8 +646,7 @@ uint64_t run_conversion (unsigned char *buf, int file_size, struct fits_convert 
 
 	f32_to_u8_scaled((float *)(buf + datapos), data, fts->x * fts->y);
 
-	if ((*tiff_size = write_tiff_file_buf(tiff_output, data, fts->x, fts->y)) < 0)
-		return -1;
+	fts->img_size = write_tiff_file(&fts->img_out, data, fts->x, fts->y);
 		
 	free(data);
 		
@@ -661,6 +658,11 @@ uint64_t run_conversion (unsigned char *buf, int file_size, struct fits_convert 
 int main (void)
 {
 	struct fits_convert fts;
+	unsigned char *buf; 
+	int file_size, i;
+	uint64_t usec;
+	int k = 8, runs = 20;
+	float *time_array = calloc(runs, sizeof(float));
 	
 	memset(&fts, 0, sizeof(struct fits_convert));
 	
@@ -669,12 +671,6 @@ int main (void)
 	fts.path_metadata = "/Users/nobody1/Desktop/test.json";
 	fts.path_timedata = "/Users/nobody1/Desktop/time.json";
 
-	unsigned char *buf; 
-	int file_size, i;
-	uint64_t usec;
-	int k = 8, runs = 20;
-	float *time_array = calloc(runs, sizeof(float));
-	
 	if ((file_size = (int)read_file(fts.path_input, &buf)) < 0) {
 		printf("could not read file\n");
 		return -1;
@@ -683,12 +679,11 @@ int main (void)
 	for (i = 0; i < runs; i++) {
 		free(fts.img_out);
 		free(fts.metadata);
-		usec = run_conversion(buf, file_size, &fts, &fts.img_out, 
-					&fts.img_size, &fts.metadata, &fts.metadata_size);
+		usec = run_conversion(buf, file_size, &fts);
 		time_array[i] = (float)usec;
 	}
 	
-	if (write_time_file(time_array, runs, k, fts.x, fts.y) < 0)
+	if (write_time_file(fts.path_timedata, time_array, runs, k, fts) < 0)
 		printf("error writing time file\n");
 
 	if (create_file_with_data(fts.path_tiff, fts.img_out, fts.img_size) < 0)
@@ -707,4 +702,3 @@ int main (void)
 	return 0;
 }
 	
-
