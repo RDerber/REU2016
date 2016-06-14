@@ -18,7 +18,7 @@
 #include <time.h> 
 #include "writeJson.h"
 
-#define TIME_OUTPUT	"/home/summer16/REU/timeStats.txt"
+#define TIME_OUTPUT	"./timing.txt"
 
 /* read data from json file */
 /* document code */
