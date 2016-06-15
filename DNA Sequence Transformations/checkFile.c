@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+/*Checks to see if 2 files are the same other than new lines, carriage returns, and spaces
+*/
 int main(int argc,char * argv[]){
 	FILE * f1;
 	FILE * f2;
