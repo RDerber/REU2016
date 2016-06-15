@@ -11,6 +11,6 @@ int write_tag_json(char *, int, int, char *, char *, int *);
 
 int find_lowest_x_floats(float *, int, float **, int);
 
-int write_time_file (float *, int, int);
+int write_time_file (float *, int, int, long);
 
 #endif

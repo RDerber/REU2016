@@ -196,7 +196,7 @@ int main(int argc, char *argv[]){
 	//
 	
 
-	if(argc > 3 && write_time_file(times, runs, numTimes) < 0)
+	if(argc > 3 && write_time_file(times, runs, numTimes,inputsize) < 0)
 		printf("error writing time file\n");
 	
 	free(times);

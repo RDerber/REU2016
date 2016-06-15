@@ -201,7 +201,7 @@ int find_lowest_x_floats (float *src, int num, float **dst, int k)
 }
 
 /* writes timing data as .json, "k" is the number of quickest runs to save */
-int write_time_file (float *time_array, int runs, int k)
+int write_time_file (float *time_array, int runs, int k, long inputsize)
 { 
 	int first = 1;
 	int time_fd, i;
@@ -220,6 +220,7 @@ int write_time_file (float *time_array, int runs, int k)
 		}
 
 	if (write(time_fd, "{\n", 2) != 2 ||
+		write_num_json(time_fd, 0, 1, "file size (bytes)", (double)inputsize, &first) < 0||
 		write_num_json(time_fd, 0, 1, "total # runs", (double)runs, &first) < 0 ||
 		write_num_json(time_fd, 0, 1, "# runs saved", (double)k, &first) < 0)
 		{
