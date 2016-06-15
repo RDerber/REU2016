@@ -10,9 +10,6 @@
 #include <sys/time.h>
 #include <sys/utsname.h>
 
-/* read data from json file */
-/* document code */
-
 struct fits_convert {
 	const char *path_input;
 	const char *path_tiff;
@@ -125,13 +122,13 @@ int read_file (const char *src_path, unsigned char **dst)
 		fprintf(stderr, "[%s]: stat failed\n", __func__);
 		return -1;
 	}
-	
-	fprintf(stderr, "[%s]: %d bytes\n", __func__, (int)st.st_size);
+		
+	if ((src_fd = open(src_path, O_RDONLY, 0777)) < 0) {
+		fprintf(stderr, "[%s]: could not open socket\n", __func__);
+		return -1;
+	}
 	
 	*dst = calloc(1, st.st_size);
-	
-	if ((src_fd = open(src_path, O_RDONLY, 0777)) < 0)
-		return -1;
 	
 	while ((res = (int)read(src_fd, (*dst) + pos, rem)) > 0) {
 		rem -= res;
@@ -140,7 +137,9 @@ int read_file (const char *src_path, unsigned char **dst)
 	
 	close(src_fd);
 	
-	return st.st_size;
+	fprintf(stderr, "[%s]: read %d bytes\n", __func__, (int)st.st_size);
+	
+	return (int)st.st_size;
 }
 
 int create_file_with_data (const char *dst, unsigned char *src, int bytes)
@@ -210,10 +209,8 @@ int parse_header_unit (const char in[80], char *title, char *text)
 			is_empty = 0;
 	}
 	
-	if (is_empty) {
-		//fprintf(stderr, "empty title unit\n");
+	if (is_empty)
 		return 0;
-	}
 
 	for (i = 0; i < 8; i++) {		/* copy the title */
 		c = in[i];
@@ -377,8 +374,6 @@ int write_tag_json (char *file_buf, int is_string, int nest_level,
 	return buf_pos;
 }	
 
-
-
 int count_fits_tags (const char *src)
 {
 	int next_line = 0;
@@ -508,11 +503,14 @@ double write_k_lowest_values (float *time_array, int runs, int k, int *first, in
 	float *low;
 	int i;
 	double avg_lowest = 0;
+	char title[32];
 	
 	find_lowest_x_floats(time_array, runs, &low, k);
 	
+	/* add number of run */
 	for (i = 0; i < k; i++) {
-		if (write_num_json(fd, 0, 1, "microseconds", (double)low[i], first) < 0)
+		snprintf(title, sizeof(title), "run #%d (usec)", i);
+		if (write_num_json(fd, 0, 1, title, (double)low[i], first) < 0)
 			return 0;
 			
 		avg_lowest += (low[i] / k);
@@ -556,7 +554,7 @@ int write_time_file (const char *path, float *time_array, int runs,
 		!strftime(time_buf, 80, "%x - %I:%M%p", localtime(&ts_val))  ||
 		write_json_str_tof("time", time_buf, &first, time_fd))
 		fprintf(stderr, "[%s]: error writing stop time\n", __func__);
-
+ 
 	if (write_num_json(time_fd, 0, 1, "avg. microseconds", avg_lowest, &first) < 0 ||
 		write_num_json(time_fd, 0, 1, "width (pixels)", (double)fts.x, &first) < 0 ||
 		write_num_json(time_fd, 0, 1, "height (pixels)", (double)fts.y, &first) < 0 ||
@@ -569,7 +567,7 @@ int write_time_file (const char *path, float *time_array, int runs,
 	fprintf(stderr, "[%s]: wrote timing data\n", __func__);
 	
 	return 0;
-}
+} 
 
 /* research compression methods and find ease of decoding,  */
 /* find larger test images */
@@ -661,7 +659,7 @@ int main (void)
 	unsigned char *buf; 
 	int file_size, i;
 	uint64_t usec;
-	int k = 8, runs = 20;
+	int k = 30, runs = 50;
 	float *time_array = calloc(runs, sizeof(float));
 	
 	memset(&fts, 0, sizeof(struct fits_convert));
@@ -671,10 +669,8 @@ int main (void)
 	fts.path_metadata = "/Users/nobody1/Desktop/test.json";
 	fts.path_timedata = "/Users/nobody1/Desktop/time.json";
 
-	if ((file_size = (int)read_file(fts.path_input, &buf)) < 0) {
-		printf("could not read file\n");
+	if ((file_size = (int)read_file(fts.path_input, &buf)) < 0)
 		return -1;
-	}
 
 	for (i = 0; i < runs; i++) {
 		free(fts.img_out);
@@ -701,4 +697,3 @@ int main (void)
 	
 	return 0;
 }
-	
