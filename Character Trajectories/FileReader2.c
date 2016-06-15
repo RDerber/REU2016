@@ -4,32 +4,32 @@
 #include <stdlib.h>
 
 //IDX3-UBYTE SPECIFIED BYTE OFFSETS
-#define IDX3_OFFSET_IMAGE_NUM  							 6
-#define IDX3_OFFSET_ARRAYSTART 							19
-#define IDX3_ROW_NUM_OFFSET 	  	         	11
-#define IDX3_COL_NUM_OFFSET									15
+#define IDX3_OFFSET_IMAGE_NUM                6
+#define IDX3_OFFSET_ARRAYSTART              19
+#define IDX3_ROW_NUM_OFFSET                 11
+#define IDX3_COL_NUM_OFFSET                 15
 
-#define FILEPATH 			"t10k-images.idx3-ubyte"
+#define FILEPATH      "t10k-images.idx3-ubyte"
 
 //TIFF HEADER CODES
 #define HEADER_ENDIAN_LITTLE            0x4949
-#define HEADER_ENDIAN_BIG							  0x4D4D
-#define HEADER_MAGIC_NUMBER							0x002a
+#define HEADER_ENDIAN_BIG               0x4D4D
+#define HEADER_MAGIC_NUMBER             0x002a
 
-#define NUM_TAGS														11
+#define NUM_TAGS                            11
 
 //TIFF TAG ID CODES                           
-#define TAG_WIDTH												0x0100
-#define TAG_HEIGHT											0x0101	
-#define TAG_BITS_PER_SAMPLE							0x0102
-#define TAG_COMPRESSION									0x0103
-#define TAG_INTERPRETATION							0x0106
-#define TAG_STRIP_OFFSETS								0x0111
-#define TAG_ROWS_PER_STRIP							0x0116
-#define TAG_STRIP_BYTE_COUNTS						0x0117
-#define TAG_X_RESOLUTION								0x011a
-#define TAG_Y_RESOLUTION								0x011b
-#define TAG_RESOLUTION_UNIT							0x0152
+#define TAG_WIDTH                       0x0100
+#define TAG_HEIGHT                      0x0101	
+#define TAG_BITS_PER_SAMPLE             0x0102
+#define TAG_COMPRESSION                 0x0103
+#define TAG_INTERPRETATION              0x0106
+#define TAG_STRIP_OFFSETS               0x0111
+#define TAG_ROWS_PER_STRIP              0x0116
+#define TAG_STRIP_BYTE_COUNTS           0x0117
+#define TAG_X_RESOLUTION                0x011a
+#define TAG_Y_RESOLUTION                0x011b
+#define TAG_RESOLUTION_UNIT             0x0152
 
 //Loads the byte data of the .idx3-ubyte at the given filepath into the 
 //given buffer and returns the length of the file(buffer)
@@ -129,10 +129,10 @@ struct tag * generate_tiff_tags(unsigned int width, unsigned int height){
 void generate_tiff_file(struct tag header, struct tag *tags,
 	 	unsigned char *pixelData, unsigned int arraySize, unsigned int array){
 	size_t fileLength = sizeof(header) +
-											arraySize +
-											NUM_TAGS * sizeof(struct tag) +
-											sizeof(uint16_t) +
-											sizeof(uint32_t);
+	                    arraySize +
+	                    NUM_TAGS * sizeof(struct tag) +
+	                    sizeof(uint16_t) +
+	                    sizeof(uint32_t);
 	unsigned char *buffer = (char *)malloc()
 }
 
