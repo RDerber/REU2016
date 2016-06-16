@@ -219,10 +219,9 @@ int write_time_file (float *time_array, int runs, int k, long inputsize)
 			return -1;
 		}
 
-	if (write(time_fd, "{\n", 2) != 2 ||
-		write_num_json(time_fd, 0, 1, "file size (bytes)", (double)inputsize, &first) < 0||
-		write_num_json(time_fd, 0, 1, "total # runs", (double)runs, &first) < 0 ||
-		write_num_json(time_fd, 0, 1, "# runs saved", (double)k, &first) < 0)
+	if (	write_num_json(time_fd, 0, 0, "file size (bytes)", (double)inputsize, &first) < 0||
+		write_num_json(time_fd, 0, 0, "total # runs", (double)runs, &first) < 0 ||
+		write_num_json(time_fd, 0, 0, "# runs saved", (double)k, &first) < 0)
 		{
 			printf("write\n");
 			return -1;		
@@ -230,7 +229,7 @@ int write_time_file (float *time_array, int runs, int k, long inputsize)
 	find_lowest_x_floats(time_array, runs, &lowest_times, k);
 	
 	for (i = 0; i < k; i++) {
-		if (write_num_json(time_fd, 0, 1, "microseconds", 
+		if (write_num_json(time_fd, 0, 0, "microseconds", 
 				   (double)lowest_times[i], &first) < 0)
 			{
 				printf("lowest_times\n");
@@ -247,15 +246,16 @@ int write_time_file (float *time_array, int runs, int k, long inputsize)
 	if (uname(&un))
 		printf("error getting OS data\n");
 
-	if ((out_len = write_tag_json (tmp_buf, 1, 1, "sysname", un.sysname, &first)) > 0)
+
+	if ((out_len = write_tag_json (tmp_buf, 1, 0, "sysname", un.sysname, &first)) > 0)
 		if (write(time_fd, tmp_buf, out_len) != out_len)
 			printf("error writing tag\n");
 			
-	if ((out_len = write_tag_json (tmp_buf, 1, 1, "release", un.release, &first)) > 0)
+	if ((out_len = write_tag_json (tmp_buf, 1, 0, "release", un.release, &first)) > 0)
 		if (write(time_fd, tmp_buf, out_len) != out_len)
 			printf("error writing tag\n");
 			
-	if ((out_len = write_tag_json (tmp_buf, 1, 1, "machine", un.machine, &first)) > 0)
+	if ((out_len = write_tag_json (tmp_buf, 1, 0, "machine", un.machine, &first)) > 0)
 		if (write(time_fd, tmp_buf, out_len) != out_len)
 			printf("error writing tag\n");		
 
@@ -264,12 +264,11 @@ int write_time_file (float *time_array, int runs, int k, long inputsize)
 	time(&ts_val);
 	strftime(time_buf, 80, "%x - %I:%M%p", localtime(&ts_val));
 	
-	if ((out_len = write_tag_json (tmp_buf, 1, 1, "time", time_buf, &first)) > 0)
+	if ((out_len = write_tag_json (tmp_buf, 1, 0, "time", time_buf, &first)) > 0)
 		if (write(time_fd, tmp_buf, out_len) != out_len)
 			printf("error writing tag\n");	
 	
-	if (write_num_json(time_fd, 0, 1, "avg. microseconds", avg_lowest, &first) < 0||
-		write(time_fd, "\n}", 2) != 2)
+	if (write_num_json(time_fd, 0, 0, "avg. microseconds", avg_lowest, &first) < 0)
 		{
 			printf("avg_lowest\n");
 			return -1;

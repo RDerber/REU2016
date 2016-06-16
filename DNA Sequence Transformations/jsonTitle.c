@@ -58,10 +58,13 @@ int jsonTitle(char* filename, char * title, char* titleType){
 		}
 	}
 //	printf("%s %d \n","num new line:",numNewLine);
-	long outputSize = inputSize+(numNewLine*4);
+	long outputSize = inputSize+(numNewLine*4 + 4);
 //	printf("%s %d\n","output size:", outputSize);
 	char* output = malloc(outputSize+1*sizeof(char));
 	int k = 0;
+	for(k=0; k<4;++k){
+		output[k] = ' ';
+	}
 	for(i=0; i<inputSize;++i){
 		if(input[i] == '\n' && input[i + 1] != EOF){
 			output[k] = input[i];
@@ -83,19 +86,20 @@ int jsonTitle(char* filename, char * title, char* titleType){
 
 
 	if(titleType == NULL){
-		fprintf(ofp,"\n%s%s%s","    \"",title,"\": "); //Write out Title at the beginning of the file
+		fprintf(ofp,"\n%s%s%s","\"",title,"\": {\n"); //Write out Title at the beginning of the file
 		fwrite(output, 1, outputSize, ofp);
+		fprintf(ofp,"%s","\n}");
 	
 	}else if(!strcmp(titleType,"-c")){
 
-     		fprintf(ofp,"\n%s%s%s","    \"",title,"\": "); //Write out Title at the beginning of the file
+     		fprintf(ofp,"\n%s%s%s","\"",title,"\": {\n"); //Write out Title at the beginning of the file
 		fwrite(output, 1, outputSize, ofp);
-		fprintf(ofp,"%c",',');
+		fprintf(ofp,"%s","\n},");
 
-	} else if(!strcmp(titleType,"-f")){
-     		fprintf(ofp,"%c\n%s%s%s",'{',"    \"",title,"\": {"); //Write out Title at the beginning of the file
+	} else if(!strcmp(titleType,"-t")){
+     		fprintf(ofp,"%s%s%s","\"",title,"\": {"); //Write out Title at the beginning of the file
 		fwrite(output, 1, outputSize, ofp);
-		fprintf(ofp,"\n%c",'}');	
+		fprintf(ofp,"%s","\n}");	
 
 	}
 
