@@ -177,11 +177,11 @@ int main(int argc, char *argv[]){
 	}
 
 	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
-	if(argc > 3 && write_time_file(times, runs, numTimes,inputsize) < 0)
-		printf("error writing time file\n");
-	
-	free(times);
-
+	if(argc > 3){
+		if(write_time_file(times, runs, numTimes,inputsize) < 0)
+			printf("error writing time file\n");
+		free(times);
+	}
 	// Writing output buffer to specified output file//
 	FILE *ofp = fopen(argv[2],"w");
 	int i;
