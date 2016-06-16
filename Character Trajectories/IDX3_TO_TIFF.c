@@ -213,8 +213,6 @@ int main(int argc, char **argv){
 				pixelCount, i);
 	}
 
-
-
 	return 0;
 	
 }
