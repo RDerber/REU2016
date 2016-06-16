@@ -98,7 +98,10 @@ int twoBit(char * input, char * output, long inputsize){
 }
 
 int main(int argc, char *argv[]){
-	if(argc == 3||argc == 4||argc == 5){ 
+	if(!(argc == 3||argc == 4||argc == 5)){
+		printf("Incompatible number of arguments\n");
+                return -1;
+        } 
 
 	// Create Input Memory Buffer //
 	char *input = NULL;
@@ -184,16 +187,13 @@ int main(int argc, char *argv[]){
 	}
 	// Writing output buffer to specified output file//
 	FILE *ofp = fopen(argv[2],"w");
-	int i;
-	for(i=0; i<outputsize; ++i){
-		fprintf(ofp,"%c",output[i]);
-		fflush(ofp);
-	}
-		fclose(ofp);
-		free(input);
-		free(output);
-		return 0;	
+	if(ofp == NULL){
+		printf("Error creating output file\n");
+		return -1;
         }else{
-		 return 1;
+		 fwrite(output, 1, outputsize, ofp);
+		fclose(ofp);
 	}
- }
+	free(input);
+	free(output);
+}

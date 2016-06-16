@@ -19,13 +19,14 @@ int main(int argc,char * argv[]){
 		}else if(check2 == '\n' || check2 == ' ' || check2 == '\r'){
 			ungetc(check1, f1);
 		}else if(check1 == check2){
-			printf("%s", "file contents are the same");
+			printf("%s", "file contents are the same\n");
+			return 0;
 		}else{
 			printf("%c", check1);
 			printf("%c", '\n');
 			printf("%c", check2);
 			printf("%c", '\n');
-			printf("%s","file contents differ");
+			printf("%s","file contents differ\n");
 			printf("%c", '\n');
 			fclose(f1);
 			fclose(f2);

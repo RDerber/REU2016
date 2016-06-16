@@ -43,8 +43,10 @@ int samToMultiFasta(const char* input, char * output, long inputsize){
 }
 
 int main(int argc, char *argv[]){
-	if(argc == 3||argc == 4||argc == 5){ 
-
+	if(!(argc == 3||argc == 4||argc == 5)){
+		printf("Incompatible number of arguments\n");
+		return -1;
+	}
 	// Create Input Memory Buffer //
 	char *input = NULL;
 	FILE *ifp = fopen(argv[1],"r");
@@ -131,15 +133,13 @@ int main(int argc, char *argv[]){
 	FILE *ofp = fopen(argv[2],"w");
 	if(ofp == NULL){
 		printf("Error creating output file");
+		return -1;
 	}
 	else{
-	fwrite(output, 1, outputsize, ofp);
-	fclose(ofp);
+		fwrite(output, 1, outputsize, ofp);
+		fclose(ofp);
 	}
-		free(input);
-		free(output);
-		return 0;	
-        }else{
-		 return 1;
-	}
+	free(input);
+	free(output);
+	return 0;
  }
