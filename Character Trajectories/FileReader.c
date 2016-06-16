@@ -56,7 +56,7 @@ size_t writeTIFToBuffer(int width, int height, char pixelArray[][width],
 				printf("%c ", pixelArray[i][j]);
 			}
 		}
-		printf("\n");
+		//printf("\n");
 	}
 
 	//footer
@@ -198,12 +198,12 @@ int main(int argc, char **argv){
 		for (j = 0; j < numCols; j++){
 			char rawVal = 0xff - buffer[count + arrayStart]; 
 			pixelArray[i][j] = rawVal;
-			printf("%c \n", pixelArray[i][j]);
+			//printf("%c \n", pixelArray[i][j]);
 			unsigned int USInt = ((int)rawVal < 0) ? rawVal + 256 : rawVal;
 			printf("%u ", USInt);
 			count++;
 		}
-		printf("\n");
+		//printf("\n");
 	}
 
 	FILE *outputFile;
