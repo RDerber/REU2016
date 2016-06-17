@@ -1,72 +1,61 @@
 /*
+ * FastaTo4Bit.c
  *
- * samTo4Bit.c 
+ *Inputs:
+ * [FASTA input file] [Name of 4-bit output file][number of runs] [number of minimum time values to compare]
  *
- * Need to implement conversion
- *
- *
- *
- *
- *
+ *The last two arguments are optional:
+ *	-If included, a timing report will be output in timeStats.txt
+ *	-If just the number of runs are provided, the num of min time values will default to 3
+ *	
+ *    
  *
  */
 
 
+
+
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
+#include <float.h>
 #include "writeJson.h"
 
-int samTo4Bit(const char* input, char * output, char * headers,  long inputsize, long * outputsize, long * headersize){
-
+int fastaTo4Bit(const char * input,char * output,long inputsize, long * outputsize){
 	int i = 0;
-	while(input[i] == '@'){				//Skip over heading tag information
-		while(input[i] != '\n')
-			i++;
-		++i;
-	}
-
-	int numtabs;
 	int k = 0;
-	int h = 0;
+
+	while((output[k++] = input[i++])!= '\n');// Remove first line
+
 	while(i < inputsize){
-
-		numtabs = 0;
-
-		while(input[i] != '\t'){ 		// Put headers into null separated header array
-			headers[h++] = input[i++];
-		}
-		headers[h++] = '\x00';
-		while(numtabs<9)
-			if(input[i++] == '\t')
-				++numtabs;
-
-		while(input[i] != '\t'){		//Convert sequence and write it
-			char byt = input[i++];
-			byt = byt & '\x0f';
-			byt <<= 4;
-			if(input[i] != '\t'){
-				byt = byt | (input[i++] & '\x0f');
-			}
-			output[k++] = byt ;
-		}
-
-		while(input[i++] != '\n');
+		char byt;
 		
-		if(input[i]!= '\x00'){
-			output[k++] = '\n';
-		}
-	}
-	*outputsize = k;
-	*headersize = h;
-	return 0;
+		while(!(input[i] & '\x40')) ++i;
+		if(i < inputsize){
+			byt = input[i++]& '\x0f';
+			byt <<= 4;
+		}else break;
 
+		while(!(input[i] & '\x40')) ++i;	
+
+		if(i < inputsize){
+			byt = byt|(input[i++] & '\x0f');
+		}
+		output[k++] = byt;
+			
+	}
+
+	*outputsize = k;
+	return 0;
 }
 
 int main(int argc, char *argv[]){
 	if(!(argc == 3||argc == 4||argc == 5)){
 		printf("Incompatible number of arguments\n");
-		return -1;
-	}
+                return -1;
+        } 
+
 	// Create Input Memory Buffer //
 	char *input = NULL;
 	FILE *ifp = fopen(argv[1],"r");
@@ -80,7 +69,6 @@ int main(int argc, char *argv[]){
 		if (inputsize == -1) {
 			fputs("Error finding size of file", stderr);
 		 }
-
 	
 		//Allocate our buffer of that size +1 for null termination. //
 		input = malloc (sizeof(char) * (inputsize+1));
@@ -106,16 +94,14 @@ int main(int argc, char *argv[]){
 	}
 
 		// Create Output Buffer;
-	char * output = malloc(sizeof(char)* (inputsize));
-	char * headers = malloc(sizeof(char)* (inputsize));
+	char * output = malloc(sizeof(char)* (inputsize + 1));
 	long outputsize = 0;
-	long headersize = 0;
 	
-	float *times ;
+	float *times;
 	int runs = 0;
 	int numTimes = 0;
 	if(argc == 3){
-		samTo4Bit(input,output,headers,inputsize,&outputsize,&headersize);
+		fastaTo4Bit(input,output,inputsize,&outputsize);
 	}
 	if(argc == 4){	//if a number of runs is given but no number of minimum times, default number of min times is 3
 		runs = atoi(argv[3]);
@@ -125,7 +111,7 @@ int main(int argc, char *argv[]){
 		int i;
 		for(i=0;i<runs;i++){ // Record time of each run
 			gettimeofday(&time0,NULL);
-			samTo4Bit(input,output,headers,inputsize,&outputsize,&headersize);
+			fastaTo4Bit(input,output,inputsize,&outputsize);
 			gettimeofday(&time1,NULL);
 			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 		}
@@ -134,12 +120,12 @@ int main(int argc, char *argv[]){
 	if(argc == 5){ //if both number of runs and the number of minimum times is given
 		runs = atoi(argv[3]);
                 numTimes = atoi(argv[4]);
-		times = calloc(runs, sizeof(float));
+                times = calloc(runs, sizeof(float));
                 struct timeval time0, time1; 
                 int i;
                 for(i=0;i<runs;i++){ // Record time of each run
                         gettimeofday(&time0,NULL);
-                        samTo4Bit(input,output,headers,inputsize,&outputsize,&headersize);
+                        fastaTo4Bit(input,output,inputsize, &outputsize);
                         gettimeofday(&time1,NULL);
                         times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
                 }
@@ -147,33 +133,20 @@ int main(int argc, char *argv[]){
 	}
 
 	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
-	if(argc > 3){ 
+	if(argc > 3){
 		if(write_time_file(times, runs, numTimes,inputsize) < 0)
 			printf("error writing time file\n");
 		free(times);
 	}
 	// Writing output buffer to specified output file//
 	FILE *ofp = fopen(argv[2],"w");
-	FILE *hfp = fopen("samTo4BitHeaders.txt","w");
 	if(ofp == NULL){
-		printf("Error creating output file");
+		printf("Error creating output file\n");
 		return -1;
-	}
-	else{
+        }else{
 		fwrite(output, 1, outputsize, ofp);
 		fclose(ofp);
 	}
-
-	if(hfp == NULL){
-		printf("Error creating header file");
-		return -1;
-	}
-	else{
-		fwrite(headers, 1, headersize, hfp);
-		fclose(hfp);
-	}
-	
 	free(input);
 	free(output);
-	return 0;
- } 
+}

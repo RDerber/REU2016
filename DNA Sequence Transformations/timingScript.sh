@@ -14,6 +14,8 @@ rm mt4bTimeStats.txt
 ./FastaTo2Bit test1.txt 2Bit.txt 100 3
 ./jsonTitle timing.txt "test1" "-c"
 cat timing.txt >> ft2bTimeStats.txt
+ # Add new line character inbetween files when appending
+
 ./FastaTo2Bit test2.txt 2Bit.txt 100 3
 ./jsonTitle timing.txt "test2" "-c"
 cat timing.txt >> ft2bTimeStats.txt
@@ -22,15 +24,19 @@ cat timing.txt >> ft2bTimeStats.txt
 cat timing.txt >> ft2bTimeStats.txt
 
 #Add Title to ft2bTimeStats.txt file
-./jsonTitle ft2btimeStats.txt "FastaTo2Bit" "-t"
+./jsonTitle ft2bTimeStats.txt "FastaTo2Bit" "-t" 
 
 #Run MultiFasta to 4Bit
-./MultiFastaTo4Bit multiFasta 4Bit.txt
-./jsonTitle timing.txt "multiFasta" 100 3
+./MultiFastaTo4Bit multiFasta 4Bit.txt 100 3
+./jsonTitle timing.txt "multiFasta" 
 cat timing.txt >> mt4bTimeStats.txt
 
 #Add Title to mt4bTimeStats
-./jsonTitle ft4bTimeStats.txt "MultiFastaTo4Bit" "-t"
+./jsonTitle mt4bTimeStats.txt "MultiFastaTo4Bit" "-t"
 
 cat ft2bTimeStats.txt >> timeStats.txt
 cat mt4bTimeStats.txt >> timeStats.txt
+
+#Add Final Title
+
+./jsonTitle timeStats.txt "Final" "-f"
