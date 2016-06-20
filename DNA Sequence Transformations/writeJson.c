@@ -273,6 +273,7 @@ int write_time_file (float *time_array, int runs, int k, long inputsize)
 			printf("avg_lowest\n");
 			return -1;
 		}
+//	write(time_fd,"\n",1);
 	close(time_fd);
 	
 	fprintf(stderr, "[%s]: wrote timing data\n", __func__);

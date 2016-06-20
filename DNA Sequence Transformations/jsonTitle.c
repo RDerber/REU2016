@@ -88,23 +88,23 @@ int jsonTitle(char* filename, char * title, char* titleType){
 	if(titleType == NULL){
 		fprintf(ofp,"%s%s%s","\"",title,"\": {\n"); //Write out Title at the beginning of the file
 		fwrite(output, 1, outputSize, ofp);
-		fprintf(ofp,"%s","}");
+		fprintf(ofp,"%s","\n}");
 	
 	}else if(!strcmp(titleType,"-c")){
 
      		fprintf(ofp,"%s%s%s","\"",title,"\": {\n"); //Write out Title at the beginning of the file
 		fwrite(output, 1, outputSize, ofp);
-		fprintf(ofp,"%s","},");
+		fprintf(ofp,"%s","\n},");
 
 	} else if(!strcmp(titleType,"-t")){
      		fprintf(ofp,"%s%s%s","\"",title,"\": {\n"); //Write out Title at the beginning of the file
 		fwrite(output, 1, outputSize, ofp);
-		fprintf(ofp,"%s","}");	
+		fprintf(ofp,"%s","\n}");	
 
 	} else if(!strcmp(titleType, "-f")){
 		fprintf(ofp,"%s%s%s","{\n\"",title,"\":{\n");
 		fwrite(output, 1, outputSize, ofp);
-		fprintf(ofp,"%s","}");
+		fprintf(ofp,"%s","\n}");
 
 	}
 
