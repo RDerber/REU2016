@@ -61,15 +61,13 @@ int superOptimizer (char * input, int inputSize, int totOps, int numOps, char* o
 	char operations[] = {'+','-','&','^','<','>'};
 	int opsSize = sizeof(operations)/sizeof(char);
 	int minInput = findmin(input,inputSize);
-	printf("%s%d\n", "minInput: ", minInput);
+	//printf("%s%d\n", "minInput: ", minInput);
 	int opsMax[] = {128, minInput+1, 128, 128, 16, 16};
 	for(k = 0; k < opsSize; ++k){
-		printf("%s%d\n", "k: ", k);
 		int constMax = opsMax[k];
 		for(i = 0; i < constMax; ++i){
 			for(j = 0; j < inputSize; ++j){				
 				newinput[j] = operator(input[j],k,i);
-				if(k == 5)printf("%s%d\n", "newinput[j]: ", newinput[j]);
 				opsSeq[totOps -  numOps] = operations[k];
 				numSeq[totOps - numOps] = i;
 			}
@@ -83,9 +81,9 @@ int superOptimizer (char * input, int inputSize, int totOps, int numOps, char* o
 }
 
 int main(int argc, char** argv){
-	char input[] = {'A','M','T','G','C'};
+	char input[] = {'\x04','\x21','\x63','\x95', '\xff'};
 	int inputSize = sizeof(input)/sizeof(char);
-	char opsSeq [] = {' ', ' ', ' '};
+	char opsSeq [] = {' ', ' ',' '};
 	int numSeq [] = {0, 0, 0};
 	int numOps = sizeof(opsSeq)/sizeof(opsSeq[0]); 
 	int success = -1;
@@ -95,7 +93,7 @@ int main(int argc, char** argv){
 	if(success == 0){
 		printf("Sequence Found: ");
 		int i, j;
-		printf("%s%d", "numOps: ", numOps);
+		printf("%s%d\n", "numOps: ", numOps);
 		for(i=0;i < numOps; ++i){
 			printf("%d%c ",i,':');
 			printf("%c %d",opsSeq[i], numSeq[i]);
