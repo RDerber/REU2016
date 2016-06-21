@@ -175,7 +175,7 @@ int main(int argc, char **argv){
 	size_t imageFileLength = idx_load_to_buffer(FILEPATH_IMG, &imageDataBuffer);
 	size_t labelFileLength = idx_load_to_buffer(FILEPATH_LBL, &labelDataBuffer);
 
-	//stores image specifications
+	//store image specifications
 	unsigned int numImages = read_2byte_int(imageDataBuffer, 
 			IDX3_OFFSET_IMAGE_NUM);
 	unsigned int height = *(imageDataBuffer + IDX3_OFFSET_ROW_NUM);
