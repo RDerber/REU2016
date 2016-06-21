@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
+enum operationID {add = 0, sub = 1, and = 2, xor = 3, lsl = 4, lsr = 5};
 
 int findmin(char* input, int inputSize){
 	int min = input[0];
@@ -12,30 +12,37 @@ int findmin(char* input, int inputSize){
 	return min;
 }
 
-char operator(char input, int opid, int val){
-	if(opid == 0){	//add
-		input = input + val;
+char operator(char input, enum operationID opID, int val){
 
-	}else if(opid == 1){
-		input = input - val;
+	switch(opID){
+		case add:
+			input = input + val;
+			break;
 
-	}else if(opid == 2){
-		input = input & val;
+		case sub:
+			input = input - val;
+			break;
+	
+		case and:
+			input = input & val;
+			break;	
 
-	}else if(opid == 3){
-		input = input ^ val;
+		case xor:
+			input = input ^ val;
+			break;
 
-	}else if(opid == 4){
-		input = input << val;
+		case lsl:
+			input = input << val;
+			break;
 
-	}else if(opid == 5){
-		input = input >> val;
+		case lsr:
+			input = input >> val;
+			break;
 	}
-
 	return input;
 }
 
-int compare (char* input, int inputSize){
+int compare (char* input, int inputSize, char * startingInput){
 	int i;
 	int j;
 	int matches = 0;
@@ -49,13 +56,14 @@ int compare (char* input, int inputSize){
 		if(matches != i+1) return -1;
 	}
 	if(matches == inputSize){
+		printf("Transformations:\nInput:\tOutput:\n");
 		for(i=0;i<inputSize;++i)
-			printf("%s%d","input: ", input[i]);
+			printf("%d%s%d\n",startingInput[i],"   ->   ", input[i]);
 		return 0;
 	}
 }
 
-int superOptimizer (char * input, int inputSize, int totOps, int numOps, char* opsSeq, int* numSeq){
+int superOptimizer (char * startingInput, char * input, int inputSize, int totOps, int numOps, char* opsSeq, int* numSeq){
 	int i,j,k;
 	char newinput[inputSize];
 	char operations[] = {'+','-','&','^','<','>'};
@@ -71,9 +79,9 @@ int superOptimizer (char * input, int inputSize, int totOps, int numOps, char* o
 				opsSeq[totOps -  numOps] = operations[k];
 				numSeq[totOps - numOps] = i;
 			}
-		if(!compare(newinput, inputSize)) return 0;
+		if(!compare(newinput, inputSize, startingInput)) return 0;
 		else if(numOps > 1 &&
-			!superOptimizer(newinput, inputSize, totOps, numOps - 1, opsSeq, numSeq))
+			!superOptimizer(startingInput, newinput, inputSize, totOps, numOps - 1, opsSeq, numSeq))
 				return 0;
 		}
 	}
@@ -81,22 +89,34 @@ int superOptimizer (char * input, int inputSize, int totOps, int numOps, char* o
 }
 
 int main(int argc, char** argv){
-	char input[] = {'\x04','\x21','\x63','\x95', '\xff'};
+	char input[] = {'\x00','\x01','\x02','\x03','\x04'};
 	int inputSize = sizeof(input)/sizeof(char);
-	char opsSeq [] = {' ', ' ',' '};
-	int numSeq [] = {0, 0, 0};
-	int numOps = sizeof(opsSeq)/sizeof(opsSeq[0]); 
+	int maxNumOps = 6;
+	char opsSeq [maxNumOps];
+	int numSeq [maxNumOps] ;
+	int i; 
+	for(i = 0; i < maxNumOps; ++i){
+		opsSeq[i] = ' ';
+		numSeq[i] = 0;
+	}
+
 	int success = -1;
 
-	success = superOptimizer(input, inputSize, numOps, numOps, opsSeq, numSeq);
+	success = superOptimizer(input, input, inputSize, maxNumOps, maxNumOps, opsSeq, numSeq);
+
+	int numOps = 0;
+	for(i = 0; i<maxNumOps; ++i){
+		if(numSeq[i] != 0) ++numOps;
+	}
 
 	if(success == 0){
-		printf("Sequence Found: ");
+		printf("Sequence Found: \n");
 		int i, j;
-		printf("%s%d\n", "numOps: ", numOps);
+		printf("%s%d\n", "Number of Operations: ", numOps);
 		for(i=0;i < numOps; ++i){
 			printf("%d%c ",i,':');
-			printf("%c %d",opsSeq[i], numSeq[i]);
+			int opit = maxNumOps - numOps + i;
+			printf("%c %d",opsSeq[opit], numSeq[opit]);
 			printf("\n");
 		}
 	} else printf("no sequence found");
