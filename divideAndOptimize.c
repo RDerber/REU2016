@@ -1,3 +1,11 @@
+/*
+*divideAndOptimize.c
+*
+*Divides the original input array into smaller arrays using operations, splitting it in half each time, until final arrays of 2 are * *	*reached. Then the elements in the final arrays are mapped to the correct output groups.  
+*
+*
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,15 +55,10 @@ char operator(unsigned char input, enum operationID opID, int val){
 	return input;
 }
 
-int compare (unsigned char* input, int inputSize, unsigned char * startingInput){
+int compare (unsigned char* input, int inputSize, unsigned char * startingInput){ // Checks to see if input values have been mapped
+										// to 2 separate groups. Then returns the size of 
+										// the first group. 
 	int i,j;
-
-/*
-* Iterate through all of the input values. 
-* Store an array of each output only if it is between 0 and 19. 
-* Then if a second number maps to the same output as a number, check to see if they should be mapped together based on the user 	 * * specifications. 
-*
-*/
 	int group1 = input[0];
 	int firstDiffIndex = findFirstNot(group1, input, inputSize);
 	if(firstDiffIndex == -1) return -1;
@@ -72,7 +75,7 @@ int compare (unsigned char* input, int inputSize, unsigned char * startingInput)
 		printf("Transformations:\nInput:\tOutput:\n");
 		for(i=0;i<inputSize;++i)
 			printf("%d%s%d\n",startingInput[i],"   ->   ", input[i]);
-		return 0;
+		return count1;
 	}else return -1;
 }
 
@@ -82,6 +85,7 @@ int superOptimizer (unsigned char * startingInput, unsigned char * input, int in
 	char operations[] = {'+','&','^','<','>'};
 	int opsSize = sizeof(operations)/sizeof(char);
 	int opsMax[] = {256, 256, 256, 8, 8};
+	int group1Size = 0;
 	for(k = 0; k < opsSize; ++k){
 		int opIt = totOps - numOps;
 		int constMax = opsMax[k];
@@ -95,16 +99,67 @@ int superOptimizer (unsigned char * startingInput, unsigned char * input, int in
 				opsSeq[opIt] = operations[k];
 				numSeq[opIt] = i;
 			}
-		if(!compare(newinput, inputSize,  startingInput)) return 0;
+		if((group1Size=compare(newinput, inputSize,  startingInput))!= -1) return group1Size; // If successful sequence of 	
+									//operations is found, return the size of the first group
 		else if(numOps > 1 &&
-			!superOptimizer(startingInput, newinput, inputSize, totOps, numOps - 1, opsSeq, numSeq))
-				return 0;
+			superOptimizer(startingInput, newinput, inputSize, totOps, numOps - 1, opsSeq, numSeq)!= -1)
+				return 0; // Should never be returned if a match is found
 		}
 	}
 	return -1;
 }
 
-int divideAndOptimize(unsigned char * startingInput, char * prevOutput, inputSize, char* opsSeq, int * numSeq  
+int divideAndOptimize(unsigned char * startingInput, unsigned char* input, int inputSize, int maxNumOps, char* opsSeq, int * numSeq, int opLevel){
+	// Note: startingInput and input start out as the same thing
+//Base Case: Separated into arrays of size 2
+	if(inputSize == 2){
+		return 0; // Pass arrays into a separate function after this? 
+	}
+
+	int group1Size = superOptimizer(startingInput, input, inputSize, MaxNumOps, maxNumOps, opsSeq, numSeq);
+	int group2Size = inputSize-group1Size;
+
+//Separate inputs into groups based on the last superOptimizer run	
+	char group1[group1size];
+	char group2[group2size];
+	int i;
+	int g1counter = 0; // There may be a more efficient way of adding to 2 separate arrays
+	int g2counter = 0;
+	for(i=0; i<inputSize; ++i){ 			// Sorting out original values based on what they mapped to
+		if(input[i]==0){			// **** Assuming that half of values will always map to 0. Is this true? 
+							// Otherwise, the comparison value can be set to input[0] and start at i=1; 
+			group1[g1counter++] = startingInput[i];
+		}
+		else{
+			group2[g2counter++] = startingInput[i];
+		}
+	}
+
+
+//Recover opsSeq and numSeq from the last superOptimizer run
+	opArray[opLevel] = opsSeq; 				// NEEDS TO BE WORKED ON - Array of arrays of operations
+	numArray[opLevel] = numSeq; 				// Need to define outside and pass in as parameter
+	opLevel++;						// Need to determine how to differentiate entries from separate branches
+
+// Fill in new array of opsSeq and numSeq
+	char g1opsSeq [maxNumOps];
+	int g1numSeq [maxNumOps];
+	char g2opsSeq [maxNumOps];
+	int g2numSeq [maxNumOps];
+	for(i = 0; i < maxNumOps; ++i){
+		g1opsSeq[i] = ' ';
+		g1numSeq[i] = 0;
+		g2opsSeq[i] = ' ';
+		g2numSeq[i] = 0;
+	}
+	
+	
+// Send each group off onto separate branches with empty opsSeq and numSeq arrays to fill in
+	divideAndOptimize(startingInput, group1, group1Size, maxNumOps, g1opsSeq, g1numSeq);
+	divideAndOptimzie(startingInput, group2, group2Size, maxNumOps, g2opsSeq, g2numSeq);	
+	
+}  
+
 
 int main(int argc, char** argv){
 	int i; 
@@ -124,9 +179,9 @@ int main(int argc, char** argv){
 		numSeq[i] = 0;
 	}
 
-	int success = -1;
+	int success = -1;								// NEED TO IMPLEMENT divideAndOptimize in main
 
-	success = superOptimizer(input, input, inputSize, maxNumOps, maxNumOps, opsSeq, numSeq);
+	success = superOptimizer(input, input, inputSize, maxNumOps, maxNumOps, opsSeq, numSeq); // NEED TO CHANGE DEFINITION OF SUCCESS
 
 	int numOps = 0;
 	for(i = 0; i<maxNumOps; ++i){
