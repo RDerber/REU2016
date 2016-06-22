@@ -93,16 +93,16 @@ int superOptimizer (char * startingInput[], char * input[], int numGroups, size_
 	int opsSize = sizeof(operations)/sizeof(char);
 	int minInput = findMin(input,numGroups, groupSizes);
 	//printf("%s%d\n", "minInput: ", minInput);
-	int opsMax[] = {128, minInput+1, 128, 128, 8, 8};
+	int opsMax[] = {256, 256, 256, 256, 8, 8};
 	for(k = 0; k < opsSize; ++k){
 		int opIt = totOps - numOps;
 		int constMax = opsMax[k];
-		if(opIt > 0 && (opsSeq[opIt -1] == operations[k] ||
-			 (k==0 && opsSeq[opIt-1] == operations[1]) ||
-				(k==1 && opsSeq[opIt-1] == operations[0]) ||
-					(k==4 && opsSeq[opIt-1] == operations[5]) ||
-						(k==5 && opsSeq[opIt -1] == operations[4])))
-							continue;
+//		if(opIt > 0 && (opsSeq[opIt -1] == operations[k] ||
+//			 (k==0 && opsSeq[opIt-1] == operations[1]) ||
+//				(k==1 && opsSeq[opIt-1] == operations[0]) ||
+//					(k==4 && opsSeq[opIt-1] == operations[5]) ||
+//						(k==5 && opsSeq[opIt -1] == operations[4])))
+//							continue;
 		for(i = 0; i < constMax; ++i){
 			for(j = 0; j < numGroups; ++j){
 				for(m = 0; m < groupSizes[j]; ++m){	
@@ -129,12 +129,12 @@ int superOptimizer (char * startingInput[], char * input[], int numGroups, size_
 
 int main(int argc, char** argv){
 	//char input[] = {'\x00','\x01','\x02','\x03','\x04'};
-	char group1[] = {'\x00','\x62','\x18','\x00'};
+	char group1[] = {'A','C'};
 	size_t group1Size = sizeof(group1)/sizeof(group1[0]);
-	char group2[] = {'\x03','\x34','\x00'};
-	char group3[] = {'\x43','\x00'};
+	char group2[] = {'G','T'};
+	//char group3[] = {'\x43','\x00'};
 	size_t group2Size = sizeof(group2)/sizeof(group2[0]);
-	char *input[] = {group1,group2,group3};
+	char *input[] = {group1,group2};
 	int numGroups = sizeof(input)/sizeof(input[0]);
 	size_t groupSizes[numGroups];
 	int i,j; 
@@ -143,9 +143,9 @@ int main(int argc, char** argv){
 //		groupSizes[i] = j;
 //		printf("%s%d%s%d","Group Num: ", i, "Group Size:", groupSizes[i]);
 //	}
-	groupSizes[0] = 3;
+	groupSizes[0] = 2;
 	groupSizes[1] = 2;
-	groupSizes[2] = 1;
+//	groupSizes[2] = 1;
 	
 	int maxNumOps = 6;
 	char opsSeq [maxNumOps];

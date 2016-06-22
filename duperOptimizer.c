@@ -1,9 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 enum operationID {add = 0, sub = 1, and = 2, xor = 3, lsl = 4, lsr = 5};
 
-int findmin(char* input, int inputSize){
+int findIndex(unsigned char input, char arr[], size_t arrSize){
+	int i;
+	for(i = 0; i < arrSize; ++i){
+		if(input == arr[i]) return i;
+	}
+	return -1;
+}
+
+int findmin(unsigned char* input, int inputSize){
 	int min = input[0];
 	int i;
 	for(i = 1; i<inputSize; ++i){
@@ -31,8 +40,8 @@ int findNumOut(char * output, int outputSize){
 	return numOut;
 }
 
-char operator(char input, enum operationID opID, int val){
 
+char operator(unsigned char input, enum operationID opID, int val){
 	switch(opID){
 		case add:
 			input = input + val;
@@ -61,10 +70,8 @@ char operator(char input, enum operationID opID, int val){
 	return input;
 }
 
-int compare (char* input, int inputSize, char * output, int numout, char * startingInput){
-	int i;
-	int j;
-	int matches = 0;
+int compare (unsigned char* input, int inputSize, char * output, int numOut, unsigned char * startingInput){
+	int i,j;
 
 /*
 * Iterate through all of the input values. 
@@ -72,35 +79,39 @@ int compare (char* input, int inputSize, char * output, int numout, char * start
 * Then if a second number maps to the same output as a number, check to see if they should be mapped together based on the user 	 * * specifications. 
 *
 */
-
-
-
-
-	for(i=0; i < inputSize; ++i){
+	int count = 0;
+	for(i=0;i < numOut; ++i){
+		int used = 0;
 		for(j=0; j < inputSize; ++j){
-			if(i == input[j]){
-				++matches;
-				continue;
+			int compIndex;
+			if((compIndex = findIndex(output[j], output, inputSize)) != j){
+				if(input[j] != input[compIndex]){
+					return -1;
+				}else continue;
+			}else if(input[j] > (numOut - 1)){
+				return -1;
+			}else if(!used && i == input[j]){
+				++count;
+				used = 1;
 			}
 		}
-		if(matches != i+1) return -1;
 	}
-	if(matches == inputSize){
+
+	if(count == numOut){
 		printf("Transformations:\nInput:\tOutput:\n");
 		for(i=0;i<inputSize;++i)
 			printf("%d%s%d\n",startingInput[i],"   ->   ", input[i]);
 		return 0;
-	}
+	}else return -1;
 }
 
-int superOptimizer (char * startingInput, char * input, char * output, int inputSize, int totOps, int numOps, char* opsSeq, int* numSeq, int numOut){
+int superOptimizer (unsigned char * startingInput, unsigned char * input, char * output, int inputSize, int totOps, int numOps, char* opsSeq, int* numSeq, int numOut){
 	int i,j,k;
 	char newinput[inputSize];
 	char operations[] = {'+','-','&','^','<','>'};
 	int opsSize = sizeof(operations)/sizeof(char);
-	int minInput = findmin(input,inputSize);
-	//printf("%s%d\n", "minInput: ", minInput);
-	int opsMax[] = {128, minInput+1, 128, 128, 8, 8};
+//	int minInput = findmin(input,inputSize);
+	int opsMax[] = {256, 256, 256, 256, 8, 8};
 	for(k = 0; k < opsSize; ++k){
 		int opIt = totOps - numOps;
 		int constMax = opsMax[k];
@@ -127,8 +138,10 @@ int superOptimizer (char * startingInput, char * input, char * output, int input
 
 int main(int argc, char** argv){
 //	char input[] = {'\x00','\x01','\x02','\x03','\x04'};
-	char input[] = {'A','C','G','T'};
-	char output[] = {'0','0','1','1'};
+	unsigned char input[] = {'\x24','\x32','\xf7','\xc3','\x10','\x89','\xfd','\x78','\x98','\x36','\x65','\xdc','\xa4','\xb9','\xb1','\x9d'};
+	char output[] = {'0','0','0','0','0','0','0','0','1','1','1','1','1','1','1','1'};
+//	unsigned char input[] = {'A','C','G','T','X','\xae'};
+//	char output[] = {'0','0','1','4','2','4'};
 	int inputSize = sizeof(input)/sizeof(char);
 	int maxNumOps = 6;
 	char opsSeq [maxNumOps];
@@ -146,7 +159,9 @@ int main(int argc, char** argv){
 
 	int numOps = 0;
 	for(i = 0; i<maxNumOps; ++i){
-		if(numSeq[i] != 0) ++numOps;
+		if(numSeq[i] != 0){
+			++numOps;
+		}
 	}
 
 	if(success == 0){
