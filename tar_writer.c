@@ -9,6 +9,12 @@
 #include <ctype.h>
 #include <sys/mman.h>
 
+/****************************************************************************************/
+/*	tar writer	*/
+/****************************************************************************************/
+#ifdef TAR_WRITER
+{
+#endif
 #define  LF_OLDNORMAL '\0'       /* Normal disk file, Unix compatible */
 #define  LF_NORMAL    '0'        /* Normal disk file */
 #define  LF_LINK      '1'        /* Link to previously dumped file */
@@ -115,7 +121,8 @@ int find_linktype (mode_t mode)
 	return -1;
 }
 
-int write_file_entry (char *wpath, const char *d_name, struct dirent *ds, struct stat st, int tfd)
+int write_file_entry (char *wpath, const char *d_name, struct dirent *ds, 
+			struct stat st, int tfd)
 {
 	char buffer[512];
 	struct tar_header *hdr = (struct tar_header *)&buffer[0];
@@ -229,11 +236,469 @@ int make_tar_file (const char *src, const char *dst)
 
 	return retn;
 }
+#ifdef TAR_WRITER
+}
+#endif
+
+/****************************************************************************************/
+/*	bit stream	*/
+/****************************************************************************************/
+#ifdef BIT_STREAM
+{
+#endif
+struct bit_stream {
+	int bit_pos;
+	int byte_pos;
+	
+	unsigned char *buf;
+	int bytes;
+};
+
+int alloc_bit_stream (struct bit_stream **bs, int bytes_max)
+{
+	if (((*bs) = calloc(sizeof(struct bit_stream), 1)) == NULL)
+		return -1;
+	
+	(*bs)->bit_pos = 0;
+	(*bs)->byte_pos = 0;
+	
+	(*bs)->bytes = bytes_max;
+	
+	if (((*bs)->buf = calloc(bytes_max, 1)) == NULL) {
+		free((*bs));
+		return -1;
+	}
+	
+	return 0;
+}
+
+int write_bit_stream (struct bit_stream *bs, uint64_t src, int bits)
+{
+	int i;
+	
+	for (i = 0; i < bits; i++) {
+		if ((bs->bit_pos + 1) >= 8) {
+			bs->bit_pos = 0;
+			if ((++bs->byte_pos) >= bs->bytes) 
+				return -1;
+		}
+		
+		if (src & (1 << i))
+			bs->buf[bs->byte_pos] |= (1 << bs->bit_pos);
+		else
+			bs->buf[bs->byte_pos] &= ~(1 << bs->bit_pos);
+		
+		bs->bit_pos++;
+	}
+	
+	printf("wrote %d bits to stream (now at byte %d bit %d)\n", 
+		bits, bs->byte_pos, bs->bit_pos);
+
+	return 0;
+}
+
+void print_bit_stream (struct bit_stream *bs)
+{
+	int i, j;
+	
+	if (bs->byte_pos + 1 >= bs->bytes)
+		return;
+	
+	for (i = 0; i < bs->byte_pos + 1; i++) {
+		printf("\nbyte #%.03d: %.02x: ", i, bs->buf[i]);
+		for (j = 0; j < 8; j++) {
+			if (bs->buf[i] & (1 << j))
+				putchar('1');
+			else
+				putchar('0');
+		}
+	}
+}
+
+void free_bit_stream (struct bit_stream *bs)
+{
+	free(bs->buf);
+	free(bs);
+}
+
+void test_bit_stream (void)
+{
+	struct bit_stream *bs;
+	
+	alloc_bit_stream(&bs, 10);
+	
+	write_bit_stream(bs, 0x55, 8);
+	write_bit_stream(bs, 0, 8);
+	write_bit_stream(bs, 1, 2);
+	write_bit_stream(bs, 0xFFFF, 11);
+	
+	print_bit_stream(bs);
+	
+	
+	free_bit_stream(bs);
+}
+#ifdef BIT_STREAM
+}
+#endif
+
+/****************************************************************************************/
+/*	3rd party functions	*/
+/****************************************************************************************/
+
+/* Return the CRC of the bytes buf[0..len-1]. */
+unsigned long crc (unsigned char *buf, int len)
+{
+	unsigned long c = 0L ^ 0xffffffffL;
+  	unsigned long crc_table[256];
+	int n, k;
+
+	for (n = 0; n < 256; n++) {
+		c = (unsigned long) n;
+		for (k = 0; k < 8; k++) {
+			if (c & 1) {
+				c = 0xedb88320L ^ (c >> 1);
+			} else {
+				c = c >> 1;
+			}
+		}
+		crc_table[n] = c;
+	}
+  
+  	c = 0L ^ 0xffffffffL;
+	
+	for (n = 0; n < len; n++)
+		c = crc_table[(c ^ buf[n]) & 0xff] ^ (c >> 8);
+
+	return c ^ 0xffffffffL;
+}
+
+/****************************************************************************************/
+/*	huffman coder	*/
+/****************************************************************************************/
+#ifdef HUFF_CODER
+{
+#endif
+struct huff_list {
+	uint16_t val;
+	uint32_t count;
+	
+	uint16_t hcode;
+	uint16_t hc_len;
+};
+
+struct min_heap {
+	unsigned int size;
+	
+	struct mh_node {
+		unsigned int data;
+		unsigned int freq;
+		struct mh_node *left;
+		struct mh_node *right;
+	} **array;
+};
+
+struct mh_node *new_node (unsigned int data, unsigned int freq)
+{
+	struct mh_node *temp = calloc(sizeof(struct mh_node), 1);
+	
+	//fprintf(stderr, "[%s]: node %p alloc'd\n", __func__, temp);
+	
+	temp->left = temp->right = NULL;
+	temp->data = data;
+	temp->freq = freq;
+	
+	return temp;
+}
+
+void swapmh_node (struct mh_node **a, struct mh_node **b)
+{
+	struct mh_node *t = *a;
+	*a = *b;
+	*b = t;
+}
+
+void min_heapify (struct min_heap *mh, int idx)
+{
+	int smallest = idx;
+	int left = 2 * idx + 1;
+	int right = 2 * idx + 2;
+ 
+	if (left < mh->size && mh->array[left]->freq < mh->array[smallest]->freq)
+		smallest = left;
+ 
+	if (right < mh->size && mh->array[right]->freq < mh->array[smallest]->freq)
+		smallest = right;
+ 
+	if (smallest != idx) {
+        	swapmh_node(&mh->array[smallest], &mh->array[idx]);
+        	min_heapify(mh, smallest);
+	}
+}
+
+struct mh_node *extract_min (struct min_heap *min_heap)
+{
+	struct mh_node *temp = min_heap->array[0];
+	
+	min_heap->array[0] = min_heap->array[--min_heap->size];
+
+	min_heapify(min_heap, 0);
+	
+	return temp;
+}
+
+void mh_insert (struct min_heap *min_heap, struct mh_node *mh_node)
+{
+	int i = min_heap->size++; 
+
+	while (i && mh_node->freq < min_heap->array[(i - 1) / 2]->freq) {
+		min_heap->array[i] = min_heap->array[(i - 1) / 2];
+		i = (i - 1) / 2;
+	}
+
+	min_heap->array[i] = mh_node;
+}
+
+void make_huffman_tree (struct mh_node **tree, struct huff_list *hlist, int num, int unique)
+{
+	struct mh_node *left, *right, *top;
+	int i;
+	struct min_heap mh;
+	
+	memset(&mh, 0, sizeof(struct min_heap));
+   
+	mh.size = unique;
+	mh.array = calloc(num, sizeof(struct mh_node *));
+	
+	for (i = 0; i < num; ++i)
+		mh.array[i] = new_node(hlist[i].val, hlist[i].count);
+
+	for (i = (mh.size - 2) / 2; i >= 0; --i)
+		min_heapify(&mh, i);
+
+	while (mh.size != 1) {
+		left = extract_min(&mh);
+		right = extract_min(&mh);
+
+		top = new_node(257, left->freq + right->freq);
+		top->left = left;
+		top->right = right;
+		mh_insert(&mh, top);
+	}
+	
+	*tree = extract_min(&mh);
+
+	free(mh.array);
+}
+
+void find_huffcode (struct huff_list hl[256], struct mh_node *base, int buf, int pos)
+{
+	if (base->left) {
+		buf &= ~(1 << pos);
+		find_huffcode(hl, base->left, buf, pos + 1);
+	} 
+	
+	if (base->right) {
+		buf |= (1 << pos);
+		find_huffcode(hl, base->right, buf, pos + 1);
+	}
+	
+	if (base->data < 256 && (!(base->left) && !(base->right))) {
+		printf("%d: ", base->data);	
+		
+		int j;
+		for (j = 0; j < pos; j++) {
+			if (buf & (1 << j))
+				putchar('1');
+			else
+				putchar('0');
+		}
+		
+		putchar('\n');
+		
+		for (j = 0; j < 256; j++) {
+			if (hl[j].val == base->data) {
+				hl[j].hcode = buf;
+				hl[j].hc_len = pos;
+				break;
+			}
+		}
+	}
+	
+	//fprintf(stderr, "[%s]: node %p freed\n", __func__, base);
+	free(base);
+}
+
+void print_huffcodes (struct huff_list *hlist, int num)
+{
+	int i, j;
+	
+	for (i = 0; i < num; i++) {
+		printf("#%d, val = %d, code =(%d bits): %d | ", i, 
+			hlist[i].val, hlist[i].hc_len, hlist[i].hcode);
+
+			for (j = 0; j < hlist[i].hc_len; j++) {
+				if (hlist[i].hcode & (1 << j))
+					putchar('1');
+				else
+					putchar('0');
+			}
+		
+		putchar('\n');
+	}
+}
+
+void huff_encode (uint8_t *src, int num, struct huff_list **hlist)
+{
+	int count[256] = { 0 };
+	struct mh_node *htree = NULL;
+	int unique = 0, i;
+	
+	*hlist = calloc(256, sizeof(struct huff_list));
+	
+	for (i = 0; i < num; i++)
+		count[src[i]]++;
+		
+	for (i = 0; i < 256; i++) {
+		(*hlist)[i].val = i;
+		(*hlist)[i].count = count[i];
+		
+		if (count[i])
+			++unique;
+	}
+	
+	make_huffman_tree(&htree, *hlist, num, unique);
+	
+	find_huffcode(*hlist, htree, 0, 0);
+}
+	
+
+#ifdef HUFF_CODER
+}
+#endif
+
+/****************************************************************************************/
+/*	gzip writer	*/
+/****************************************************************************************/
+#ifdef GZIP_WRITER
+{
+#endif
+struct gz_header {
+	uint8_t id[2];
+	uint8_t comp_method;
+	uint8_t flags;
+	uint32_t mtime;
+	uint8_t extra_flags;
+	uint8_t os;
+};
+
+struct gz_trailer {
+	uint32_t crc32;
+	uint32_t isize;
+};
+
+int write_gzdata_blocked (unsigned char *src, int len, int fd, int blk_size)
+{
+	int ret, pos = 0, toc;
+	uint16_t lval;
+
+	while (pos < len) {
+		if ((toc = (len - pos)) > blk_size)
+			toc = blk_size;
+
+		lval = (uint16_t)len;
+		if ((ret = write(fd, &lval, sizeof(uint16_t))) != sizeof(uint16_t))
+			return -1;		
+			
+		lval = ~((uint16_t)len);
+		if ((ret = write(fd, &lval, sizeof(uint16_t))) != sizeof(uint16_t))
+			return -1;
+
+		if ((ret = write(fd, src + pos, toc)) != toc)
+			return -1;
+			
+		printf("wrote %d/%d bytes, pos %d/%d\n", toc, ret, pos, len); 
+		
+		pos += toc;
+	}
+	
+	return 0;
+}
+
+int write_gzfile (const char *src, const char *dst)
+{
+	struct gz_header head;
+	struct gz_trailer gtl;
+	struct stat st;
+	int len, src_fd;
+	unsigned char *buf;
+	
+	if (stat(src, &st) < 0 || S_ISDIR(st.st_mode)) {
+		fprintf(stderr, "[%s]: stat failed\n", __func__);
+		return -1;
+	}
+	
+	head.id[0] = 0x1f;
+	head.id[1] = 0x8b;
+	
+	head.comp_method = 0;
+	head.flags = 0;
+	head.mtime = st.st_mtime;
+	
+	head.extra_flags = 0;
+	head.os = 0xFF;
+	
+	if ((len = read_file(src, &buf)) < 0)
+		return -1;
+	
+	gtl.isize = len;
+	gtl.crc32 = crc(buf, len);
+
+	if ((src_fd = open(dst, O_CREAT|O_TRUNC|O_RDWR, 0777)) < 0) {
+		free(buf);
+		return -1;
+	}
+	
+	if (write(src_fd, &head, sizeof(head)) != sizeof(head) ||
+		write_gzdata_blocked(buf, len, src_fd, 99999999) < 0 ||
+		write(src_fd, &gtl, sizeof(gtl)) != sizeof(gtl)) {
+		close(src_fd);
+		free(buf);
+		return -1;
+	}
+	
+	fprintf(stderr, "[%s]: wrote %d bytes to %s\n", __func__, len, dst);
+
+	close(src_fd);
+	
+	free(buf);
+	
+	return 0;
+}
+#ifdef TEST
+}
+#endif
 
 int main (void)
 {
-	return make_tar_file("/Users/x/Desktop/work", 
-				"/Users/x/Desktop/test.tar");
+	uint8_t test[17] = {1, 2, 1, 2, 3, 4, 4, 4, 5, 6, 7, 7, 7, 7, 7, 7, 10};
+	struct huff_list *hlist;
+	huff_encode(test, 17, &hlist);
+	
+	print_huffcodes(hlist, 17);
+	
+	free(hlist);
+
+	test_bit_stream();
+	
+	/* .tar encoder works, huffman encoder works, bitstream works, gzip not done yet */
+	
+	return 0;
+	
+	make_tar_file("/Users/nobody1/Desktop/work", 
+				"/Users/nobody1/Desktop/test.tar");
+				
+	return write_gzfile("/Users/nobody1/Desktop/test.tar",
+				"/Users/nobody1/Desktop/test1.gz");
 }
 
 
