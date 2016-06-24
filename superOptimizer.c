@@ -97,7 +97,7 @@ int superOptimizer (char * startingInput, char * input, int inputSize, int totOp
 
 int main(int argc, char** argv){
 //	char input[] = {'\x00','\x01','\x02','\x03','\x04'};
-	char input[] = {'A','C','G','T'};
+	char input[] = {'A','C','G','T','N'};
 	int inputSize = sizeof(input)/sizeof(char);
 	int maxNumOps = 6;
 	char opsSeq [maxNumOps];

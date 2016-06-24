@@ -5,7 +5,7 @@
 
 enum operationID {add = 0, and = 1, xor = 2, lsl = 3, lsr = 4};
 
-int findFirstNot(unsigned char input, char arr[], size_t arrSize){
+int findFirstNot(int input, int arr[], size_t arrSize){
 	int i;
 	for(i = 0; i < arrSize; ++i){
 		if(input != arr[i]) return i;
@@ -13,7 +13,7 @@ int findFirstNot(unsigned char input, char arr[], size_t arrSize){
 	return -1;
 }
 
-int findmin(unsigned char* input, int inputSize){
+int findmin(int* input, int inputSize){
 	int min = input[0];
 	int i;
 	for(i = 1; i<inputSize; ++i){
@@ -22,7 +22,7 @@ int findmin(unsigned char* input, int inputSize){
 	return min;
 }
 
-char operator(unsigned char input, enum operationID opID, int val){
+char operator(int input, enum operationID opID, int val){
 	switch(opID){
 		case add:
 			input = input + val;
@@ -47,7 +47,7 @@ char operator(unsigned char input, enum operationID opID, int val){
 	return input;
 }
 
-int compare (unsigned char* input, int inputSize, unsigned char * startingInput){
+int compare (int *input, int inputSize, int * startingInput){
 	int i,j;
 
 /*
@@ -76,9 +76,10 @@ int compare (unsigned char* input, int inputSize, unsigned char * startingInput)
 	}else return -1;
 }
 
-int superOptimizer (unsigned char * startingInput, unsigned char * input, int inputSize, int totOps, int numOps, char* opsSeq, int* numSeq){
+int superOptimizer (int * startingInput, int * input, int inputSize, int totOps, int numOps, char* opsSeq, int* numSeq){
 	int i,j,k;
-	char newinput[inputSize];
+//	int newinput[inputSize];
+	int *newinput = malloc(inputSize * sizeof(int));
 	char operations[] = {'+','&','^','<','>'};
 	int opsSize = sizeof(operations)/sizeof(char);
 	int opsMax[] = {256, 256, 256, 8, 8};
@@ -95,26 +96,36 @@ int superOptimizer (unsigned char * startingInput, unsigned char * input, int in
 				opsSeq[opIt] = operations[k];
 				numSeq[opIt] = i;
 			}
-		if(!compare(newinput, inputSize,  startingInput)) return 0;
+		if(!compare(newinput, inputSize,  startingInput)){
+			free(newinput);
+			return 0;
+		}
 		else if(numOps > 1 &&
-			!superOptimizer(startingInput, newinput, inputSize, totOps, numOps - 1, opsSeq, numSeq))
+			!superOptimizer(startingInput, newinput, inputSize, totOps, numOps - 1, opsSeq, numSeq)){
+				free(newinput);
 				return 0;
+			}
 		}
 	}
+	free(newinput);
 	return -1;
 }
 
 int main(int argc, char** argv){
-	int i; 
+	int i,j; 
 //	char input[] = {'\x00','\x01','\x02','\x03'};
 //	unsigned char input[] = {'\x24','\x32','\xf7','\xc3','\x10','\x89','\xfd','\x78','\x98','\x36','\x65','\xdc','\xa4','\xb9','\xb1','\x9d'};
-	char input[] = {'\x09','\x11','\x08','\x03','\x02','\x05','\x16','\x07'};
-	//char input[1000];
-	int inputSize = sizeof(input)/sizeof(char);
+//	char input[] = {'\x09','\x11','\x08','\x03','\x02','\x05','\x16','\x07'};
+	int inputSize = 10000;
+	int *input = malloc(sizeof(int) * inputSize);
+//	int input[10000];
 	srand(time(NULL));
-//	for(i=0;i<inputSize;++i){
-//		input[i] = rand();
-//	}
+	for(i=0;i<inputSize;++i){
+		input[i] = rand();
+		for(j=0;j<i;++j){
+			if(input[i] == input[j])--i;
+		}
+	}
 	int maxNumOps = 6;
 	char opsSeq [maxNumOps];
 	int numSeq [maxNumOps];
@@ -126,7 +137,7 @@ int main(int argc, char** argv){
 	int success = -1;
 
 	success = superOptimizer(input, input, inputSize, maxNumOps, maxNumOps, opsSeq, numSeq);
-
+	free(input);
 	int numOps = 0;
 	for(i = 0; i<maxNumOps; ++i){
 		if(numSeq[i] != 0){
