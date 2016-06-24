@@ -96,6 +96,18 @@ int compare (unsigned char* input, int inputSize, unsigned char * startingInput)
 	}else return 0;
 }
 
+int finalCompare (unsigned char* input, unsigned char* output, int inputSize, unsigned char * startingInput){ // Checks to see if input values have been mapped
+										// to 2 separate groups. Then returns the size of 											// the first group. 
+	int i,j;
+	for(i=0;i<inputSize;++i)if(input[i] != output[i])return 0;
+
+	printf("Transformations:\nInput:\tOutput:\n");
+	for(i=0;i<inputSize;++i)
+		printf("%d%s%d\n",startingInput[i],"   ->   ", output[i]);
+
+	return 1;
+}
+
 int superOptimizer (unsigned char * startingInput, unsigned char * input, int inputSize, int totOps, int numOps, char* opsSeq,unsigned int* numSeq){
 	int i,j,k;
 	char constInput[inputSize];
@@ -131,7 +143,7 @@ int superOptimizer (unsigned char * startingInput, unsigned char * input, int in
 	return -1;
 }
 
-int finalOptimizer (unsigned char * startingInput, unsigned char * input, int inputSize, int totOps, int numOps, char* opsSeq,unsigned int* numSeq){
+int finalOptimizer (unsigned char * startingInput, unsigned char * input, unsigned char *output, int inputSize, int totOps, int numOps, char* opsSeq,unsigned int* numSeq){
 	int i,j,k;
 	char constInput[inputSize];
 	for(i=0;i<inputSize;++i) constInput[i] = input[i];
@@ -142,21 +154,21 @@ int finalOptimizer (unsigned char * startingInput, unsigned char * input, int in
 	for(k = 0; k < opsSize; ++k){
 		int opIt = totOps - numOps;
 		int constMax = opsMax[k];
-	//	if(opIt > 0 && (opsSeq[opIt -1] == operations[k] ||
-	//				(k==3 && opsSeq[opIt-1] == operations[4]) ||
-	//					(k==4 && opsSeq[opIt -1] == operations[3])))
-	//						continue;
+		if(opIt > 0 && (opsSeq[opIt -1] == operations[k] ||
+					(k==3 && opsSeq[opIt-1] == operations[4]) ||
+						(k==4 && opsSeq[opIt -1] == operations[3])))
+							continue;
 		for(i = 0; i < constMax; ++i){
 			for(j = 0; j < inputSize; ++j){				
 				input[j] = operator(constInput[j],k,i);
 				opsSeq[opIt] = operations[k];
 				numSeq[opIt] = i;
 			}
-			if((group1Size=finalCompare(input, inputSize,  startingInput))!= 0){
+			if((group1Size = finalCompare(input, output, inputSize, startingInput))!= 0){
 				return group1Size; 	// If successful sequence of 	
 			}				//operations is found, return the size of the first group
 			else if(numOps > 1 &&
-				(group1Size = superOptimizer(startingInput, input, 
+				(group1Size = finalOptimizer(startingInput, input, output, 
 						inputSize, totOps, numOps - 1, opsSeq, numSeq))!= -1){
 
 				return group1Size;
@@ -166,49 +178,27 @@ int finalOptimizer (unsigned char * startingInput, unsigned char * input, int in
 	return -1;
 }
 
-int compare (unsigned char* input, int inputSize, unsigned char * startingInput){ // Checks to see if input values have been mapped
-										// to 2 separate groups. Then returns the size of 											// the first group. 
-	
-	int i,j;
-	char group1 = input[0];
-	
-	char firstDiffIndex = findFirstNot(group1, input, inputSize);
-	if(firstDiffIndex == 0){
-		return 0;
-	}
-	char group2 = input[firstDiffIndex];
-	int count1 = firstDiffIndex;
-	int count2 = 1;
-	for(j = count1 + 1; j < inputSize; ++j){
-		if(input[j] == group1)++count1;
-		else if(input[j] != group2){			 
-			return 0;
-			}
-		else ++count2;
-	}
-
-	if(count1 >= inputSize/2 && count2 >= inputSize/2){
-		printf("Transformations:\nInput:\tOutput:\n");
-		for(i=0;i<inputSize;++i)
-			printf("%d%s%d\n",startingInput[i],"   ->   ", input[i]);
-		return count1;
-	}else return 0;
-}
-
-int divideAndOptimize(unsigned char * startingInput, unsigned char* input, int inputSize,char** opArray,unsigned int** numArray, int maxNumOps, int opLevel){
+int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsigned char *output, int inputSize,char** opArray,unsigned int** numArray, int maxNumOps, int opLevel){
 	// Note: startingInput and input start out as the same thing
 //Base Case: Separated into arrays of size 2
 	int i;
-	if(inputSize <= 2){
-		return 0; // Pass arrays into a separate function after this? 
-	}
-
 	char opsSeq[maxNumOps];
 	unsigned int numSeq[maxNumOps];
 	for(i = 0; i < maxNumOps; ++i){
 		opsSeq[i] = ' ';
 		numSeq[i] = 0;
 	}
+
+	if(inputSize <= 2){
+		finalOptimizer(startingInput, input, output, inputSize, maxNumOps, maxNumOps, opsSeq, numSeq); 
+		for(i=0;i<maxNumOps;++i){
+			opArray[opLevel][i] = opsSeq[i];
+			numArray[opLevel][i] = numSeq[i];
+		}
+		return 0;
+	}
+
+
 	int group1Size = superOptimizer(startingInput, input, inputSize, maxNumOps, maxNumOps, opsSeq, numSeq);
 	if(group1Size == -1) return -1;
 	int group2Size = inputSize-group1Size;
@@ -216,16 +206,20 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, int i
 //Separate inputs into groups based on the last superOptimizer run	
 	unsigned char group1[group1Size];
 	unsigned char group2[group2Size];
+	unsigned char group1out[group1Size];
+	unsigned char group2out[group2Size];
 	int g1counter = 0; // There may be a more efficient way of adding to 2 separate arrays
 	int g2counter = 0;
 	int groupCheck = input[0];
 	for(i=0; i<inputSize; ++i){ 			// Sorting out original values based on what they mapped to
 		if(input[i]==groupCheck){		// **** Assuming that half of values will always map to 0. Is this true? 
 							// Otherwise, the comparison value can be set to input[0] and start at i=1; 
-			group1[g1counter++] = startingInput[i];
+			group1[g1counter] = startingInput[i];
+			group1out[g1counter++] = output[i];
 		}
 		else{
-			group2[g2counter++] = startingInput[i];
+			group2[g2counter] = startingInput[i];
+			group2out[g2counter++] = output[i];
 		}
 	}
 
@@ -253,8 +247,8 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, int i
 	for(i=0;i<group2Size;++i){
 		startingGroup2[i] = group2[i];
 	}
-	divideAndOptimize(startingGroup1, group1, group1Size, opArray, numArray, maxNumOps, opLevel*2);
-	return divideAndOptimize(startingGroup2, group2, group2Size, opArray, numArray, maxNumOps, ((opLevel*2) + 1));	
+	divideAndOptimize(startingGroup1, group1, group1out, group1Size, opArray, numArray, maxNumOps, opLevel*2);
+	return divideAndOptimize(startingGroup2, group2, group2out, group2Size, opArray, numArray, maxNumOps, ((opLevel*2) + 1));	
 }
 
 
@@ -263,23 +257,29 @@ int main(int argc, char** argv){
 //	char input[] = {'\x16','\x15','\x14','\x13','\x12','\x11','\x10','\x0f'};
 //	unsigned char input[] = {'\x09','\x11','\x08','\x03','\x02','\x05','\x16','\x07','\xff','\x55','\x29','\xd6','\x8f'};
 //	unsigned char input[] = {'\x24','\x32','\xf7','\xc3','\x10','\x89','\xfd','\x78','\x98','\x36','\x65','\xdc','\xa4','\xb9','\xb1','\x9d'};
-	unsigned char input[127];
-	int inputSize = sizeof(input)/sizeof(char);
+
+	int inputSize = 128;
+	unsigned char *input = malloc(sizeof(char)*inputSize);
+	unsigned char *output = malloc(sizeof(char)*inputSize);
 	srand(time(NULL));
+
+//	int inputSize = sizeof(input)/sizeof(input[0]);
 	for(i=0;i<inputSize;++i){
 		input[i] = rand();
+		output[i] = rand();
 		for(j=0;j<i;++j){
 			if(input[i] == input[j])--i;
 		}
 	}
+
+
+
 	int maxNumOps = 3;
 
 	int success = -1;								// NEED TO IMPLEMENT divideAndOptimize in main
 	size_t numBranches = 2 * highestBit(inputSize);						//number of operation sequences that divide
 	char **opArray = malloc(numBranches*sizeof(char*));							//out the inputs, similar to number of 
 	unsigned int ** numArray = malloc(numBranches*sizeof(unsigned int *));							//edges on a tree structure
-	printf("%d",numBranches);
-	return 0;
 	for(i=0;i < (numBranches); ++i){
 		opArray[i] = calloc(maxNumOps, sizeof(char));
 		numArray[i] = calloc(maxNumOps, sizeof(int));
@@ -289,8 +289,9 @@ int main(int argc, char** argv){
 	for(i=0;i<inputSize;++i){
 		startingInput[i] = input[i];
 	}
-	success = divideAndOptimize(startingInput, input, inputSize, opArray, numArray, maxNumOps,1);
-
+	success = divideAndOptimize(startingInput, input, output, inputSize, opArray, numArray, maxNumOps,1);
+//	free(input);
+//	free(output);
 	int numOps[numBranches];
 	memset(numOps, 0, sizeof(numOps));
 	for(j=0;j<numBranches;++j){
