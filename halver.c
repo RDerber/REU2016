@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
 
 enum operationID {add = 0, and = 1, xor = 2, lsl = 3, lsr = 4};
 
@@ -82,7 +83,7 @@ int superOptimizer (int * startingInput, int * input, int inputSize, int totOps,
 	int *newinput = malloc(inputSize * sizeof(int));
 	char operations[] = {'+','&','^','<','>'};
 	int opsSize = sizeof(operations)/sizeof(char);
-	int opsMax[] = {256, 256, 256, 8, 8};
+	int opsMax[] = {INT_MAX, INT_MAX, INT_MAX, 8, 8};
 	for(k = 0; k < opsSize; ++k){
 		int opIt = totOps - numOps;
 		int constMax = opsMax[k];
@@ -116,7 +117,7 @@ int main(int argc, char** argv){
 //	char input[] = {'\x00','\x01','\x02','\x03'};
 //	unsigned char input[] = {'\x24','\x32','\xf7','\xc3','\x10','\x89','\xfd','\x78','\x98','\x36','\x65','\xdc','\xa4','\xb9','\xb1','\x9d'};
 //	char input[] = {'\x09','\x11','\x08','\x03','\x02','\x05','\x16','\x07'};
-	int inputSize = 10000;
+	int inputSize = 40000;
 	int *input = malloc(sizeof(int) * inputSize);
 //	int input[10000];
 	srand(time(NULL));
@@ -126,7 +127,9 @@ int main(int argc, char** argv){
 			if(input[i] == input[j])--i;
 		}
 	}
-	int maxNumOps = 6;
+	printf("hey");
+	fflush(stdout);
+	int maxNumOps = 2;
 	char opsSeq [maxNumOps];
 	int numSeq [maxNumOps];
 	for(i = 0; i < maxNumOps; ++i){

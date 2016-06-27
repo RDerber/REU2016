@@ -10,8 +10,38 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+//#include "divideAndOptimize.h"
 
-enum operationID {add = 0, and = 1, xor = 2, lsl = 3, lsr = 4};
+enum operationID {add = 0, and = 1, xor = 2, lsl = 3, lsr = 4, assign = 5};
+char operations[] = {'+','&','^','<','>','='};
+
+unsigned char addFunc(unsigned char a, unsigned int b){
+	return a+b;
+}
+
+unsigned char andFunc(unsigned char a, unsigned int b){
+	return a&(~b);
+}
+
+unsigned char xorFunc(unsigned char a, unsigned int b){
+	return a^b;
+}
+
+unsigned char shiftLeftFunc(unsigned char a, unsigned int b){
+	unsigned char ans = a << b;
+	return ans;
+}
+
+unsigned char shiftRightFunc(unsigned char a, unsigned int b){
+	unsigned char ans = a >> b;	
+	return ans; 
+}
+
+unsigned char assignFunc(unsigned char a, unsigned int b){
+	return b;
+}
+
+unsigned char (*functionPtrs[])(unsigned char,unsigned int) = {&addFunc,&andFunc,&xorFunc,&shiftLeftFunc,&shiftRightFunc,&assignFunc};
 
 size_t highestBit(int num){
 	int i;
@@ -42,28 +72,8 @@ int findmin(unsigned char* input, int inputSize){
 	return min;
 }
 
-char operator(unsigned char input, enum operationID opID, int val){
-	switch(opID){
-		case add:
-			input = input + val;
-			break;
-
-		case and:
-			input = input & ~val;
-			break;	
-
-		case xor:
-			input = input ^ val;
-			break;
-
-		case lsl:
-			input = input << val;
-			break;
-
-		case lsr:
-			input = input >> val;
-			break;
-	}
+char operate(unsigned char input, int opID, unsigned int val){
+	input = functionPtrs[opID](input,val);
 	return input;
 }
 
@@ -99,12 +109,13 @@ int compare (unsigned char* input, int inputSize, unsigned char * startingInput)
 int boolify(unsigned char a,unsigned char b, unsigned char *opsSeq,unsigned int *numSeq,int maxNumOps){
 	int i;
 	for(i=0;i<sizeof(char)*8;++i){
-		unsigned char check = '\x01'<<i;
+		unsigned int check = '\x01'<<i;
 		if((a&check && !(b&check)) || (!(a&check) && b&check)){
-			opsSeq[maxNumOps-2] = '&';
-			numSeq[maxNumOps-2] = check;
-			opsSeq[maxNumOps-1] = '>';
+			opsSeq[maxNumOps-2] = and;
+			numSeq[maxNumOps-2] = ~check;
+			opsSeq[maxNumOps-1] = lsr;
 			numSeq[maxNumOps-1] = i;
+			printf("%s %d","boolify:",(a&check)>>i);
 			return a&check;
 		}
 	}
@@ -116,7 +127,6 @@ int superOptimizer (unsigned char * startingInput, unsigned char * input, int in
 	int i,j,k;
 	char constInput[inputSize];
 	for(i=0;i<inputSize;++i) constInput[i] = input[i];
-	char operations[] = {'+','&','^','<','>'};
 	int opsSize = sizeof(operations)/sizeof(char);
 	int opsMax[] = {256, 256, 256, 8, 8};
 	int group1Size = 0;
@@ -129,9 +139,11 @@ int superOptimizer (unsigned char * startingInput, unsigned char * input, int in
 	//						continue;
 		for(i = 0; i < constMax; ++i){
 			for(j = 0; j < inputSize; ++j){				
-				input[j] = operator(constInput[j],k,i);
-				opsSeq[opIt] = operations[k];
-				numSeq[opIt] = i;
+				input[j] = operate(constInput[j],k,i);
+				opsSeq[opIt] = k;
+//				if(k == and) numSeq[opIt] = ~i;
+//				else
+				 numSeq[opIt] = i;
 			}
 			if((group1Size=compare(input, inputSize,  startingInput))!= 0){
 				return group1Size; 	// If successful sequence of 	
@@ -154,7 +166,7 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 	char opsSeq[maxNumOps];
 	unsigned int numSeq[maxNumOps];
 	for(i = 0; i < maxNumOps; ++i){
-		opsSeq[i] = ' ';
+		opsSeq[i] = 0;
 		numSeq[i] = 0;
 	}
 
@@ -163,7 +175,7 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 		opArray[opLevel][i] = opsSeq[i];
 		numArray[opLevel][i] = numSeq[i];
 	}
-		opArray[opLevel][maxNumOps-1] = '=';
+		opArray[opLevel][maxNumOps-1]  = assign;
 		numArray[opLevel][maxNumOps-1] = output[0];
 		return 0;
 	}
@@ -227,18 +239,100 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 }
 
 
+void treePrint(char** opArray, unsigned int ** numArray, size_t numBranches, int maxNumOps, int * numOps){
+	int i,j;
+	printf("%s %d\n","Number of branches:", numBranches);
+	for(i=1; i <numBranches; ++i){
+		printf("%s %d\n\t","Branch: ", i);
+		for(j=maxNumOps-numOps[i]; j<maxNumOps; ++j){
+			printf("%c",operations[opArray[i][j]]); 
+			printf("%d ",numArray[i][j]); 
+
+		}
+		printf("\n");
+
+	}
+
+}
+
+int codonIdentifier(FILE * ifp,unsigned char *input,unsigned char *output){
+	char byt; 
+	int inputCount = 0; 
+	int outputCount = 0;
+	while((byt=getc(ifp))!= EOF){
+	
+		if(byt != ' ' && byt != '\n' && byt != '\r' && byt!= ','){
+			if(byt != '>'){
+				byt = byt & '\x06';
+				byt = byt << 3;
+		
+				char temp = getc(ifp);
+			
+				temp =  temp & '\x06';
+				temp = temp <<1; 
+				byt = byt | temp; 
+			
+
+				temp = getc(ifp);
+				temp =  temp & '\x06';
+				temp = temp >> 1; 
+				byt = byt | temp; 
+			
+				input[inputCount++] = byt; 
+			}else{
+				byt = getc(ifp);
+				for(outputCount; outputCount < inputCount; ++outputCount){
+					output[outputCount] = byt;
+				}
+			}
+		}
+	}
+	return 0;
+} 
+
+int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int maxNumOps){
+	int i = 1,j;
+	unsigned char direction;
+	while(opArray[i][maxNumOps-1] != assign){
+		direction = input;
+		for(j=0;j < maxNumOps;++j){
+			direction = operate(direction,((opArray[i])[j]),((numArray[i])[j]));
+			printf("%s%d %s%d\n","opArray[i][j]: ",opArray[i][j], "numArray[i][j] ",numArray[i][j]);
+			printf("%s%d %s%d\n","j: ",j, "direction: ",direction);
+		}
+		printf("%s%d %s%d\n","i: ",i, "direction: ",direction);
+		fflush(stdout);
+		i = i*2 + direction;
+	}
+	int output = numArray[i][maxNumOps-1];
+	printf("%c\n", output);
+	return output;
+}
+
 int main(int argc, char** argv){
 	int i,j; 
 //	char input[] = {'\x16','\x15','\x14','\x13','\x12','\x11','\x10','\x0f'};
-	unsigned char input[] = {'\x01','\x05','\x10','\x15','\x20','\x25','\x30','\x09'};
-	unsigned char output[] = {'\x02','\x07','\x12','\x17','\x22','\x27','\x32','\x37'};
+	
+//	unsigned char input[] = {'\x01','\x05','\x10','\x15','\x20','\x25','\x30','\x09'};
+//	unsigned char output[] = {'\x02','\x07','\x12','\x17','\x22','\x27','\x32','\x37'};
+	int inputSize = 64; 
+	unsigned char * input = malloc(inputSize * sizeof(char));
+	unsigned char * output = malloc(inputSize * sizeof(char));
 
+	FILE * ifp;
+	ifp = fopen(argv[1],"r");
+	if(ifp == NULL){
+		printf("File not accessible.");	
+		return -1; 
+	}
+	codonIdentifier(ifp, input, output);
+	fclose(ifp);
 //	int inputSize = 128;
 //	unsigned char *input = malloc(sizeof(char)*inputSize);
 //	unsigned char *output = malloc(sizeof(char)*inputSize);
 	srand(time(NULL));
 
-	int inputSize = sizeof(input)/sizeof(input[0]);
+//	int inputSize = sizeof(input)/sizeof(input[0]);
 //	for(i=0;i<inputSize;++i){
 //		input[i] = rand();
 //		output[i] = rand();
@@ -246,6 +340,7 @@ int main(int argc, char** argv){
 //			if(input[i] == input[j])--i;
 //		}
 //	}
+
 
 
 
@@ -266,14 +361,14 @@ int main(int argc, char** argv){
 	}
 	success = divideAndOptimize(startingInput, input, output, inputSize, opArray, numArray, maxNumOps,1);
 
-//	free(input);
-//	free(output);
+	free(input);
+	free(output);
 
 	int numOps[numBranches];
 	memset(numOps, 0, sizeof(numOps));
 	for(j=0;j<numBranches;++j){
 		for(i = 0; i<maxNumOps; ++i){
-			if(opArray[j][i] != ' ' && !(opArray[j][i] == '+' && numArray[j][i] == 0)){
+			if(opArray[j][i] != ' ' && !(opArray[j][i] == 0 && numArray[j][i] == 0)){
 				++numOps[j];
 			}
 		}
@@ -281,18 +376,23 @@ int main(int argc, char** argv){
 
 	if(success == 0){
 		printf("Sequence Found: \n");
-		printf("%s %d\n","Number of branches:", numBranches);
-		for(i=1; i <numBranches; ++i){
-			printf("%s %d\n\t","Branch: ", i);
 
-			for(j=maxNumOps-numOps[i]; j<maxNumOps; ++j){
-				printf("%c",opArray[i][j]); 
-				printf("%d ",numArray[i][j]); 
+		treePrint(opArray, numArray, numBranches, maxNumOps, numOps); 
 
-			}
-			printf("\n");
+		evaluate('6', opArray, numArray, maxNumOps);
 
-		}
+//		printf("%s %d\n","Number of branches:", numBranches);
+//		for(i=1; i <numBranches; ++i){
+//			printf("%s %d\n\t","Branch: ", i);
+//
+//			for(j=maxNumOps-numOps[i]; j<maxNumOps; ++j){
+//				printf("%c",operations[opArray[i][j]]); 
+//				printf("%d ",numArray[i][j]); 
+//
+//			}
+//			printf("\n");
+//
+//		}
 //		printf("%s%d\n", "Number of Operations: ", numOps);
 //		for(i=0;i < numOps[j]; ++i){
 //			printf("%d%c ",i,':');
