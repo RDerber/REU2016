@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "writeJson.h"
 //#include "divideAndOptimize.h"
 
 enum operationID {add = 0, and = 1, xor = 2, lsl = 3, lsr = 4, assign = 5};
@@ -287,7 +288,7 @@ int codonIdentifier(FILE * ifp,unsigned char *input,unsigned char *output){
 			}
 		}
 	}
-	return 0;
+	return inputCount;
 } 
 
 int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int maxNumOps){
@@ -297,35 +298,51 @@ int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int 
 		direction = input;
 		for(j=0;j < maxNumOps;++j){
 			direction = operate(direction,((opArray[i])[j]),((numArray[i])[j]));
-			printf("%s%d %s%d\n","opArray[i][j]: ",opArray[i][j], "numArray[i][j] ",numArray[i][j]);
-			printf("%s%d %s%d\n","j: ",j, "direction: ",direction);
+		//	printf("%s%d %s%d\n","opArray[i][j]: ",opArray[i][j], "numArray[i][j] ",numArray[i][j]);
+		//	printf("%s%d %s%d\n","j: ",j, "direction: ",direction);
 		}
-		printf("%s%d %s%d\n","i: ",i, "direction: ",direction);
+	//	printf("%s%d %s%d\n","i: ",i, "direction: ",direction);
 		fflush(stdout);
 		i = i*2 + direction;
 	}
 	int output = numArray[i][maxNumOps-1];
-	printf("%c\n", output);
+	printf("%s %c %s %c\n","Input:", input, "Output:", output);
 	return output;
 }
 
-int main(int argc, char** argv){
+int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs][number of timing values to retain]
 	int i,j; 
 //	char input[] = {'\x16','\x15','\x14','\x13','\x12','\x11','\x10','\x0f'};
 	
 //	unsigned char input[] = {'\x01','\x05','\x10','\x15','\x20','\x25','\x30','\x09'};
 //	unsigned char output[] = {'\x02','\x07','\x12','\x17','\x22','\x27','\x32','\x37'};
-	int inputSize = 64; 
-	unsigned char * input = malloc(inputSize * sizeof(char));
-	unsigned char * output = malloc(inputSize * sizeof(char));
-
+	int inputSize = 0; 
 	FILE * ifp;
 	ifp = fopen(argv[1],"r");
-	if(ifp == NULL){
+	if(ifp != NULL){
+	 // Go to the end of the file //
+		if(fseek(ifp, 0L, SEEK_END)== 0){
+		// Get the size of the file. //
+
+			inputSize = ftell(ifp);
+			if (inputSize == -1) {
+				fputs("Error finding size of file", stderr);
+			}
+
+			// Return to start of file //
+			if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
+				fputs("Error returning to start of file", stderr);
+			}
+		}
+	} else{ 
 		printf("File not accessible.");	
 		return -1; 
-	}
-	codonIdentifier(ifp, input, output);
+		}
+		
+	unsigned char * input = malloc(inputSize * sizeof(char));
+	unsigned char * output = malloc(inputSize * sizeof(char));
+	
+	inputSize = codonIdentifier(ifp, input, output);
 	fclose(ifp);
 //	int inputSize = 128;
 //	unsigned char *input = malloc(sizeof(char)*inputSize);
@@ -379,7 +396,102 @@ int main(int argc, char** argv){
 
 		treePrint(opArray, numArray, numBranches, maxNumOps, numOps); 
 
-		evaluate('6', opArray, numArray, maxNumOps);
+
+//Map codons to amino acids
+		
+		// Create Input Memory Buffer //
+	char *readIn = NULL;
+	FILE *ifp = fopen(argv[2],"r");
+	long readSize = 0;
+	if(ifp != NULL){
+	 // Go to the end of the file //
+	if(fseek(ifp, 0L, SEEK_END)== 0){
+		// Get the size of the file. //
+
+		readSize = ftell(ifp);
+			if (readSize == -1) {
+				fputs("Error finding size of file", stderr);
+			}
+	
+	
+		readIn = malloc (sizeof(char) * (readSize+1));
+
+			// Return to start of file //
+			if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
+				fputs("Error returning to start of file", stderr);
+			}
+		}
+	}
+	else{
+		fputs("Error reading input file", stderr);
+	}
+
+	// Tranlate Read File to codon 2-Bit format
+		char empty[1] = {};
+		readSize = codonIdentifier(ifp, readIn, empty);
+
+		// Create Output Buffer;
+	char * writeOut = malloc(sizeof(char)* (readSize+1));
+	int writeSize = readSize;
+	
+	float *times;
+	int runs = 0;
+	int numTimes = 0;
+	if(argc == 4){
+		for(i=0;i<readSize; ++i){
+		writeOut[i] = evaluate(readIn[i],opArray,numArray,maxNumOps);
+		}
+	}
+	if(argc == 5){	//if a number of runs is given but no number of minimum times, default number of min times is 3
+		runs = atoi(argv[4]);
+		numTimes = 3;
+		times = calloc(runs, sizeof(float)); 
+		struct timeval time0, time1; 
+		int i;
+		for(i=0;i<runs;i++){ // Record time of each run
+			gettimeofday(&time0,NULL);
+			for(i=0;i<readSize; ++i){
+				writeOut[i] = evaluate(readIn[i],opArray,numArray,maxNumOps);
+			}
+			gettimeofday(&time1,NULL);
+			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+		}
+
+	}
+	if(argc == 6){ //if both number of runs and the number of minimum times is given
+		runs = atoi(argv[4]);
+        numTimes = atoi(argv[5]);
+        times = calloc(runs, sizeof(float));
+        struct timeval time0, time1; 
+        int i;
+        for(i=0;i<runs;i++){ // Record time of each run
+                gettimeofday(&time0,NULL);
+                for(i=0;i<readSize; ++i){
+					writeOut[i] = evaluate(readIn[i],opArray,numArray,maxNumOps);
+				}
+                gettimeofday(&time1,NULL);
+                times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+                }
+
+	}
+
+	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
+	if(argc > 4){
+		if(write_time_file(times, runs, numTimes,readSize) < 0)
+			printf("error writing time file\n");
+		free(times);
+	}
+	// Writing output buffer to specified output file//
+	FILE *ofp = fopen(argv[3],"w");
+	if(ofp == NULL){
+		printf("Error creating output file\n");
+		return -1;
+        }else{
+		 fwrite(writeOut, 1, writeSize, ofp);
+		fclose(ofp);
+		}
+	free(readIn);
+	free(writeOut);
 
 //		printf("%s %d\n","Number of branches:", numBranches);
 //		for(i=1; i <numBranches; ++i){
