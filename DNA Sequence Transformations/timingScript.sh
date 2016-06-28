@@ -27,7 +27,7 @@ cat timing.txt >> ft2bTimeStats.txt
 cat timing.txt >> ft2bTimeStats.txt
 
 #Add Title to ft2bTimeStats.txt file
-./jsonTitle ft2bTimeStats.txt "FastaTo2Bit" "-t" 
+./jsonTitle ft2bTimeStats.txt "FastaTo2Bit" "-c" 
 
 #Run MultiFasta to 4Bit
 ./MultiFastaTo4Bit multiFasta 4Bit.txt 100 3
