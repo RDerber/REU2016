@@ -347,7 +347,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 //	int inputSize = 128;
 //	unsigned char *input = malloc(sizeof(char)*inputSize);
 //	unsigned char *output = malloc(sizeof(char)*inputSize);
-	srand(time(NULL));
+//	srand(time(NULL));
 
 //	int inputSize = sizeof(input)/sizeof(input[0]);
 //	for(i=0;i<inputSize;++i){
