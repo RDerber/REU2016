@@ -102,7 +102,27 @@ int randGen (char* fileType, int fileSize, char* fileName, int numSeq) {
 	}else if(!strcmp(fileType,"q")||!strcmp(fileType,"Q")){ // FASTQ
 		printf("Sorry, this feature is currently unavailble.");
 	}else if(!strcmp(fileType,"s")||!strcmp(fileType,"S")){ // SAM
-		printf("Sorry, this feature is currently unavailble.");
+		printf("Sorry, this feature is currently under contruction."); 
+		return 0;
+
+		FILE * ofp;
+		if((ofp = fopen(fileName,"w"))!= NULL){
+			char dateAndTime [80]; 			//Create Header Line
+			strftime(dateAndTime, 80, "%x - %I:%M%p", localtime(&currentTime));
+			fprintf(ofp,"%s %s %s %s\n","@Rand\t", dateAndTime, "FN:\t",fileName);	
+			for(i=0; i<10; i++){
+				fprintf(ofp,"%s\t%s%d\t%s%d \n","@SQ","SN:",(rand()%25),"LN:",rand());
+			}	
+			int seqSize = fileSize/numSeq;
+			int remainder = fileSize%numSeq;
+		
+		fclose(ofp);
+			printf("\"%s\" %s\n",fileName,"SAM file created.");	
+			
+		}else{		
+			printf("Error writing file");
+		}
+		
 	}else if(!strcmp(fileType,"b")||!strcmp(fileType,"B")){ // BAM
 		printf("Sorry, this feature is currently unavailble.");
 	}else{
