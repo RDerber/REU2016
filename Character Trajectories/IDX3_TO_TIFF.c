@@ -66,7 +66,8 @@ size_t idx_load_to_buffer(char *filepath, unsigned char **buffer) {
 //Sets the pointer of a given buffer for pixel data to the beginning of actual
 //pixel data within the given buffer holding the entire input file
 void set_buffer_to_pixel_array(unsigned char **imageDataBuffer, 
-			unsigned char **pixelDataBuffer, int imageNumber, unsigned int pixelCount){
+			unsigned char **pixelDataBuffer, int imageNumber, 
+			unsigned int pixelCount){
 
 	//set the pointer to the correct offset within the input file buffer
 	int arrayStart = ((pixelCount) * imageNumber) + IDX3_OFFSET_ARRAY_START;	

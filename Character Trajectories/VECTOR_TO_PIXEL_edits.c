@@ -17,6 +17,7 @@
 #define VECTOR_DIMMENSION                  500
 #define IMAGE_DIMMENSION                    28
 #define SQRT_2                          1.4142
+#define NUM_IMAGES                        4256
 
 
 //TIFF HEADER CODES
@@ -63,66 +64,6 @@ size_t load_upen_to_buffer(char *filepath, char **buffer){
 	return fileLength;
 }
 
-void drawSquare(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
-		double x, double y, double brushRadius){
-	//take coordinate and exapnd/decrement in brush size dimmension
-	//if any pixel exceeds the bounds, dont do anything
-	// if(x < VECTOR_DIMMENSION || y < VECTOR_DIMMENSION || x >= 0 || y >= 0) {}
-	int i, j;
-	for (i = floor(x - brushRadius); i <= x + brushRadius; ++i) {
-		for (j = floor(y - brushRadius); j <= y + brushRadius; ++j) {
-			if (i >= VECTOR_DIMMENSION || j >= VECTOR_DIMMENSION || i < 0 || j < 0 || 
-				pixelArray[i][j] == 255) {
-				continue;
-			} 
-			else {
-				double xDiff = (i < x) ? (i + 1) - (x - brushRadius) : 
-						(x + brushRadius) - i;
-				double yDiff = (j < y) ? (j + 1) - (y - brushRadius) : 
-						(y + brushRadius) - j;
-				if(i == 8 && j == 2){
-					printf("%f %f\n", xDiff, yDiff);
-				}
-				if (xDiff < 1 && yDiff < 1) {
-					pixelArray[i][j] = (unsigned char)((yDiff * xDiff) * 255);
-					// pixelArray[i][j] = (xDiff < 1) ? 
-					// 	(unsigned char)(xDiff * 256) : (unsigned char)(yDiff * 256);
-				} else if (xDiff < 1 || yDiff < 1) { 
-					// pixelArray[i][j] = (unsigned char)((yDiff * xDiff) * 256);
-					pixelArray[i][j] = (xDiff < 1) ? 
-						(unsigned char)(xDiff * 256) : (unsigned char)(yDiff * 255);
-				} else {
-					printf("\n%s", "reached");
-					printf(" %d %d ", i, j);
-					pixelArray[i][j] = (unsigned char)255;
-				}
-			}
-		}
-	}	
-}
-
-// void drawCircle(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
-// 		double x, double y, double brushRadius){
-	
-// 	double prevY = brushRadius;
-// 	double nextY;
-// 	int i;
-// 	for (i = floor(x); i <= x + SQRT_2 * brushRadius; ++i) {
-		
-// 		int base = 1;
-// 		double height = sqrt(brushRadius * brushRadius)
-// 	}
-// 	// iterate through xs from the x to x + radius/sqrt(2)
-// 	// prevdistance = r; 
-
-// 	// find next distance: sqrt(rsquared - xsquared);
-// 	// find diff between that and ceil that and prevdistance and ceil that
-// 	// add and divide by two * 255 to find interpolated value
-// 	// iterate downwards and fill until hits y
-// 	// next distance = prev distance
-// 	// reflect octant to all other octants
-// }
-
 
 ///Checks if the pixel at position x, y is out of bounds or is already black 
 int is_bounded_filled(int x, int y, 
@@ -135,25 +76,6 @@ int is_bounded_filled(int x, int y,
 	}
 }
 
-
-//UNUSED
-//Recursive fill starting from the center of the circle
-void flood_fill(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
-		int x, int y){
-	if (pixelArray[x][y] == 0 && is_bounded_filled(x, y, pixelArray)) {
-		pixelArray[x][y] = 255;
-		
-		flood_fill(pixelArray, x - 1, y);
-		flood_fill(pixelArray, x + 1, y);
-		flood_fill(pixelArray, x, y - 1);
-		flood_fill(pixelArray, x, y + 1);
-	} else if (is_bounded_filled(x, y, pixelArray)) {
-		pixelArray[x][y] = 255;
-		return;
-	} else {
-		return;
-	}
-}
 
 //Fills the pixels below a given pixel until its center Y is reached
 void fill_below(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
@@ -250,11 +172,6 @@ void draw_circle(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
             err += 1 - 2*x;
         }
     }
-    // if (is_bounded_filled(x0, y0, pixelArray)) {
-    // 	flood_fill(pixelArray, x0, y0);
-    // }
-    
-
 }
 
 //Helper function to calculate b of y = mx + b given a coordinate and slope
@@ -277,6 +194,7 @@ double calculate_other_coordinate(char XY, int coordinate, double slope,
 //Given the coordinates of two endpoints, finds the y = mx + b equation for the 
 //line and, draws dots for every pixel in the relatively less constrained 
 //dimmension
+//X and y flipped to make image appear correct orientation
 void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
 		double brushRadius, int startY, int startX, int endY, int endX) {
 	double slope = (double)(endY - startY) / (endX - startX);
@@ -367,9 +285,9 @@ void write_file(unsigned char *buffer, unsigned int imageNumber,
 
 
 //Generates the TIFF file at a given image number; dependent on write_file
-void generate_tiff_file(struct header header, struct tag tags[11],
+size_t generate_tiff_file(struct header header, struct tag tags[11],
 	 	unsigned char pixelDataBuffer[500][500], unsigned int pixelCount, 
-	 	unsigned int charLabel, unsigned int imageNumber){
+	 	unsigned char **fileMarker){
 	
 	uint16_t numTags = NUM_TAGS;
 	uint32_t tiffEnd = TIFF_END;
@@ -403,26 +321,144 @@ void generate_tiff_file(struct header header, struct tag tags[11],
 	}
 	//copy end bytes
 	memcpy(marker, &tiffEnd, sizeof(tiffEnd));
-	//write the actual file
-	write_file(buffer, imageNumber, charLabel, fileLength);
+	//copy the single TIFF file to the current marker in the buffer of TIFF files
+	memcpy(*fileMarker, buffer, fileLength);
+	printf("FILEMARKER %d\n", *fileMarker);
 	//free the memory
 	free(buffer);
+
+	return fileLength;
 }
 
 
 //Creates the actual byte array and draws a line between every sequential pair 
-//of coordinates in the coordinates buffer. Then creates a tiff header and tags 
-//based on the dimmensions of the image, and creates the actual tiff file.
-void draw_pixel_array(int *coordinates, size_t numCoordinates, 
-	unsigned int charLabel, unsigned int imageNumber){
+//of coordinates in the coordinates buffer. Then creates a TIFF header and tags 
+//based on the dimmensions of the image, and creates the actual TIFF file.
+size_t draw_pixel_array(int *coordinates, size_t numCoordinates, 
+		unsigned char **marker, struct header tiffHeader, struct tag tiffTags[11]){
 	unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION] = {0};
-	int i, j;
+	int i;
 	if (numCoordinates > 4) {
 		for(i = 0; i < numCoordinates - 3; i += 2) {
 			draw_line(pixelArray, 10, coordinates[i], coordinates[i + 1], 
 					coordinates[i + 2], coordinates[i + 3]);
 		}
 	}
+
+	//create the actual file
+	size_t fileLength = generate_tiff_file(tiffHeader, tiffTags, pixelArray, 
+			VECTOR_DIMMENSION * VECTOR_DIMMENSION, marker);
+
+	return fileLength;
+}
+
+
+size_t load_and_plot_coordinates(char *token, unsigned char **marker, 
+		struct header tiffHeader, struct tag tiffTags[11]) {
+	
+	printf("MARKER %d\n", marker);
+
+	size_t arraySize = 0;
+	int *coordinates = malloc(10000 * sizeof(int));
+
+	char *coordinate = strtok(token, " ");
+	while (coordinate != NULL) {
+		if (atoi(coordinate) != 0) {
+			coordinates[arraySize++] = atoi(coordinate);  
+		}
+		coordinate = strtok(NULL, " ");
+	}
+
+	size_t fileLength = draw_pixel_array(coordinates, arraySize, marker, 
+			tiffHeader, tiffTags);
+	free(coordinates);
+
+	return fileLength;
+}
+
+
+size_t generate_tiff_buffer(char *data, int numImages, 
+		unsigned char **tiffBuffer, size_t TIFFLength, struct header tiffHeader,
+		struct tag tiffTags[11]){
+	char *token = malloc(sizeof(char) * 1000);
+	token = strtok(data, ".");
+	size_t bufferLength = 0;
+	int firstTime = 1;
+	unsigned char *marker = *tiffBuffer;
+	printf("MARKER %d\n", marker);
+	int i;
+	for (i = 0; i != numImages;) {
+		if (strstr(token, PEN_DOWN) != NULL) {
+			size_t fileLength = load_and_plot_coordinates(token, &marker, tiffHeader, 
+					tiffTags);
+			bufferLength += fileLength; 
+			marker += fileLength;
+			++i;
+		}
+
+		if (firstTime == 1) {
+			data += (strlen(token) + 2) * sizeof(char);
+		} else {
+			data += (strlen(token) + 1) * sizeof(char);
+		}
+		
+		token = strtok(data, ".");
+
+		if(firstTime == 1){
+			firstTime = 0;
+		}
+	}
+	return bufferLength;
+}
+
+void run_transformations(int numImages) {
+		int pixelCount = VECTOR_DIMMENSION * VECTOR_DIMMENSION;
+
+	//generate header
+	struct header tiffHeader = generate_tiff_header(pixelCount);
+
+	//generate tags
+	enum dataTypes {TYPE_BYTE = 1, TYPE_ASCII, TYPE_SHORT, TYPE_LONG,
+		TYPE_RATIONAL};
+	struct tag tiffTags[11] = {
+		{TAG_WIDTH,             TYPE_LONG,  1, VECTOR_DIMMENSION}, 
+		{TAG_HEIGHT,            TYPE_LONG,  1, VECTOR_DIMMENSION},
+		{TAG_BITS_PER_SAMPLE,   TYPE_SHORT, 1, 8},
+		{TAG_COMPRESSION,       TYPE_SHORT, 1, 1},
+		{TAG_INTERPRETATION,    TYPE_SHORT, 1, 0},
+		{TAG_STRIP_OFFSETS,     TYPE_LONG,  1, 8},
+		{TAG_ROWS_PER_STRIP,    TYPE_SHORT, 1, VECTOR_DIMMENSION},
+		{TAG_STRIP_BYTE_COUNTS, TYPE_LONG,  1, pixelCount},
+		{TAG_X_RESOLUTION,      TYPE_LONG,  1, 1},
+		{TAG_Y_RESOLUTION,      TYPE_LONG,  1, 1},
+		{TAG_RESOLUTION_UNIT,   TYPE_SHORT, 1, 1}
+	};
+
+	size_t TIFFLength = sizeof(struct header) +
+	                    VECTOR_DIMMENSION * VECTOR_DIMMENSION +
+	                    NUM_TAGS * sizeof(struct tag) +
+	                    sizeof(uint16_t)+
+	                    sizeof(uint32_t);
+	unsigned char *tiffBuffer = (unsigned char *)malloc(numImages * TIFFLength);
+
+	printf("TIFFBUFFER %d\n", tiffBuffer);
+
+	size_t bufferLength = generate_tiff_buffer(data, numImages, &tiffBuffer, 
+			TIFFLength, tiffHeader, tiffTags);
+}
+
+int main(int argc, char **argv){
+	int numImages = 1;
+
+	if (atoi(argv[1]) > 4256 || atoi(argv[1]) < 1) {
+		printf("%s\n", "Invalid Number of Images");
+		printf("%s\n", argv[1]);
+	} else {
+		numImages = atoi(argv[1]);
+	}
+
+	char *data;
+	size_t fileLength = load_upen_to_buffer(FILE_PATH, &data);
 
 	int pixelCount = VECTOR_DIMMENSION * VECTOR_DIMMENSION;
 
@@ -446,78 +482,22 @@ void draw_pixel_array(int *coordinates, size_t numCoordinates,
 		{TAG_RESOLUTION_UNIT,   TYPE_SHORT, 1, 1}
 	};
 
-	//create the actual file
-	generate_tiff_file(tiffHeader, tiffTags, pixelArray, pixelCount, charLabel, 
-		imageNumber);
-}
+	size_t TIFFLength = sizeof(struct header) +
+	                    VECTOR_DIMMENSION * VECTOR_DIMMENSION +
+	                    NUM_TAGS * sizeof(struct tag) +
+	                    sizeof(uint16_t)+
+	                    sizeof(uint32_t);
+	unsigned char *tiffBuffer = (unsigned char *)malloc(numImages * TIFFLength);
 
-size_t load_and_plot_coordinates(char *token, unsigned int charLabel, 
-	unsigned int imageNumber) {
-	size_t arraySize = 0;
-	int *coordinates = malloc(10000 * sizeof(int));
+	printf("TIFFBUFFER %d\n", tiffBuffer);
 
-	char *coordinate = strtok(token, " ");
-	while (coordinate != NULL) {
-		if (atoi(coordinate) != 0) {
-			coordinates[arraySize++] = atoi(coordinate);  
-		}
-		coordinate = strtok(NULL, " ");
-	}
+	size_t bufferLength = generate_tiff_buffer(data, numImages, &tiffBuffer, 
+			TIFFLength, tiffHeader, tiffTags);
 
-	draw_pixel_array(coordinates, arraySize, charLabel, imageNumber);
 
-	// int i;
-	// for (i = 0; i < arraySize; ++i){
-	// 	printf("%d\n", coordinates[i]);
-	// }
 
-	return arraySize;
-}
-	
-int main(){
-	char *data;
-	size_t filesize = load_upen_to_buffer(FILE_PATH, &data);
-	
-	char *token = malloc(sizeof(char) * 1000);
-	token = strtok(data, ".");
-
-	int firstTime = 1;
-	int i = 0;
-	while(token != NULL){
-	// for (i = 0; i < 9; ++i) {
-		//search each token for PEN_DOWN
-		// printf("%d\n", strlen(token));
-		unsigned int charLabel = 0;
-
-		if (strstr(token, SEGMENT) != NULL) {
-			charLabel = atoi(strtok(token, "\""));
-  		charLabel = atoi(strtok(NULL, "\""));	
-		}
-
-		if (strstr(token, PEN_DOWN) != NULL) {
-			// printf("%d\n", strlen(token));
-			size_t arraySize = load_and_plot_coordinates(token, charLabel, i++);
-			// printf("%d\n", arraySize);
-		// //if PEN_DOWN, parse token into array of values
-		}
-		// printf("%d\n", data);
-		if (firstTime == 1) {
-			data += (strlen(token) + 2) * sizeof(char);
-		} else {
-			data += (strlen(token) + 1) * sizeof(char);
-		}
-
-		// printf("%d\n", data);		
-		
-		//create new array
-		//itterate through coordinates and call draw line between every two
-		token = strtok(data, ".");
-		// printf("%s\n", token);
-
-		if(firstTime == 1){
-			firstTime = 0;
-		}
-	}
-
+	FILE *file = fopen("test", "wb");
+	fwrite(tiffBuffer, sizeof(unsigned char), bufferLength, file);
+	fclose(file); 
 
 }
