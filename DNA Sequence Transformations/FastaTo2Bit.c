@@ -48,21 +48,21 @@ int twoBit(char * input, char * output, long inputsize){
 	output[firstlnlen]='\n';
 	
 	
-	long i = firstlnlen + 1; // input buffer index
-	long k = i-1;				// output buffer index
+	long i = firstlnlen + 1;	// input buffer index
+	long k = i-1;			// output buffer index
 	
 	// Read from input buffer, translate, and write to output buffer // 
 	while(i < inputsize){
 
 		while(i<inputsize && !(input[i]&'\x40')){ // Check for buffer overflow 
-			++i;												// If character is not a desired letter, increase to the next character in the buffer
+			++i;			// If character is not a desired letter, increase to the next character in the buffer
 		}
-		if(i >= inputsize) break;						// If index increases past buffer size, stop reading
+		if(i >= inputsize) break;		// If index increases past buffer size, stop reading
 		char byt = input[i];
 		++k;
 		++i;
-		byt = byt &'\x06';								// 2 Bit conversion of first base in grouping of 4
-		byt = byt << 5;									// Shifted to the left-most position on the output byte
+		byt = byt &'\x06';	// 2 Bit conversion of first base in grouping of 4
+		byt = byt << 5;		// Shift first base to the left-most position on the output byte
 		char temp;
 		unsigned j;
 		for(j = 2; j > 0 && i < inputsize; --j){ // 2 Bit conversion of the 2nd and 3rd bases
@@ -70,20 +70,19 @@ int twoBit(char * input, char * output, long inputsize){
 			if(input[i] & '\x40'){
 				temp = input[i];
 				++i;
-				temp = temp & '\x06';
-				temp = temp << (j*2)-1;
+				temp = temp & '\x06';	//convert base character to 2Bit
+				temp = temp << (j*2)-1;	//shift left corresponding to its order in the byte
 				byt = byt|temp;
 			} else {
-				++j;
-				++i;
+				++j;		//reset j to previous value so place within byte is maintained
+				++i;		//skip input value if not a character
 			}
 		}
 		while(i < inputsize && !(input[i] & '\x40')){ //Checking for buffer overflow and desired character
 			++i;
 		}
-
 			
-		if(i < inputsize){									// 2 Bit conversion of the last base in a grouping of 4
+		if(i < inputsize){	// 2 Bit conversion of the last base in a grouping of 4
 			temp = input[i];
 			++i;
 			temp = temp & '\x06';
