@@ -211,7 +211,7 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 				if (startY == endY) {
 					double y = startY;
 				}
-				draw_circle(pixelArray, VECTOR_DIMMENSION - i, round(y), brushRadius);
+				draw_circle(pixelArray, VECTOR_DIMMENSION - i, (y), brushRadius);
 			}
 		} else {
 			for (i = startX; i <= endX; ++i) {
@@ -219,7 +219,7 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 				if (startY == endY) {
 					double y = startY;
 				}
-				draw_circle(pixelArray, VECTOR_DIMMENSION - i, round(y), brushRadius);
+				draw_circle(pixelArray, VECTOR_DIMMENSION - i, (y), brushRadius);
 			}
 		}
 	} else {
@@ -231,7 +231,7 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 				} else {
 					x = calculate_other_coordinate('x', i, slope, b);
 				}
-				draw_circle(pixelArray, VECTOR_DIMMENSION - round(x), i, brushRadius);
+				draw_circle(pixelArray, VECTOR_DIMMENSION - (x), i, brushRadius);
 			}
 		} else {
 			for (i = startY; i <= endY; ++i) {
@@ -241,7 +241,7 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 				} else {
 					x = calculate_other_coordinate('x', i, slope, b);
 				}
-				draw_circle(pixelArray, VECTOR_DIMMENSION - round(x), i, brushRadius);
+				draw_circle(pixelArray, VECTOR_DIMMENSION - (x), i, brushRadius);
 			}
 		}	
 	}
@@ -378,7 +378,8 @@ size_t load_and_plot_coordinates(char *token, unsigned char **marker,
 size_t generate_tiff_buffer(char *data, int numImages, 
 		unsigned char **tiffBuffer, size_t TIFFLength, struct header tiffHeader,
 		struct tag tiffTags[11]){
-	char *token = malloc(sizeof(char) * 1000);
+	// char *token = malloc(sizeof(char) * 10000);
+	char *token;
 	token = strtok(data, ".");
 	size_t bufferLength = 0;
 	int firstTime = 1;
@@ -405,7 +406,7 @@ size_t generate_tiff_buffer(char *data, int numImages,
 			firstTime = 0;
 		}
 	}
-	free(token);
+	// free(token);
 	return bufferLength;
 }
 
@@ -523,7 +524,7 @@ int main(int argc, char **argv){
 	// 		TIFFLength, tiffHeader, tiffTags);
 
 	double *timingArray;
-	timingArray = (double *) malloc(numImages * sizeof(int));
+	timingArray = (double *) malloc(numImages * sizeof(double));
 
 	struct timeval startTime, endTime;
 
