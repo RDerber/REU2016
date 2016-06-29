@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <sys/time.h>
   
 #define PEN_UP                        "PEN_UP"
 #define PEN_DOWN                    "PEN_DOWN"
@@ -323,7 +324,6 @@ size_t generate_tiff_file(struct header header, struct tag tags[11],
 	memcpy(marker, &tiffEnd, sizeof(tiffEnd));
 	//copy the single TIFF file to the current marker in the buffer of TIFF files
 	memcpy(*fileMarker, buffer, fileLength);
-	printf("FILEMARKER %d\n", *fileMarker);
 	//free the memory
 	free(buffer);
 
@@ -355,8 +355,6 @@ size_t draw_pixel_array(int *coordinates, size_t numCoordinates,
 
 size_t load_and_plot_coordinates(char *token, unsigned char **marker, 
 		struct header tiffHeader, struct tag tiffTags[11]) {
-	
-	printf("MARKER %d\n", marker);
 
 	size_t arraySize = 0;
 	int *coordinates = malloc(10000 * sizeof(int));
@@ -385,7 +383,6 @@ size_t generate_tiff_buffer(char *data, int numImages,
 	size_t bufferLength = 0;
 	int firstTime = 1;
 	unsigned char *marker = *tiffBuffer;
-	printf("MARKER %d\n", marker);
 	int i;
 	for (i = 0; i != numImages;) {
 		if (strstr(token, PEN_DOWN) != NULL) {
@@ -408,6 +405,7 @@ size_t generate_tiff_buffer(char *data, int numImages,
 			firstTime = 0;
 		}
 	}
+	free(token);
 	return bufferLength;
 }
 
@@ -441,11 +439,41 @@ void run_transformations(char *data, int numImages) {
 	                    sizeof(uint32_t);
 	unsigned char *tiffBuffer = (unsigned char *)malloc(numImages * TIFFLength);
 
-	printf("TIFFBUFFER %d\n", tiffBuffer);
-
 	size_t bufferLength = generate_tiff_buffer(data, numImages, &tiffBuffer, 
 			TIFFLength, tiffHeader, tiffTags);
+
+	free(tiffBuffer);
 }
+
+int sort_compare(const void * a, const void * b) {
+  return ( *(int*)a - *(int*)b );
+}
+
+double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
+	qsort(*array, numRuns, sizeof(int), sort_compare);
+	int i, sum = 0;
+	for (i = 0; i < k; ++i) {
+		sum += *(*array + i);
+		// printf("%d\n", sum);
+	}
+	return (double) sum / k;
+}
+
+void write_doubles_to_csv_file(double *values, int numValues, char *name) {
+	char fileName[50];
+	sprintf(fileName, "%s.csv", name);
+	FILE *file = fopen(fileName, "w+");
+	int i;
+	printf("reached\n");
+	for (i = 0; i < numValues; ++i) {
+		fprintf(file,"%d, %f\n", i + 1, values[i]);
+		printf("%d %f\n", i, values[i]);
+	}
+	printf("reached\n");
+	fclose(file);
+	
+}
+
 
 int main(int argc, char **argv){
 	int numImages = 1;
@@ -494,12 +522,39 @@ int main(int argc, char **argv){
 	// size_t bufferLength = generate_tiff_buffer(data, numImages, &tiffBuffer, 
 	// 		TIFFLength, tiffHeader, tiffTags);
 
-	run_transformations(data, numImages);
+	double *timingArray;
+	timingArray = (double *) malloc(numImages * sizeof(int));
+
+	struct timeval startTime, endTime;
+
+	int i, j;
+	int numRuns = 50;
+	for (i = 0; i < numImages; ++i) {
+		int *runsArray = (int *) malloc(numRuns * sizeof(int));
+		for (j = 0; j < numRuns; ++j) {	
+			gettimeofday(&startTime, NULL);
+			run_transformations(data, i + 1);
+			// sleep(1);
+			gettimeofday(&endTime, NULL);
+			runsArray[j] = (endTime.tv_usec - startTime.tv_usec) + 
+					(endTime.tv_sec - startTime.tv_sec) * 1000000;
+			// printf("took%d\n", runsArray[j]);
+		}
+		int k = 30;
+		timingArray[i] = calc_avg_k_lowest_runs(&runsArray, numRuns, k);
+		free(runsArray);
+		// printf("%f\n", timingArray[i]);
+	}
+
+	// printf("%f\n", timingArray[0]);
+	printf("LASTELEMENT %f", timingArray[numImages - 1]);
+	write_doubles_to_csv_file(timingArray, numImages, "test1");
+	// run_transformations(data, numImages);
 
 
 
 	// FILE *file = fopen("test", "wb");
 	// fwrite(tiffBuffer, sizeof(unsigned char), bufferLength, file);
 	// fclose(file); 
-
+	return 0;
 }

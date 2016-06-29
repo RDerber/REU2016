@@ -411,41 +411,41 @@ size_t generate_tiff_buffer(char *data, int numImages,
 	return bufferLength;
 }
 
-void run_transformations(int numImages) {
-		int pixelCount = VECTOR_DIMMENSION * VECTOR_DIMMENSION;
+// void run_transformations(int numImages) {
+// 		int pixelCount = VECTOR_DIMMENSION * VECTOR_DIMMENSION;
 
-	//generate header
-	struct header tiffHeader = generate_tiff_header(pixelCount);
+// 	//generate header
+// 	struct header tiffHeader = generate_tiff_header(pixelCount);
 
-	//generate tags
-	enum dataTypes {TYPE_BYTE = 1, TYPE_ASCII, TYPE_SHORT, TYPE_LONG,
-		TYPE_RATIONAL};
-	struct tag tiffTags[11] = {
-		{TAG_WIDTH,             TYPE_LONG,  1, VECTOR_DIMMENSION}, 
-		{TAG_HEIGHT,            TYPE_LONG,  1, VECTOR_DIMMENSION},
-		{TAG_BITS_PER_SAMPLE,   TYPE_SHORT, 1, 8},
-		{TAG_COMPRESSION,       TYPE_SHORT, 1, 1},
-		{TAG_INTERPRETATION,    TYPE_SHORT, 1, 0},
-		{TAG_STRIP_OFFSETS,     TYPE_LONG,  1, 8},
-		{TAG_ROWS_PER_STRIP,    TYPE_SHORT, 1, VECTOR_DIMMENSION},
-		{TAG_STRIP_BYTE_COUNTS, TYPE_LONG,  1, pixelCount},
-		{TAG_X_RESOLUTION,      TYPE_LONG,  1, 1},
-		{TAG_Y_RESOLUTION,      TYPE_LONG,  1, 1},
-		{TAG_RESOLUTION_UNIT,   TYPE_SHORT, 1, 1}
-	};
+// 	//generate tags
+// 	enum dataTypes {TYPE_BYTE = 1, TYPE_ASCII, TYPE_SHORT, TYPE_LONG,
+// 		TYPE_RATIONAL};
+// 	struct tag tiffTags[11] = {
+// 		{TAG_WIDTH,             TYPE_LONG,  1, VECTOR_DIMMENSION}, 
+// 		{TAG_HEIGHT,            TYPE_LONG,  1, VECTOR_DIMMENSION},
+// 		{TAG_BITS_PER_SAMPLE,   TYPE_SHORT, 1, 8},
+// 		{TAG_COMPRESSION,       TYPE_SHORT, 1, 1},
+// 		{TAG_INTERPRETATION,    TYPE_SHORT, 1, 0},
+// 		{TAG_STRIP_OFFSETS,     TYPE_LONG,  1, 8},
+// 		{TAG_ROWS_PER_STRIP,    TYPE_SHORT, 1, VECTOR_DIMMENSION},
+// 		{TAG_STRIP_BYTE_COUNTS, TYPE_LONG,  1, pixelCount},
+// 		{TAG_X_RESOLUTION,      TYPE_LONG,  1, 1},
+// 		{TAG_Y_RESOLUTION,      TYPE_LONG,  1, 1},
+// 		{TAG_RESOLUTION_UNIT,   TYPE_SHORT, 1, 1}
+// 	};
 
-	size_t TIFFLength = sizeof(struct header) +
-	                    VECTOR_DIMMENSION * VECTOR_DIMMENSION +
-	                    NUM_TAGS * sizeof(struct tag) +
-	                    sizeof(uint16_t)+
-	                    sizeof(uint32_t);
-	unsigned char *tiffBuffer = (unsigned char *)malloc(numImages * TIFFLength);
+// 	size_t TIFFLength = sizeof(struct header) +
+// 	                    VECTOR_DIMMENSION * VECTOR_DIMMENSION +
+// 	                    NUM_TAGS * sizeof(struct tag) +
+// 	                    sizeof(uint16_t)+
+// 	                    sizeof(uint32_t);
+// 	unsigned char *tiffBuffer = (unsigned char *)malloc(numImages * TIFFLength);
 
-	printf("TIFFBUFFER %d\n", tiffBuffer);
+// 	printf("TIFFBUFFER %d\n", tiffBuffer);
 
-	size_t bufferLength = generate_tiff_buffer(data, numImages, &tiffBuffer, 
-			TIFFLength, tiffHeader, tiffTags);
-}
+// 	size_t bufferLength = generate_tiff_buffer(data, numImages, &tiffBuffer, 
+// 			TIFFLength, tiffHeader, tiffTags);
+// }
 
 int main(int argc, char **argv){
 	int numImages = 1;
