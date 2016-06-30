@@ -360,45 +360,48 @@ size_t draw_pixel_array(int *coordinates, size_t numCoordinates,
 
 //Reads in segments of the token and interprets it as a coordinate if it is an 
 //integer. Passes the array to draw_pixel_array
-size_t load_and_plot_coordinates(char *token, unsigned char **marker, 
+int load_and_plot_coordinates(char *token, unsigned char **marker, 
 		struct header tiffHeader, struct tag tiffTags[11]) {
 
-	size_t arraySize = 0;
+	int numCoordinates = 0;
 	int *coordinates = malloc(10000 * sizeof(int));
 
 	char *coordinate = strtok(token, " ");
 	while (coordinate != NULL) {
 		if (atoi(coordinate) != 0) {
-			coordinates[arraySize++] = atoi(coordinate);  
+			coordinates[numCoordinates++] = atoi(coordinate);  
 		}
 		coordinate = strtok(NULL, " ");
 	}
 
-	size_t fileLength = draw_pixel_array(coordinates, arraySize, marker, 
+	size_t fileLength = draw_pixel_array(coordinates, numCoordinates, marker, 
 			tiffHeader, tiffTags);
 	free(coordinates);
+	
+	// printf("%d\n", numCoordinates);
 
-	return arraySize;
+	return numCoordinates;
 }
 
 
 //Writes TIFF files to the provided buffer until the number of images has been 
 //reached
-size_t generate_tiff_buffer(char *data, int numImages, 
+int generate_tiff_buffer(char *data, int numImages, 
 		unsigned char **tiffBuffer, size_t TIFFLength, struct header tiffHeader,
 		struct tag tiffTags[11]){
 	char *token;
 	token = strtok(data, ".");
 	size_t bufferLength = 0;
+	int numCoordinates = 0;
 	int firstTime = 1;
 	unsigned char *marker = *tiffBuffer;
 	int i;
 	for (i = 0; i != numImages;) {
 		if (strstr(token, PEN_DOWN) != NULL) {
-			size_t fileLength = load_and_plot_coordinates(token, &marker, 
+			numCoordinates = load_and_plot_coordinates(token, &marker, 
 					tiffHeader, tiffTags);
-			bufferLength += fileLength; 
-			marker += fileLength;
+			bufferLength += TIFFLength;
+			marker += TIFFLength;
 			++i;
 		}
 
@@ -414,10 +417,14 @@ size_t generate_tiff_buffer(char *data, int numImages,
 			firstTime = 0;
 		}
 	}
-	return bufferLength;
+	// printf("%d\n", numCoordinates);
+	return numCoordinates;
+	
 }
 
-void run_transformations(char *data, int numImages) {
+
+//run a single transformation of the numImages provided 
+int run_transformations(char *data, int numImages) {
 		int pixelCount = VECTOR_DIMMENSION * VECTOR_DIMMENSION;
 
 	//generate header
@@ -447,11 +454,14 @@ void run_transformations(char *data, int numImages) {
 	                    sizeof(uint32_t);
 	unsigned char *tiffBuffer = (unsigned char *)malloc(numImages * TIFFLength);
 
-	size_t bufferLength = generate_tiff_buffer(data, numImages, &tiffBuffer, 
+	int numCoordinates = generate_tiff_buffer(data, numImages, &tiffBuffer, 
 			TIFFLength, tiffHeader, tiffTags);
 
 	free(tiffBuffer);
+	
+	return numCoordinates;
 }
+
 
 int sort_compare(const void * a, const void * b) {
 	return ( *(int*)a - *(int*)b );
@@ -481,6 +491,21 @@ void write_doubles_to_csv_file(double *values, int numValues, char *name) {
 	fclose(file);
 }
 
+void write_double_pairs_to_csv_file(double *x, double *y, int numValues, 
+		char *name) {
+	char fileName[50];
+	sprintf(fileName, "%s.csv", name);
+	FILE *file = fopen(fileName, "w+");
+	int i;
+	printf("reached\n");
+	for (i = 0; i < numValues; ++i) {
+		fprintf(file,"%f, %f\n", x[i], y[i]);
+		printf("%f %f\n", x[i], y[i]);
+	}
+	printf("reached\n");
+	fclose(file);
+}
+
 
 int main(int argc, char **argv){
 	int numImages = 1;
@@ -496,28 +521,38 @@ int main(int argc, char **argv){
 
 	double *timingArray;
 	timingArray = (double *) malloc(numImages * sizeof(double));
+	
+	double *coordinateCounts;
+	coordinateCounts = (double *) malloc(numImages * sizeof(double));
 
 	struct timeval startTime, endTime;
 
 	int i, j;
 	int numRuns = 20;
+	int numCoordinates = 0;
 	//time the transofrmation of all numbers of images up to numImages 
 	for (i = 0; i < numImages; ++i) {
 		int *runsArray = (int *) malloc(numRuns * sizeof(int));
-		
 		for (j = 0; j < numRuns; ++j) {	
 			gettimeofday(&startTime, NULL);
-			run_transformations(data, i + 1);
+			numCoordinates += run_transformations(data, i + 1);
 			gettimeofday(&endTime, NULL);
 			runsArray[j] = (endTime.tv_usec - startTime.tv_usec) + 
 					(endTime.tv_sec - startTime.tv_sec) * 1000000;
 		}
+		coordinateCounts[i] = (double) numCoordinates / 2;
 		int k = 5;
 		timingArray[i] = calc_avg_k_lowest_runs(&runsArray, numRuns, k);
 		free(runsArray);
 	}
-	//write timing data to csv file
-	write_doubles_to_csv_file(timingArray, numImages, "test2");
+
+	//write timing data (character to runtime) to csv file
+	write_doubles_to_csv_file(timingArray, numImages, "testCharacter");
+	
+	//write timing data (coordinates to runtim) to csv file
+	write_double_pairs_to_csv_file(coordinateCounts, timingArray, numImages, 
+		"testCoordinates");
+	
 
 	return 0;
 }
