@@ -21,7 +21,7 @@ int samTo4Bit(const char* input, char * output, char * headers,  long inputsize,
 	int i = 0;
 	while(input[i] == '@'){				//Skip over heading tag information
 		while(input[i] != '\n')
-			i++;
+			++i;
 		++i;
 	}
 
@@ -62,7 +62,7 @@ int samTo4Bit(const char* input, char * output, char * headers,  long inputsize,
 
 }
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile] optional:[numberOfTestRuns][NumberOfRunsToAverage]
 	if(!(argc == 3||argc == 4||argc == 5)){
 		printf("Incompatible number of arguments\n");
 		return -1;
@@ -175,5 +175,6 @@ int main(int argc, char *argv[]){
 	
 	free(input);
 	free(output);
+	free(headers);
 	return 0;
  } 

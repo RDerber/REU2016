@@ -102,9 +102,7 @@ int randGen (char* fileType, int fileSize, char* fileName, int numSeq) {
 	}else if(!strcmp(fileType,"q")||!strcmp(fileType,"Q")){ // FASTQ
 		printf("Sorry, this feature is currently unavailble.");
 	}else if(!strcmp(fileType,"s")||!strcmp(fileType,"S")){ // SAM
-		printf("Sorry, this feature is currently under contruction."); 
-		return 0;
-
+		int j;
 		FILE * ofp;
 		if((ofp = fopen(fileName,"w"))!= NULL){
 			char dateAndTime [80]; 			//Create Header Line
@@ -112,9 +110,64 @@ int randGen (char* fileType, int fileSize, char* fileName, int numSeq) {
 			fprintf(ofp,"%s %s %s %s\n","@Rand\t", dateAndTime, "FN:\t",fileName);	
 			for(i=0; i<10; i++){
 				fprintf(ofp,"%s\t%s%d\t%s%d \n","@SQ","SN:",(rand()%25),"LN:",rand());
-			}	
-			int seqSize = fileSize/numSeq;
-			int remainder = fileSize%numSeq;
+			}
+			int numSeq = fileSize/36;	
+			int seqSize = 36;
+			int remainder = fileSize%seqSize;
+		for(i=0; i<numSeq; i++){
+				
+				fprintf(ofp,"%d\t", i);
+				fprintf(ofp,"%d\t", rand()%150);
+				fprintf(ofp,"%d\t", 10);
+				fprintf(ofp,"%d\t", rand()%120000+70000);
+				fprintf(ofp,"%d\t", 0);
+				fprintf(ofp,"%s\t", "36M");
+				fprintf(ofp,"%c\t", '*');
+				fprintf(ofp,"%d\t", 0);
+				fprintf(ofp,"%d\t", 0);
+				if(i != numSeq-1){
+					for(j=0; j < seqSize; ++j){
+						int letter = rand()%4;
+						if(letter == 0){			
+							fprintf(ofp,"%c",'A');
+						}else if(letter == 1){			
+							fprintf(ofp,"%c",'C');
+						}else if(letter == 2){			
+							fprintf(ofp,"%c",'G');
+						}else if(letter == 3){			
+							fprintf(ofp,"%c",'T');
+						}
+					}
+					fprintf(ofp,"%c",'\t');
+					for(j=0;j <seqSize; ++j){
+						fprintf(ofp,"%c",(rand()%93 + 33)); 
+					}
+					fprintf(ofp,"%c",'\t');
+					fprintf(ofp,"%s\n","NM:i:0");
+				}
+				else{					// Attatch remainder to the last sequence 
+					for(j=0; j < remainder; ++j){
+						int letter = rand()%4;
+						if(letter == 0){			
+							fprintf(ofp,"%c",'A');
+						}else if(letter == 1){			
+							fprintf(ofp,"%c",'C');
+						}else if(letter == 2){			
+							fprintf(ofp,"%c",'G');
+						}else if(letter == 3){			
+							fprintf(ofp,"%c",'T');
+						}
+					}
+					fprintf(ofp,"%c",'\t');
+					for(j=0;j <seqSize+remainder; ++j){
+						fprintf(ofp,"%c",(rand()%93 + 33)); 
+					}
+					fprintf(ofp,"%c",'\t');
+					fprintf(ofp,"%s\n","NM:i:0");
+				}
+			}
+
+
 		
 		fclose(ofp);
 			printf("\"%s\" %s\n",fileName,"SAM file created.");	
@@ -134,7 +187,7 @@ int randGen (char* fileType, int fileSize, char* fileName, int numSeq) {
 
 }
 
-int main (int argc, char ** argv){ // [char fileType] [int fileSize (in bytes)] [FileName]
+int main (int argc, char ** argv){ // [char fileType] [int fileSize (in bytes)] [FileName] [number of sequences]
 
 	if(argc == 4){
 		randGen(argv[1], atoi(argv[2]), argv[3], 1);

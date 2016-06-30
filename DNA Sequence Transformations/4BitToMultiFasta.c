@@ -45,7 +45,7 @@ int fourBit(const char * filename,const char * outFileName, const char * headerF
 	int head;
 	while((head = getc(hfp)) != '\x00')
 		fprintf(ofp,"%c", head);
-	fprintf(ofp,"\n");
+	fprintf(ofp,"\n");	
 	while((byt=getc(ifp))!= EOF){
 	
 		if(byt=='<'){
@@ -56,7 +56,8 @@ int fourBit(const char * filename,const char * outFileName, const char * headerF
 			byt = getc(ifp);
 		}
 
-	bitSeparator(byt, ofp);
+		bitSeparator(byt, ofp);
+	
 	}
 	fclose(ofp);
 	fclose(ifp);
@@ -68,6 +69,7 @@ int main(int argc, char *argv[]){
 		fourBit(argv[1],argv[2], argv[3]);
 		return 0;
         }else{
+		printf("incorrect arguments\n");
 		 return 1;
 	}
  }
