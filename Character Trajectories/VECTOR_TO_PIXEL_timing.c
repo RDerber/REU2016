@@ -528,7 +528,7 @@ int main(int argc, char **argv){
 	struct timeval startTime, endTime;
 
 	int i, j;
-	int numRuns = 20;
+	int numRuns = 50;
 	int numCoordinates = 0;
 	//time the transofrmation of all numbers of images up to numImages 
 	for (i = 0; i < numImages; ++i) {
@@ -541,7 +541,7 @@ int main(int argc, char **argv){
 					(endTime.tv_sec - startTime.tv_sec) * 1000000;
 		}
 		coordinateCounts[i] = (double) numCoordinates / 2;
-		int k = 5;
+		int k = 30;
 		timingArray[i] = calc_avg_k_lowest_runs(&runsArray, numRuns, k);
 		free(runsArray);
 	}
@@ -549,7 +549,7 @@ int main(int argc, char **argv){
 	//write timing data (character to runtime) to csv file
 	write_doubles_to_csv_file(timingArray, numImages, "testCharacter");
 	
-	//write timing data (coordinates to runtim) to csv file
+	//write timing data (coordinates to runtime) to csv file
 	write_double_pairs_to_csv_file(coordinateCounts, timingArray, numImages, 
 		"testCoordinates");
 	
