@@ -16,8 +16,6 @@
 #define FILE_PATH         "pendigits-orig.tes"
 
 #define VECTOR_DIMMENSION                  500
-#define IMAGE_DIMMENSION                    28
-#define SQRT_2                          1.4142
 #define NUM_IMAGES                        4256
 
 
@@ -97,7 +95,8 @@ void fill_above(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 }
 
 
-//Draws the outer points of a circle using the midpoint circle algorithm given its center
+//Draws the outer points of a circle using the midpoint circle algorithm given 
+//its center
 void draw_circle(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
 		double x0, double y0, double radius)
 {
@@ -211,7 +210,8 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 				if (startY == endY) {
 					double y = startY;
 				}
-				draw_circle(pixelArray, VECTOR_DIMMENSION - i, (y), brushRadius);
+				draw_circle(pixelArray, VECTOR_DIMMENSION - i, (y), 
+						brushRadius);
 			}
 		} else {
 			for (i = startX; i <= endX; ++i) {
@@ -219,7 +219,8 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 				if (startY == endY) {
 					double y = startY;
 				}
-				draw_circle(pixelArray, VECTOR_DIMMENSION - i, (y), brushRadius);
+				draw_circle(pixelArray, VECTOR_DIMMENSION - i, (y), 
+						brushRadius);
 			}
 		}
 	} else {
@@ -231,7 +232,8 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 				} else {
 					x = calculate_other_coordinate('x', i, slope, b);
 				}
-				draw_circle(pixelArray, VECTOR_DIMMENSION - (x), i, brushRadius);
+				draw_circle(pixelArray, VECTOR_DIMMENSION - (x), i, 
+						brushRadius);
 			}
 		} else {
 			for (i = startY; i <= endY; ++i) {
@@ -241,7 +243,8 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 				} else {
 					x = calculate_other_coordinate('x', i, slope, b);
 				}
-				draw_circle(pixelArray, VECTOR_DIMMENSION - (x), i, brushRadius);
+				draw_circle(pixelArray, VECTOR_DIMMENSION - (x), i, 
+						brushRadius);
 			}
 		}	
 	}
@@ -262,6 +265,7 @@ struct tag {
 		uint32_t numValues;
 		uint32_t value;
 };
+
 
 //Generates a tiff header with constants and the given pixel count
 struct header generate_tiff_header(unsigned int pixelCount){
@@ -322,11 +326,11 @@ size_t generate_tiff_file(struct header header, struct tag tags[11],
 	}
 	//copy end bytes
 	memcpy(marker, &tiffEnd, sizeof(tiffEnd));
-	//copy the single TIFF file to the current marker in the buffer of TIFF files
+	//copy the single TIFF file to the current marker in the buffer of TIFF 
+	//files
 	memcpy(*fileMarker, buffer, fileLength);
 	//free the memory
 	free(buffer);
-
 	return fileLength;
 }
 
@@ -335,7 +339,8 @@ size_t generate_tiff_file(struct header header, struct tag tags[11],
 //of coordinates in the coordinates buffer. Then creates a TIFF header and tags 
 //based on the dimmensions of the image, and creates the actual TIFF file.
 size_t draw_pixel_array(int *coordinates, size_t numCoordinates, 
-		unsigned char **marker, struct header tiffHeader, struct tag tiffTags[11]){
+		unsigned char **marker, struct header tiffHeader, 
+		struct tag tiffTags[11]){
 	unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION] = {0};
 	int i;
 	if (numCoordinates > 4) {
@@ -353,6 +358,8 @@ size_t draw_pixel_array(int *coordinates, size_t numCoordinates,
 }
 
 
+//Reads in segments of the token and interprets it as a coordinate if it is an 
+//integer. Passes the array to draw_pixel_array
 size_t load_and_plot_coordinates(char *token, unsigned char **marker, 
 		struct header tiffHeader, struct tag tiffTags[11]) {
 
@@ -371,14 +378,15 @@ size_t load_and_plot_coordinates(char *token, unsigned char **marker,
 			tiffHeader, tiffTags);
 	free(coordinates);
 
-	return fileLength;
+	return arraySize;
 }
 
 
+//Writes TIFF files to the provided buffer until the number of images has been 
+//reached
 size_t generate_tiff_buffer(char *data, int numImages, 
 		unsigned char **tiffBuffer, size_t TIFFLength, struct header tiffHeader,
 		struct tag tiffTags[11]){
-	// char *token = malloc(sizeof(char) * 10000);
 	char *token;
 	token = strtok(data, ".");
 	size_t bufferLength = 0;
@@ -387,8 +395,8 @@ size_t generate_tiff_buffer(char *data, int numImages,
 	int i;
 	for (i = 0; i != numImages;) {
 		if (strstr(token, PEN_DOWN) != NULL) {
-			size_t fileLength = load_and_plot_coordinates(token, &marker, tiffHeader, 
-					tiffTags);
+			size_t fileLength = load_and_plot_coordinates(token, &marker, 
+					tiffHeader, tiffTags);
 			bufferLength += fileLength; 
 			marker += fileLength;
 			++i;
@@ -406,7 +414,6 @@ size_t generate_tiff_buffer(char *data, int numImages,
 			firstTime = 0;
 		}
 	}
-	// free(token);
 	return bufferLength;
 }
 
@@ -447,7 +454,7 @@ void run_transformations(char *data, int numImages) {
 }
 
 int sort_compare(const void * a, const void * b) {
-  return ( *(int*)a - *(int*)b );
+	return ( *(int*)a - *(int*)b );
 }
 
 double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
@@ -455,10 +462,10 @@ double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
 	int i, sum = 0;
 	for (i = 0; i < k; ++i) {
 		sum += *(*array + i);
-		// printf("%d\n", sum);
 	}
 	return (double) sum / k;
 }
+
 
 void write_doubles_to_csv_file(double *values, int numValues, char *name) {
 	char fileName[50];
@@ -472,13 +479,11 @@ void write_doubles_to_csv_file(double *values, int numValues, char *name) {
 	}
 	printf("reached\n");
 	fclose(file);
-	
 }
 
 
 int main(int argc, char **argv){
 	int numImages = 1;
-
 	if (atoi(argv[1]) > 4256 || atoi(argv[1]) < 1) {
 		printf("%s\n", "Invalid Number of Images");
 		printf("%s\n", argv[1]);
@@ -489,73 +494,30 @@ int main(int argc, char **argv){
 	char *data;
 	size_t fileLength = load_upen_to_buffer(FILE_PATH, &data);
 
-	// int pixelCount = VECTOR_DIMMENSION * VECTOR_DIMMENSION;
-
-	// //generate header
-	// struct header tiffHeader = generate_tiff_header(pixelCount);
-
-	// //generate tags
-	// enum dataTypes {TYPE_BYTE = 1, TYPE_ASCII, TYPE_SHORT, TYPE_LONG,
-	// 	TYPE_RATIONAL};
-	// struct tag tiffTags[11] = {
-	// 	{TAG_WIDTH,             TYPE_LONG,  1, VECTOR_DIMMENSION}, 
-	// 	{TAG_HEIGHT,            TYPE_LONG,  1, VECTOR_DIMMENSION},
-	// 	{TAG_BITS_PER_SAMPLE,   TYPE_SHORT, 1, 8},
-	// 	{TAG_COMPRESSION,       TYPE_SHORT, 1, 1},
-	// 	{TAG_INTERPRETATION,    TYPE_SHORT, 1, 0},
-	// 	{TAG_STRIP_OFFSETS,     TYPE_LONG,  1, 8},
-	// 	{TAG_ROWS_PER_STRIP,    TYPE_SHORT, 1, VECTOR_DIMMENSION},
-	// 	{TAG_STRIP_BYTE_COUNTS, TYPE_LONG,  1, pixelCount},
-	// 	{TAG_X_RESOLUTION,      TYPE_LONG,  1, 1},
-	// 	{TAG_Y_RESOLUTION,      TYPE_LONG,  1, 1},
-	// 	{TAG_RESOLUTION_UNIT,   TYPE_SHORT, 1, 1}
-	// };
-
-	// size_t TIFFLength = sizeof(struct header) +
-	//                     VECTOR_DIMMENSION * VECTOR_DIMMENSION +
-	//                     NUM_TAGS * sizeof(struct tag) +
-	//                     sizeof(uint16_t)+
-	//                     sizeof(uint32_t);
-	// unsigned char *tiffBuffer = (unsigned char *)malloc(numImages * TIFFLength);
-
-	// printf("TIFFBUFFER %d\n", tiffBuffer);
-
-	// size_t bufferLength = generate_tiff_buffer(data, numImages, &tiffBuffer, 
-	// 		TIFFLength, tiffHeader, tiffTags);
-
 	double *timingArray;
 	timingArray = (double *) malloc(numImages * sizeof(double));
 
 	struct timeval startTime, endTime;
 
 	int i, j;
-	int numRuns = 50;
+	int numRuns = 20;
+	//time the transofrmation of all numbers of images up to numImages 
 	for (i = 0; i < numImages; ++i) {
 		int *runsArray = (int *) malloc(numRuns * sizeof(int));
+		
 		for (j = 0; j < numRuns; ++j) {	
 			gettimeofday(&startTime, NULL);
 			run_transformations(data, i + 1);
-			// sleep(1);
 			gettimeofday(&endTime, NULL);
 			runsArray[j] = (endTime.tv_usec - startTime.tv_usec) + 
 					(endTime.tv_sec - startTime.tv_sec) * 1000000;
-			// printf("took%d\n", runsArray[j]);
 		}
-		int k = 30;
+		int k = 5;
 		timingArray[i] = calc_avg_k_lowest_runs(&runsArray, numRuns, k);
 		free(runsArray);
-		// printf("%f\n", timingArray[i]);
 	}
+	//write timing data to csv file
+	write_doubles_to_csv_file(timingArray, numImages, "test2");
 
-	// printf("%f\n", timingArray[0]);
-	printf("LASTELEMENT %f", timingArray[numImages - 1]);
-	write_doubles_to_csv_file(timingArray, numImages, "test1");
-	// run_transformations(data, numImages);
-
-
-
-	// FILE *file = fopen("test", "wb");
-	// fwrite(tiffBuffer, sizeof(unsigned char), bufferLength, file);
-	// fclose(file); 
 	return 0;
 }
