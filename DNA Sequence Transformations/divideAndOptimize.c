@@ -100,9 +100,9 @@ int compare (unsigned char* input, int inputSize, unsigned char * startingInput)
 	}
 
 	if(count1 >= inputSize/2 && count2 >= inputSize/2){
-		printf("Transformations:\nInput:\tOutput:\n");
-		for(i=0;i<inputSize;++i)
-			printf("%d%s%d\n",startingInput[i],"   ->   ", input[i]);
+//		printf("Transformations:\nInput:\tOutput:\n");
+//		for(i=0;i<inputSize;++i)
+//			printf("%d%s%d\n",startingInput[i],"   ->   ", input[i]);
 		return count1;
 	}else return 0;
 }
@@ -116,7 +116,7 @@ int boolify(unsigned char a,unsigned char b, unsigned char *opsSeq,unsigned int 
 			numSeq[maxNumOps-2] = ~check;
 			opsSeq[maxNumOps-1] = lsr;
 			numSeq[maxNumOps-1] = i;
-			printf("%s %d","boolify:",(a&check)>>i);
+//			printf("%s %d","boolify:",(a&check)>>i);
 			return a&check;
 		}
 	}
@@ -218,14 +218,14 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 	}
 
 // Send each group off onto separate branches with empty opsSeq and numSeq arrays to fill in
-	printf("%s%d\n","group1Size: ",group1Size);
-	printf("%s%d\n","group2Size: ",group2Size);
-	for(i=0; i<group1Size; ++i){
-		printf("%s %d\n","group1:", group1[i]);
-	}
-	for(i=0; i<group2Size; ++i){
-		printf("%s %d\n","group2:", group2[i]);
-	}
+//	printf("%s%d\n","group1Size: ",group1Size);
+//	printf("%s%d\n","group2Size: ",group2Size);
+//	for(i=0; i<group1Size; ++i){
+//		printf("%s %d\n","group1:", group1[i]);
+//	}
+//	for(i=0; i<group2Size; ++i){
+//		printf("%s %d\n","group2:", group2[i]);
+//	}
 
 	unsigned char startingGroup1[group1Size];
 	unsigned char startingGroup2[group2Size];
@@ -330,7 +330,7 @@ int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int 
 		i = i*2 + direction;
 	}
 	int output = numArray[i][maxNumOps-1];
-	printf("%s %c %s %c\n","Input:", input, "Output:", output);
+//	printf("%s %c %s %c\n","Input:", input, "Output:", output);
 	return output;
 }
 
@@ -413,9 +413,9 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	}
 
 	if(success == 0){
-		printf("Sequence Found: \n");
+//		printf("Sequence Found: \n");
 
-		treePrint(opArray, numArray, numBranches, maxNumOps, numOps); 
+//		treePrint(opArray, numArray, numBranches, maxNumOps, numOps); 
 		
 
 //Map codons to amino acids
@@ -513,26 +513,6 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	free(readIn);
 	free(writeOut);
 
-//		printf("%s %d\n","Number of branches:", numBranches);
-//		for(i=1; i <numBranches; ++i){
-//			printf("%s %d\n\t","Branch: ", i);
-//
-//			for(j=maxNumOps-numOps[i]; j<maxNumOps; ++j){
-//				printf("%c",operations[opArray[i][j]]); 
-//				printf("%d ",numArray[i][j]); 
-//
-//			}
-//			printf("\n");
-//
-//		}
-//		printf("%s%d\n", "Number of Operations: ", numOps);
-//		for(i=0;i < numOps[j]; ++i){
-//			printf("%d%c ",i,':');
-//			int opit = maxNumOps - numOps + i;
-//			if(opsSeq[opit] == '&') numSeq[opit] = ~numSeq[opit];
-//			printf("%c %d",opsSeq[opit], numSeq[opit]);
-//			printf("\n");
-//		}
 	} else printf("no sequence found");
 	for(i=0;i < (numBranches); ++i){
 		
