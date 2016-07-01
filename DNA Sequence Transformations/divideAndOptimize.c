@@ -256,7 +256,7 @@ void treePrint(char** opArray, unsigned int ** numArray, size_t numBranches, int
 
 }
 
-int codonIdentifier(FILE * ifp,unsigned char *input,unsigned char *output){
+int keyIdentifier(FILE * ifp,unsigned char *input,unsigned char *output){
 	char byt; 
 	int inputCount = 0; 
 	int outputCount = 0;
@@ -266,26 +266,52 @@ int codonIdentifier(FILE * ifp,unsigned char *input,unsigned char *output){
 			if(byt != '>'){
 				byt = byt & '\x06';
 				byt = byt << 3;
-		
-				char temp = getc(ifp);
-			
-				temp =  temp & '\x06';
-				temp = temp <<1; 
-				byt = byt | temp; 
-			
-
-				temp = getc(ifp);
-				temp =  temp & '\x06';
-				temp = temp >> 1; 
-				byt = byt | temp; 
-			
-				input[inputCount++] = byt; 
 			}else{
 				byt = getc(ifp);
-				for(outputCount; outputCount < inputCount; ++outputCount){
+				for(outputCount; outputCount < inputCount; ++outputCount)
 					output[outputCount] = byt;
-				}
+				continue;
 			}
+			char temp;
+			while((temp = getc(ifp)) == ' ' || temp == '\n' || temp == '\r' || temp == ','){}
+			temp =  temp & '\x06';
+			temp = temp <<1; 
+			byt = byt | temp; 
+
+			while((temp = getc(ifp)) == ' ' || temp == '\n' || temp == '\r' || temp == ','){}
+			temp =  temp & '\x06';
+			temp = temp >> 1; 
+			byt = byt | temp; 
+			
+			input[inputCount++] = byt; 
+		}
+	}
+	return inputCount;
+} 
+
+int codonIdentifier(FILE * ifp,unsigned char *input){
+	char byt; 
+	char temp;
+	int inputCount = 0; 
+	while((byt=getc(ifp))!= '\n'){}; //Remove header line - Can be added into the output file or separate header file if needed
+
+	while((byt=getc(ifp))!= EOF){
+	
+		if(byt&'\x40'){
+			byt = byt & '\x06';
+			byt = byt << 3;
+			
+			while(!((temp = getc(ifp)) & '\x40')){}
+			temp =  temp & '\x06';
+			temp = temp <<1; 
+			byt = byt | temp; 
+
+			while(!((temp = getc(ifp)) & '\x40')){}
+			temp =  temp & '\x06';
+			temp = temp >> 1; 
+			byt = byt | temp; 
+			
+			input[inputCount++] = byt; 
 		}
 	}
 	return inputCount;
@@ -298,8 +324,6 @@ int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int 
 		direction = input;
 		for(j=0;j < maxNumOps;++j){
 			direction = operate(direction,((opArray[i])[j]),((numArray[i])[j]));
-		//	printf("%s%d %s%d\n","opArray[i][j]: ",opArray[i][j], "numArray[i][j] ",numArray[i][j]);
-		//	printf("%s%d %s%d\n","j: ",j, "direction: ",direction);
 		}
 	//	printf("%s%d %s%d\n","i: ",i, "direction: ",direction);
 		fflush(stdout);
@@ -312,10 +336,7 @@ int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int 
 
 int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs][number of timing values to retain]
 	int i,j; 
-//	char input[] = {'\x16','\x15','\x14','\x13','\x12','\x11','\x10','\x0f'};
-	
-//	unsigned char input[] = {'\x01','\x05','\x10','\x15','\x20','\x25','\x30','\x09'};
-//	unsigned char output[] = {'\x02','\x07','\x12','\x17','\x22','\x27','\x32','\x37'};
+
 	int inputSize = 0; 
 	FILE * ifp;
 	ifp = fopen(argv[1],"r");
@@ -342,7 +363,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	unsigned char * input = malloc(inputSize * sizeof(char));
 	unsigned char * output = malloc(inputSize * sizeof(char));
 	
-	inputSize = codonIdentifier(ifp, input, output);
+	inputSize = keyIdentifier(ifp, input, output);
 	fclose(ifp);
 //	int inputSize = 128;
 //	unsigned char *input = malloc(sizeof(char)*inputSize);
@@ -395,7 +416,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		printf("Sequence Found: \n");
 
 		treePrint(opArray, numArray, numBranches, maxNumOps, numOps); 
-
+		
 
 //Map codons to amino acids
 		
@@ -427,8 +448,8 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	}
 
 	// Tranlate Read File to codon 2-Bit format
-		char empty[1] = {};
-		readSize = codonIdentifier(ifp, readIn, empty);
+
+		readSize = codonIdentifier(ifp, readIn);
 
 		// Create Output Buffer;
 	char * writeOut = malloc(sizeof(char)* (readSize+1));
@@ -437,9 +458,11 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	float *times;
 	int runs = 0;
 	int numTimes = 0;
+	int i, k;
 	if(argc == 4){
 		for(i=0;i<readSize; ++i){
-		writeOut[i] = evaluate(readIn[i],opArray,numArray,maxNumOps);
+				writeOut[k] = evaluate(readIn[i],opArray,numArray,maxNumOps);
+			
 		}
 	}
 	if(argc == 5){	//if a number of runs is given but no number of minimum times, default number of min times is 3
@@ -447,11 +470,10 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		numTimes = 3;
 		times = calloc(runs, sizeof(float)); 
 		struct timeval time0, time1; 
-		int i;
 		for(i=0;i<runs;i++){ // Record time of each run
 			gettimeofday(&time0,NULL);
-			for(i=0;i<readSize; ++i){
-				writeOut[i] = evaluate(readIn[i],opArray,numArray,maxNumOps);
+			for(k=0;k<readSize; ++k){
+					writeOut[k] = evaluate(readIn[k],opArray,numArray,maxNumOps);	
 			}
 			gettimeofday(&time1,NULL);
 			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
@@ -460,19 +482,17 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	}
 	if(argc == 6){ //if both number of runs and the number of minimum times is given
 		runs = atoi(argv[4]);
-        numTimes = atoi(argv[5]);
-        times = calloc(runs, sizeof(float));
-        struct timeval time0, time1; 
-        int i;
-        for(i=0;i<runs;i++){ // Record time of each run
-                gettimeofday(&time0,NULL);
-                for(i=0;i<readSize; ++i){
-					writeOut[i] = evaluate(readIn[i],opArray,numArray,maxNumOps);
-				}
-                gettimeofday(&time1,NULL);
-                times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-                }
-
+        	numTimes = atoi(argv[5]);
+		times = calloc(runs, sizeof(float));
+		struct timeval time0, time1; 
+		for(i=0;i<runs;i++){ // Record time of each run
+	                gettimeofday(&time0,NULL);
+	                for(k=0;k<readSize; ++k){
+					writeOut[k] = evaluate(readIn[k],opArray,numArray,maxNumOps);
+			}
+	                gettimeofday(&time1,NULL);
+	                times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+		}
 	}
 
 	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
