@@ -291,8 +291,8 @@ int write_bit_stream (struct bit_stream *bs, uint64_t src, int bits)
 		bs->bit_pos++;
 	}
 	
-	printf("wrote %d bits to stream (now at byte %d bit %d)\n", 
-		bits, bs->byte_pos, bs->bit_pos);
+	//printf("wrote %d bits to stream (now at byte %d bit %d)\n", 
+	//	bits, bs->byte_pos, bs->bit_pos);
 
 	return 0;
 }
@@ -496,8 +496,8 @@ void find_huffcode (struct huff_list hl[256], struct mh_node *base, int buf, int
 		buf &= ~(1 << pos);
 		find_huffcode(hl, base->left, buf, pos + 1);
 	} 
-	
-	if (base->right) {
+	 
+	if (base->right) { 
 		buf |= (1 << pos);
 		find_huffcode(hl, base->right, buf, pos + 1);
 	}
@@ -583,7 +583,8 @@ void huff_encode (uint8_t *src, int num, struct huff_list **hlist)
 {
 #endif
 struct gz_header {
-	uint8_t id[2];
+	uint8_t id0;
+	uint8_t id1;
 	uint8_t comp_method;
 	uint8_t flags;
 	uint32_t mtime;
@@ -596,23 +597,110 @@ struct gz_trailer {
 	uint32_t isize;
 };
 
+/*
+    		 Extra               Extra               Extra
+            Code Bits Length(s) Code Bits Lengths   Code Bits Length(s)
+            ---- ---- ------     ---- ---- -------   ---- ---- -------
+             257   0     3       267   1   15,16     277   4   67-82
+             258   0     4       268   1   17,18     278   4   83-98
+             259   0     5       269   2   19-22     279   4   99-114
+             260   0     6       270   2   23-26     280   4  115-130
+             261   0     7       271   2   27-30     281   5  131-162
+             262   0     8       272   2   31-34     282   5  163-194
+             263   0     9       273   3   35-42     283   5  195-226
+             264   0    10       274   3   43-50     284   5  227-257
+             265   1  11,12      275   3   51-58     285   0    258
+             266   1  13,14      276   3   59-66
+*/
+
+struct huff_len_table {
+	uint16_t len_code;
+	uint16_t num_exbits;
+	uint16_t ext_val;
+};
+
+void make_hufftable (struct huff_len_table hlt[259])
+{
+	int length = 3, n, code;
+	static const short lext[29] = 
+		{ 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
+		  3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0 };
+
+	memset(hlt, 0, sizeof(struct huff_len_table) * 259);
+
+	for (code = 0; code < 29-1; code++) {
+		for (n = 0; n < (1 << lext[code]); n++) {
+			hlt[length].len_code = 257 + code;
+			hlt[length].num_exbits = lext[code];
+			hlt[length].ext_val = (length - 3) & ((1 << lext[code]) - 1);
+			
+			length++;
+		}
+	} 
+	
+	hlt[length - 1].len_code = 285;
+	hlt[length - 1].num_exbits = hlt[length - 1].ext_val = 0;
+}
+
+void encode_hlist (struct huff_list *hlist, int num)
+{
+	struct huff_len_table hlt[259];
+	int len;
+	
+	make_hufftable(hlt);
+	
+	for (len = 0; len < 259; len++) {
+		printf("len %d = code %d with %d extra bits (%d)\n", len, hlt[len].len_code, 
+			hlt[len].num_exbits, hlt[len].ext_val);	
+	}
+	
+	
+}
+
+/* gnu plot */
 int write_gzdata_blocked (unsigned char *src, int len, int fd, int blk_size)
 {
 	int ret, pos = 0, toc;
 	uint16_t lval;
-
+	
 	while (pos < len) {
 		if ((toc = (len - pos)) > blk_size)
 			toc = blk_size;
-
+			
+		/*struct huff_list *hlist;
+		huff_encode(src + pos, toc, &hlist);
+		
+		encode_hlist(hlist, 256);
+	
+		print_huffcodes(hlist, 256);
+	
+		free(hlist);*/
+		/*{struct bit_stream *bs;
+		int i;
+		
+		alloc_bit_stream(&bs, toc * 2);
+		
+		write_bit_stream(bs, (toc < blk_size) ? 0 : 1, 1);
+		write_bit_stream(bs, 0, 2);
+		
+		write_bit_stream(bs, (uint16_t)len, 16);
+		
+		if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
+			return -1;
+		
+		
+		//for (i = 0; i < toc; i++) 
+		//	write_bit_stream(bs, hlist[src[i]].hcode, hlist[src[i]].hc_len);
+		
+		
+		printf("%d bytes to %d\n", toc, bs->byte_pos);
+	
+		free_bit_stream(bs);
+		}*/
 		lval = (uint16_t)len;
 		if ((ret = write(fd, &lval, sizeof(uint16_t))) != sizeof(uint16_t))
 			return -1;		
 			
-		lval = ~((uint16_t)len);
-		if ((ret = write(fd, &lval, sizeof(uint16_t))) != sizeof(uint16_t))
-			return -1;
-
 		if ((ret = write(fd, src + pos, toc)) != toc)
 			return -1;
 			
@@ -637,8 +725,8 @@ int write_gzfile (const char *src, const char *dst)
 		return -1;
 	}
 	
-	head.id[0] = 0x1f;
-	head.id[1] = 0x8b;
+	head.id0 = 0x1f;
+	head.id1 = 0x8b;
 	
 	head.comp_method = 0;
 	head.flags = 0;
@@ -659,7 +747,7 @@ int write_gzfile (const char *src, const char *dst)
 	}
 	
 	if (write(src_fd, &head, sizeof(head)) != sizeof(head) ||
-		write_gzdata_blocked(buf, len, src_fd, 99999999) < 0 ||
+		write_gzdata_blocked(buf, len, src_fd, 1024000) < 0 ||
 		write(src_fd, &gtl, sizeof(gtl)) != sizeof(gtl)) {
 		close(src_fd);
 		free(buf);
@@ -678,8 +766,75 @@ int write_gzfile (const char *src, const char *dst)
 }
 #endif
 
+/****************************************************************************************/
+/*	gzip writer	*/
+/****************************************************************************************/
+#define LA_SIZ	8
+#define WIN_SIZ	256
+
+/* bring plot of data size vs time */
+
+void get_longest_match (uint8_t *in, int bytes, int cp, int *dist, int *len)
+{
+	int eob = (cp + LA_SIZ) > (bytes + 1) ? (bytes + 1) : (cp + LA_SIZ);
+	int i, l, a, m, p;
+	int reps, last;
+	uint8_t subs[WIN_SIZ];
+	uint8_t match[WIN_SIZ];
+		
+	*dist = *len = -1;
+	
+	for (i = cp + 1; i < eob; i++) {
+		a = i - cp;
+		l = (cp - WIN_SIZ) < 0 ? 0 : (cp - WIN_SIZ);
+		
+		memset(subs, 0, sizeof(subs));
+		memcpy(subs, in + cp, a);
+
+		for (; l < cp; l++) {
+			memset(match, 0, sizeof(match));
+			p = cp - l;
+			
+			reps = a / p;
+			last = a % p;
+
+			for (m = 0; m < reps; m++)
+				memcpy(match + (m * p), in + l, p);
+
+			if (last)
+				memcpy(match + (m * p), in + l, last);
+
+			if (!strcmp((char *)match, (char *)subs) && a > *len) {
+				*dist = p;
+				*len = a;
+			}
+		}
+	}
+}
+void lz77 (uint8_t *in, int bytes, uint8_t *out, int win_size)
+{
+	int i = 0, length, pos;
+
+	while (i < bytes) {
+		get_longest_match(in, bytes, i, &pos, &length);
+		
+		if (length > 0) {
+			printf("<%d, %d, %c>, ", pos, length, *(in + i + length + 1));
+			i += length + 1;
+		} else {
+			printf("<0, %d>, ", in[i]);
+			i++;
+		}
+	}
+	
+	printf("\n");
+}
+
 int main (void)
 {
+
+	encode_hlist (NULL, 0);
+
 	uint8_t test[17] = {1, 2, 1, 2, 3, 4, 4, 4, 5, 6, 7, 7, 7, 7, 7, 7, 10};
 	struct huff_list *hlist;
 	huff_encode(test, 17, &hlist);
@@ -687,15 +842,20 @@ int main (void)
 	print_huffcodes(hlist, 17);
 	
 	free(hlist);
-
+ 
 	test_bit_stream();
 	
+	uint8_t out[256];
+	uint8_t *in = (uint8_t *)"aacaacabcabaaac";
+	
+	lz77(in, strlen((char *)in), out, 1);
+	//(0, 0, "a") (1, 1, "c") (3, 4, "b") (3, 3, "a") (12, 3, "$"). 
 	/* .tar encoder works, huffman encoder works, bitstream works, gzip not done yet */
 	
-	return 0;
+	//return 0;
 	
-	make_tar_file("/Users/nobody1/Desktop/work", 
-				"/Users/nobody1/Desktop/test.tar");
+	//make_tar_file("/Users/nobody1/Desktop/work", 
+	//			"/Users/nobody1/Desktop/test.tar");
 				
 	return write_gzfile("/Users/nobody1/Desktop/test.tar",
 				"/Users/nobody1/Desktop/test1.gz");
