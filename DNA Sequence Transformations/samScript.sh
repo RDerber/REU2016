@@ -2,109 +2,96 @@
 
 #Recompile all files before running timing function
 gcc jsonTitle.c -o jsonTitle
-gcc writeJson.c FastaTo2Bit.c -o FastaTo2Bit
-gcc writeJson.c MultiFastaTo4Bit.c -o MultiFastaTo4Bit 
+gcc writeJson.c SamTo2Bit.c -o SamTo2Bit
 
 today=$(date +%Y-%m-%d-%T)
-mkdir ./tests/fastaTests/$today
+mkdir ./tests/samTests/$today
 
 
 #Remove old timeStats.txt files
 #rm timeStats.json
-#rm ft2bTimeStats.json
+#rm sam2BTimeStats.json
 #rm mt4bTimeStats.json
 
-#Run Fasta To 2 Bit Tests and Store in timeStats.txt
-./FastaTo2Bit tests/fastaTests/fasta100.fasta tests/fastaTests/$today/100Out.txt 100 3
+#Run SAM To 2 Bit Tests and Store in timeStats.txt
+./SamTo2Bit tests/samTests/sam100.SAM tests/samTests/$today/100Out.txt tests/samTests/$today/100headers.txt tests/samTests/$today/100positions.txt 100 3
 ./jsonTitle timing.json "100 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
  # Add new line character inbetween files when appending
 
-./FastaTo2Bit tests/fastaTests/fasta500.fasta tests/fastaTests/$today/500Out.txt 100 3
+./SamTo2Bit tests/samTests/sam500.SAM tests/samTests/$today/500Out.txt tests/samTests/$today/500headers.txt tests/samTests/$today/500positions.txt 100 3
 ./jsonTitle timing.json "500 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
-./FastaTo2Bit tests/fastaTests/fasta1k.fasta tests/fastaTests/$today/1kOut.txt 100 3
+./SamTo2Bit tests/samTests/sam1k.SAM tests/samTests/$today/1kOut.txt tests/samTests/$today/1kheaders.txt tests/samTests/$today/1kpositions.txt 100 3
 ./jsonTitle timing.json "1k bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
-./FastaTo2Bit tests/fastaTests/fasta5k.fasta tests/fastaTests/$today/5kOut.txt 100 3
+./SamTo2Bit tests/samTests/sam5k.SAM tests/samTests/$today/5kOut.txt tests/samTests/$today/5kheaders.txt tests/samTests/$today/5kpositions.txt 100 3
 ./jsonTitle timing.json "5k bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
-./FastaTo2Bit tests/fastaTests/fasta10k.fasta tests/fastaTests/$today/10kOut.txt 100 3
+./SamTo2Bit tests/samTests/sam10k.SAM tests/samTests/$today/10kOut.txt tests/samTests/$today/10kheaders.txt tests/samTests/$today/10kpositions.txt 100 3
 ./jsonTitle timing.json "10k bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
-./FastaTo2Bit tests/fastaTests/fasta50k.fasta tests/fastaTests/$today/50kOut.txt 100 3
+./SamTo2Bit tests/samTests/sam50k.SAM tests/samTests/$today/50kOut.txt tests/samTests/$today/50kheaders.txt tests/samTests/$today/50kpositions.txt 100 3
 ./jsonTitle timing.json "50k bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
-./FastaTo2Bit tests/fastaTests/fasta100k.fasta tests/fastaTests/$today/100kOut.txt 100 3
+./SamTo2Bit tests/samTests/sam100k.SAM tests/samTests/$today/100kOut.txt tests/samTests/$today/100kheaders.txt tests/samTests/$today/100kpositions.txt 100 3
 ./jsonTitle timing.json "100k bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
-./FastaTo2Bit tests/fastaTests/fasta500k.fasta tests/fastaTests/$today/500kOut.txt 100 3
+./SamTo2Bit tests/samTests/sam500k.SAM tests/samTests/$today/500kOut.txt tests/samTests/$today/500kheaders.txt tests/samTests/$today/500kpositions.txt 100 3
 ./jsonTitle timing.json "500k bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
-./FastaTo2Bit tests/fastaTests/fasta1mil.fasta tests/fastaTests/$today/1milOut.txt 100 3
+./SamTo2Bit tests/samTests/sam1mil.SAM tests/samTests/$today/1milOut.txt tests/samTests/$today/1milheaders.txt tests/samTests/$today/1milpositions.txt 100 3
 ./jsonTitle timing.json "1mil bases"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
-#./FastaTo2Bit tests/fastaTests/fasta5mil.fasta tests/fastaTests/$today/5milOut.txt 100 3
+#./SamTo2Bit tests/samTests/sam5mil.SAM tests/samTests/$today/5milOut.txt tests/samTests/$today/headers.txt tests/samTests/$today/100positions.txt 100 3
 #./jsonTitle timing.json "5mil bases"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+#cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
-#./FastaTo2Bit tests/fastaTests/fasta10mil.fasta tests/fastaTests/$today/10milOut.txt 100 3
+#./SamTo2Bit tests/samTests/sam10mil.SAM tests/samTests/$today/10milOut.txt tests/samTests/$today/headers.txt tests/samTests/$today/100positions.txt 100 3
 #./jsonTitle timing.json "10mil bases"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+#cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
-#./FastaTo2Bit tests/fastaTests/fasta15mil.fasta tests/fastaTests/$today/15milOut.txt 100 3
+#./SamTo2Bit tests/samTests/SAM15mil.SAM tests/samTests/$today/15milOut.txt tests/samTests/$today/headers.txt tests/samTests/$today/100positions.txt 100 3
 #./jsonTitle timing.json "15mil bases"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+#cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
-#./FastaTo2Bit tests/fastaTests/fasta20mil.fasta tests/fastaTests/$today/20milOut.txt 100 3
+#./SamTo2Bit tests/samTests/SAM20mil.SAM tests/samTests/$today/20milOut.txt tests/samTests/$today/headers.txt tests/samTests/$today/100positions.txt 100 3
 #./jsonTitle timing.json "20mil bases"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+#cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
-#Add Title to ft2bTimeStats.txt file
-./jsonTitle ./tests/fastaTests/$today/ft2bTimeStats.json "FastaTo2Bit"  
-
-#Run MultiFasta to 4Bit
-#./MultiFastaTo4Bit multiFasta 4Bit.txt 100 3
-#./jsonTitle timing.json "multiFasta" 
-#cat timing.json >> mt4bTimeStats.json
-
-#Add Title to mt4bTimeStats
-#./jsonTitle mt4bTimeStats.json "MultiFastaTo4Bit" "-t"
-
-#echo "" >> ft2bTimeStats.json
-#cat ft2bTimeStats.json >> timeStats.json
-#cat mt4bTimeStats.json >> timeStats.json
+#Add Title to sam2BTimeStats.txt file
+./jsonTitle ./tests/samTests/$today/sam2BTimeStats.json "SamTo2Bit"  
 
 #Add Final Title
 
 #./jsonTitle timeStats.json "Final" "-f"
 
-./jsonToCSV ./tests/fastaTests/$today/ft2bTimeStats.json ./tests/fastaTests/$today/ft2bTimeStats.csv
+./jsonToCSV ./tests/samTests/$today/sam2BTimeStats.json ./tests/samTests/$today/sam2BTimeStats.csv
 
-plotfile="ft2bTimeStats.csv"
-output="fastaTo2Bit.png"
-folder="./tests/fastaTests/$today"
+plotfile="sam2BTimeStats.csv"
+output="samTo2Bit.png"
+folder="./tests/samTests/$today"
 graph="$folder/$plotfile"
 touch $folder/$output
 outpath="$folder/$output"

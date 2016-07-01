@@ -59,7 +59,7 @@ int samTo4Bit(const char* input, char * output, char * headers, int* positions, 
 
 }
 
-int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][headerFile] optional:[numberOfTestRuns][NumberOfRunsToAverage]
+int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][headerFile][positionFile] optional:[numberOfTestRuns][NumberOfRunsToAverage]
 	if(!(argc == 5||argc == 6||argc == 7)){
 		printf("Incompatible number of arguments\n");
 		return -1;

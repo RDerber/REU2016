@@ -14,4 +14,4 @@ set output outfile
 set title graphName
 set xlabel "number of bases"
 set ylabel "transform time"
-plot graph with lines
+plot graph with linespoints
