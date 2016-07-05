@@ -421,104 +421,106 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 //Map codons to amino acids
 		
 		// Create Input Memory Buffer //
-	char *readIn = NULL;
-	FILE *ifp = fopen(argv[2],"r");
-	long readSize = 0;
-	if(ifp != NULL){
-	 // Go to the end of the file //
-	if(fseek(ifp, 0L, SEEK_END)== 0){
-		// Get the size of the file. //
-
-		readSize = ftell(ifp);
-			if (readSize == -1) {
-				fputs("Error finding size of file", stderr);
-			}
+		char *readIn = NULL;
+		FILE *ifp = fopen(argv[2],"r");
+		long readSize = 0;
+		if(ifp != NULL){
+		 // Go to the end of the file //
+		if(fseek(ifp, 0L, SEEK_END)== 0){
+			// Get the size of the file. //
 	
+			readSize = ftell(ifp);
+				if (readSize == -1) {
+					fputs("Error finding size of file", stderr);
+				}
+		
+		
+			readIn = malloc (sizeof(char) * (readSize+1));
 	
-		readIn = malloc (sizeof(char) * (readSize+1));
-
-			// Return to start of file //
-			if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
-				fputs("Error returning to start of file", stderr);
+				// Return to start of file //
+				if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
+					fputs("Error returning to start of file", stderr);
+				}
 			}
 		}
-	}
-	else{
-		fputs("Error reading input file", stderr);
-	}
-
-	// Tranlate Read File to codon 2-Bit format
-
+		else{
+			fputs("Error reading input file", stderr);
+		}
+	
+		// Tranlate Read File to codon 2-Bit format
+	
 		readSize = codonIdentifier(ifp, readIn);
-
+		fclose(ifp);
 		// Create Output Buffer;
-	char * writeOut = malloc(sizeof(char)* (readSize+1));
-	int writeSize = readSize;
+		char * writeOut = malloc(sizeof(char)* (readSize+1));
+		int writeSize = readSize;
+		
+		float *times;
+		int runs = 0;
+		int numTimes = 0;
+		int i, k;
+		if(argc == 4){
+			for(i=0;i<readSize; ++i){
+					writeOut[i] = evaluate(readIn[i],opArray,numArray,maxNumOps);
+				
+			}
+		}
+		if(argc == 5){	//if a number of runs is given but no number of minimum times, default number of min times is 3
+			runs = atoi(argv[4]);
+			numTimes = 3;
+			times = calloc(runs, sizeof(float)); 
+			struct timeval time0, time1; 
+			for(i=0;i<runs;i++){ // Record time of each run
+				gettimeofday(&time0,NULL);
+				for(k=0;k<readSize; ++k){
+						writeOut[k] = evaluate(readIn[k],opArray,numArray,maxNumOps);	
+				}
+				gettimeofday(&time1,NULL);
+				times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+			}
 	
-	float *times;
-	int runs = 0;
-	int numTimes = 0;
-	int i, k;
-	if(argc == 4){
-		for(i=0;i<readSize; ++i){
-				writeOut[k] = evaluate(readIn[i],opArray,numArray,maxNumOps);
-			
 		}
-	}
-	if(argc == 5){	//if a number of runs is given but no number of minimum times, default number of min times is 3
-		runs = atoi(argv[4]);
-		numTimes = 3;
-		times = calloc(runs, sizeof(float)); 
-		struct timeval time0, time1; 
-		for(i=0;i<runs;i++){ // Record time of each run
-			gettimeofday(&time0,NULL);
-			for(k=0;k<readSize; ++k){
-					writeOut[k] = evaluate(readIn[k],opArray,numArray,maxNumOps);	
+		if(argc == 6){ //if both number of runs and the number of minimum times is given
+			runs = atoi(argv[4]);
+        		numTimes = atoi(argv[5]);
+			times = calloc(runs, sizeof(float));
+			struct timeval time0, time1; 
+			for(i=0;i<runs;i++){ // Record time of each run
+		                gettimeofday(&time0,NULL);
+		                for(k=0;k<readSize; ++k){
+						writeOut[k] = evaluate(readIn[k],opArray,numArray,maxNumOps);
+				}
+		                gettimeofday(&time1,NULL);
+		                times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 			}
-			gettimeofday(&time1,NULL);
-			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 		}
-
-	}
-	if(argc == 6){ //if both number of runs and the number of minimum times is given
-		runs = atoi(argv[4]);
-        	numTimes = atoi(argv[5]);
-		times = calloc(runs, sizeof(float));
-		struct timeval time0, time1; 
-		for(i=0;i<runs;i++){ // Record time of each run
-	                gettimeofday(&time0,NULL);
-	                for(k=0;k<readSize; ++k){
-					writeOut[k] = evaluate(readIn[k],opArray,numArray,maxNumOps);
-			}
-	                gettimeofday(&time1,NULL);
-	                times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+	
+		// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
+		if(argc > 4){
+			if(write_time_file(times, runs, numTimes,readSize) < 0)
+				printf("error writing time file\n");
+			free(times);
 		}
-	}
-
-	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
-	if(argc > 4){
-		if(write_time_file(times, runs, numTimes,readSize) < 0)
-			printf("error writing time file\n");
-		free(times);
-	}
-	// Writing output buffer to specified output file//
-	FILE *ofp = fopen(argv[3],"w");
-	if(ofp == NULL){
-		printf("Error creating output file\n");
-		return -1;
-        }else{
-		 fwrite(writeOut, 1, writeSize, ofp);
-		fclose(ofp);
+		// Writing output buffer to specified output file//
+		FILE *ofp = fopen(argv[3],"w");
+		if(ofp == NULL){
+			printf("Error creating output file\n");
+			return -1;
+        	}else{
+			fwrite(writeOut, 1, writeSize, ofp);
+			fclose(ofp);
 		}
-	free(readIn);
-	free(writeOut);
-
+		
+		free(readIn);
+		free(writeOut);
 	} else printf("no sequence found");
 	for(i=0;i < (numBranches); ++i){
 		
 		free(opArray[i]);
 		free(numArray[i]);
 	}
+
+	
 	free(opArray);
 	free(numArray);
 	return success;

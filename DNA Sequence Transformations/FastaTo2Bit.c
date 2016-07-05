@@ -107,31 +107,31 @@ int main(int argc, char *argv[]){
 	FILE *ifp = fopen(argv[1],"r");
 	long inputsize = 0;
 	if(ifp != NULL){
-	 // Go to the end of the file //
-	if(fseek(ifp, 0L, SEEK_END)== 0){
+		 // Go to the end of the file //
+		if(fseek(ifp, 0L, SEEK_END)== 0){
 		// Get the size of the file. //
-
-		inputsize = ftell(ifp);
-		if (inputsize == -1) {
-			fputs("Error finding size of file", stderr);
-		 }
 	
-		//Allocate our buffer of that size +1 for null termination. //
-		input = malloc (sizeof(char) * (inputsize+1));
+			inputsize = ftell(ifp);
+			if (inputsize == -1) {
+				fputs("Error finding size of file", stderr);
+			 }
 		
-
-		// Return to start of file //
-		if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
-			fputs("Error returning to start of file", stderr);
-		}
-
-		//Read the entire file into memory//
-		size_t newLen = fread(input, sizeof(char), inputsize, ifp);
-		if(newLen == 0){
-			fputs("Error reading file", stderr);
-		} else {
-			input[newLen++] = '\0'; // Null termination character at the end of the input buffer 
+			//Allocate our buffer of that size +1 for null termination. //
+			input = malloc (sizeof(char) * (inputsize+1));
+			
+	
+			// Return to start of file //
+			if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
+				fputs("Error returning to start of file", stderr);
 			}
+	
+			//Read the entire file into memory//
+			size_t newLen = fread(input, sizeof(char), inputsize, ifp);
+			if(newLen == 0){
+				fputs("Error reading file", stderr);
+			} else {
+				input[newLen++] = '\0'; // Null termination character at the end of the input buffer 
+				}
 		}			
 		fclose(ifp);
 	}else{

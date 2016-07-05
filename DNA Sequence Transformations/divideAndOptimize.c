@@ -170,12 +170,11 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 		opsSeq[i] = 0;
 		numSeq[i] = 0;
 	}
-
 	if(inputSize == 1){
-	for(i=0;i<maxNumOps;++i){
-		opArray[opLevel][i] = opsSeq[i];
-		numArray[opLevel][i] = numSeq[i];
-	}
+		for(i=0;i<maxNumOps;++i){
+			opArray[opLevel][i] = opsSeq[i];
+			numArray[opLevel][i] = numSeq[i];
+		}
 		opArray[opLevel][maxNumOps-1]  = assign;
 		numArray[opLevel][maxNumOps-1] = output[0];
 		return 0;
@@ -264,58 +263,18 @@ int keyIdentifier(FILE * ifp,unsigned char *input,unsigned char *output){
 	
 		if(byt != ' ' && byt != '\n' && byt != '\r' && byt!= ','){
 			if(byt != '>'){
-				byt = byt & '\x06';
-				byt = byt << 3;
+				input[inputCount++] = byt;
 			}else{
-				byt = getc(ifp);
+				while((byt = getc(ifp)) == ' ' || byt == '\n' || byt == '\r' || byt == ','){}
 				for(outputCount; outputCount < inputCount; ++outputCount)
 					output[outputCount] = byt;
 				continue;
 			}
-			char temp;
-			while((temp = getc(ifp)) == ' ' || temp == '\n' || temp == '\r' || temp == ','){}
-			temp =  temp & '\x06';
-			temp = temp <<1; 
-			byt = byt | temp; 
-
-			while((temp = getc(ifp)) == ' ' || temp == '\n' || temp == '\r' || temp == ','){}
-			temp =  temp & '\x06';
-			temp = temp >> 1; 
-			byt = byt | temp; 
-			
-			input[inputCount++] = byt; 
 		}
 	}
 	return inputCount;
 } 
 
-int codonIdentifier(FILE * ifp,unsigned char *input){
-	char byt; 
-	char temp;
-	int inputCount = 0; 
-	while((byt=getc(ifp))!= '\n'){}; //Remove header line - Can be added into the output file or separate header file if needed
-
-	while((byt=getc(ifp))!= EOF){
-	
-		if(byt&'\x40'){
-			byt = byt & '\x06';
-			byt = byt << 3;
-			
-			while(!((temp = getc(ifp)) & '\x40')){}
-			temp =  temp & '\x06';
-			temp = temp <<1; 
-			byt = byt | temp; 
-
-			while(!((temp = getc(ifp)) & '\x40')){}
-			temp =  temp & '\x06';
-			temp = temp >> 1; 
-			byt = byt | temp; 
-			
-			input[inputCount++] = byt; 
-		}
-	}
-	return inputCount;
-} 
 
 int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int maxNumOps){
 	int i = 1,j;
@@ -337,7 +296,7 @@ int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int 
 int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs][number of timing values to retain]
 	int i,j; 
 
-	int inputSize = 0; 
+	int keySize = 0; 
 	FILE * ifp;
 	ifp = fopen(argv[1],"r");
 	if(ifp != NULL){
@@ -345,8 +304,8 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		if(fseek(ifp, 0L, SEEK_END)== 0){
 		// Get the size of the file. //
 
-			inputSize = ftell(ifp);
-			if (inputSize == -1) {
+			keySize = ftell(ifp);
+			if (keySize == -1) {
 				fputs("Error finding size of file", stderr);
 			}
 
@@ -360,44 +319,28 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		return -1; 
 		}
 		
-	unsigned char * input = malloc(inputSize * sizeof(char));
-	unsigned char * output = malloc(inputSize * sizeof(char));
+	unsigned char * input = malloc(keySize * sizeof(char));
+	unsigned char * output = malloc(keySize * sizeof(char));
 	
-	inputSize = keyIdentifier(ifp, input, output);
+	keySize = keyIdentifier(ifp, input, output);			// keySize now equals the number of inputs in the key	
 	fclose(ifp);
-//	int inputSize = 128;
-//	unsigned char *input = malloc(sizeof(char)*inputSize);
-//	unsigned char *output = malloc(sizeof(char)*inputSize);
-//	srand(time(NULL));
 
-//	int inputSize = sizeof(input)/sizeof(input[0]);
-//	for(i=0;i<inputSize;++i){
-//		input[i] = rand();
-//		output[i] = rand();
-//		for(j=0;j<i;++j){
-//			if(input[i] == input[j])--i;
-//		}
-//	}
+	int maxNumOps = 5;			//Always should be 5
 
-
-
-
-	int maxNumOps = 5;			//must be at least 4 to store comparisions
-
-	int success = -1;								// NEED TO IMPLEMENT divideAndOptimize in main
-	size_t numBranches = 2 * highestBit(inputSize);						//number of operation sequences that divide
-	char **opArray = malloc(numBranches*sizeof(char*));							//out the inputs, similar to number of 
-	unsigned int ** numArray = malloc(numBranches*sizeof(unsigned int *));							//edges on a tree structure
+	int success = -1;							
+	size_t numBranches = 4 * highestBit(keySize);
+	char **opArray = malloc(numBranches*sizeof(char*));		 
+	unsigned int ** numArray = malloc(numBranches*sizeof(unsigned int *));			
 	for(i=0;i < (numBranches); ++i){
 		opArray[i] = calloc(maxNumOps, sizeof(char));
 		numArray[i] = calloc(maxNumOps, sizeof(int));
 	}
 
-	unsigned char startingInput[inputSize];
-	for(i=0;i<inputSize;++i){
+	unsigned char startingInput[keySize];
+	for(i=0;i<keySize;++i){
 		startingInput[i] = input[i];
 	}
-	success = divideAndOptimize(startingInput, input, output, inputSize, opArray, numArray, maxNumOps,1);
+	success = divideAndOptimize(startingInput, input, output, keySize, opArray, numArray, maxNumOps,1);
 
 	free(input);
 	free(output);
@@ -425,44 +368,48 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	FILE *ifp = fopen(argv[2],"r");
 	long readSize = 0;
 	if(ifp != NULL){
-	 // Go to the end of the file //
-	if(fseek(ifp, 0L, SEEK_END)== 0){
-		// Get the size of the file. //
-
-		readSize = ftell(ifp);
+		 // Go to the end of the file //
+		if(fseek(ifp, 0L, SEEK_END)== 0){
+			// Get the size of the file. //
+	
+			readSize = ftell(ifp);
 			if (readSize == -1) {
-				fputs("Error finding size of file", stderr);
+					fputs("Error finding size of file", stderr);
 			}
+		
+		
+			readIn = malloc (sizeof(char) * (readSize+1));
 	
-	
-		readIn = malloc (sizeof(char) * (readSize+1));
-
 			// Return to start of file //
 			if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
 				fputs("Error returning to start of file", stderr);
 			}
-		}
-	}
-	else{
-		fputs("Error reading input file", stderr);
+			//Read the entire file into memory//
+			size_t newLen = fread(readIn, sizeof(char), readSize, ifp);
+			if(newLen == 0){
+				fputs("Error reading file", stderr);
+			} else {
+				readIn[newLen++] = '\0'; // Null termination character at the end of the input buffer 
+			}
+		}			
+		fclose(ifp);
+	}else{
+		printf("%s\n", "the input file given does not exist");
+		return 1;
 	}
 
-	// Tranlate Read File to codon 2-Bit format
-
-		readSize = codonIdentifier(ifp, readIn);
 
 		// Create Output Buffer;
 	char * writeOut = malloc(sizeof(char)* (readSize+1));
-	int writeSize = readSize;
-	
+
 	float *times;
 	int runs = 0;
 	int numTimes = 0;
-	int i, k;
+	int i,j=0,k;
 	if(argc == 4){
 		for(i=0;i<readSize; ++i){
-				writeOut[k] = evaluate(readIn[i],opArray,numArray,maxNumOps);
-			
+			if(readIn[i]&'\xe0')
+				writeOut[j++] = evaluate(readIn[i],opArray,numArray,maxNumOps);
 		}
 	}
 	if(argc == 5){	//if a number of runs is given but no number of minimum times, default number of min times is 3
@@ -472,8 +419,10 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		struct timeval time0, time1; 
 		for(i=0;i<runs;i++){ // Record time of each run
 			gettimeofday(&time0,NULL);
+			j=0;
 			for(k=0;k<readSize; ++k){
-					writeOut[k] = evaluate(readIn[k],opArray,numArray,maxNumOps);	
+				if(readIn[k]&'\xe0')
+					writeOut[j++] = evaluate(readIn[k],opArray,numArray,maxNumOps);	
 			}
 			gettimeofday(&time1,NULL);
 			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
@@ -487,17 +436,20 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		struct timeval time0, time1; 
 		for(i=0;i<runs;i++){ // Record time of each run
 	                gettimeofday(&time0,NULL);
+			j=0;
 	                for(k=0;k<readSize; ++k){
-					writeOut[k] = evaluate(readIn[k],opArray,numArray,maxNumOps);
+				if(readIn[k]&'\xe0')
+					writeOut[j++] = evaluate(readIn[k],opArray,numArray,maxNumOps);
 			}
 	                gettimeofday(&time1,NULL);
 	                times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 		}
 	}
 
+	int writeSize = j;
 	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
 	if(argc > 4){
-		if(write_time_file(times, runs, numTimes,readSize) < 0)
+		if(write_time_file(times, runs, numTimes,keySize) < 0) //Records number of key inputs as "fileSize"
 			printf("error writing time file\n");
 		free(times);
 	}
@@ -507,7 +459,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		printf("Error creating output file\n");
 		return -1;
         }else{
-		 fwrite(writeOut, 1, writeSize, ofp);
+		fwrite(writeOut, 1, writeSize, ofp);
 		fclose(ofp);
 		}
 	free(readIn);

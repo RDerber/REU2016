@@ -72,7 +72,7 @@ touch $folder/$output
 outpath="$folder/$output"
 xlabel="Number of Codons"
 
-gnuplot -c plotScript.sh $graph $output $outpath "$xlabel"
+gnuplot -c plotLineScript.sh $graph $output $outpath "$xlabel"
 
 
 

@@ -101,7 +101,7 @@ graph="$folder/$plotfile"
 touch $folder/$output
 outpath="$folder/$output"
 
-gnuplot -c plotScript.sh $graph $output $outpath
+gnuplot -c plotLineScript.sh $graph $output $outpath
 
 
 
