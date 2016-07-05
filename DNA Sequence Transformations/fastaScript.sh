@@ -5,7 +5,13 @@ gcc jsonTitle.c -o jsonTitle
 gcc writeJson.c FastaTo2Bit.c -o FastaTo2Bit
 gcc writeJson.c MultiFastaTo4Bit.c -o MultiFastaTo4Bit 
 
-today=$(date +%Y-%m-%d-%T)
+if [ $1 != NULL ]
+then
+	today=$1
+else
+	today=$(date +%Y-%m-%d-%T)
+fi
+
 mkdir ./tests/fastaTests/$today
 
 

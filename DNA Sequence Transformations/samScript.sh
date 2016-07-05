@@ -4,9 +4,14 @@
 gcc jsonTitle.c -o jsonTitle
 gcc writeJson.c SamTo2Bit.c -o SamTo2Bit
 
-today=$(date +%Y-%m-%d-%T)
-mkdir ./tests/samTests/$today
+if [ $1 != NULL ]
+then
+	today=$1
+else
+	today=$(date +%Y-%m-%d-%T)
+fi
 
+mkdir ./tests/samTests/$today
 
 #Remove old timeStats.txt files
 #rm timeStats.json
