@@ -325,6 +325,8 @@ void test_bit_stream (void)
 {
 	struct bit_stream *bs;
 	
+	printf("[%s]: testing bit stream\n", __func__);
+	
 	alloc_bit_stream(&bs, 10);
 	
 	write_bit_stream(bs, 0x55, 8);
@@ -334,6 +336,7 @@ void test_bit_stream (void)
 	
 	print_bit_stream(bs);
 	
+	printf("\n");
 	
 	free_bit_stream(bs);
 }
@@ -570,34 +573,34 @@ void huff_encode (uint8_t *src, int num, struct huff_list **hlist)
 	
 	find_huffcode(*hlist, htree, 0, 0);
 }
+
+void test_hcoder (void)
+{
+	uint8_t test[17] = {1, 2, 1, 2, 3, 4, 4, 4, 5, 6, 7, 7, 7, 7, 7, 7, 10};
+	struct huff_list *hlist;
 	
+	printf("[%s]: testing huffman coder\n", __func__);
+	
+	huff_encode(test, 17, &hlist);
+	
+	print_huffcodes(hlist, 17);
+	
+	free(hlist);
+	
+	printf("\n");
+}	
 
 #ifdef HUFF_CODER
 }
 #endif
 
 /****************************************************************************************/
-/*	gzip writer	*/
+/*	huff length coder	*/
 /****************************************************************************************/
-#ifdef GZIP_WRITER
+#ifdef HUFF_LCODER
 {
 #endif
-struct gz_header {
-	uint8_t id0;
-	uint8_t id1;
-	uint8_t comp_method;
-	uint8_t flags;
-	uint32_t mtime;
-	uint8_t extra_flags;
-	uint8_t os;
-};
-
-struct gz_trailer {
-	uint32_t crc32;
-	uint32_t isize;
-};
-
-/*
+/*{
     		 Extra               Extra               Extra
             Code Bits Length(s) Code Bits Lengths   Code Bits Length(s)
             ---- ---- ------     ---- ---- -------   ---- ---- -------
@@ -611,7 +614,7 @@ struct gz_trailer {
              264   0    10       274   3   43-50     284   5  227-257
              265   1  11,12      275   3   51-58     285   0    258
              266   1  13,14      276   3   59-66
-*/
+}*/
 
 struct huff_len_table {
 	uint16_t len_code;
@@ -647,6 +650,8 @@ void encode_hlist (struct huff_list *hlist, int num)
 	struct huff_len_table hlt[259];
 	int len;
 	
+	printf("[%s]: testing huffman length coding\n", __func__);
+	
 	make_hufftable(hlt);
 	
 	for (len = 0; len < 259; len++) {
@@ -654,10 +659,120 @@ void encode_hlist (struct huff_list *hlist, int num)
 			hlt[len].num_exbits, hlt[len].ext_val);	
 	}
 	
-	
+	printf("\n");
 }
 
-/* gnu plot */
+#ifdef HUFF_LCODER
+}
+#endif
+
+/****************************************************************************************/
+/*	lzw encoder	*/
+/****************************************************************************************/
+#ifdef LZW
+{
+#endif
+
+#define LA_SIZ	8
+#define WIN_SIZ	256
+
+#define MAX(x,y) (((x) > (y)) ? (x) : (y))
+#define MIN(x,y) (((x) < (y)) ? (x) : (y))
+
+void get_longest_match (uint8_t *in, int bytes, int cp, int *dist, int *len)
+{
+	int eob = MIN((cp + LA_SIZ), (bytes + 1));
+	int i, l, a, m, p;
+	int reps, last;
+	uint8_t subs[WIN_SIZ];
+	uint8_t match[WIN_SIZ];
+	
+	*dist = *len = -1;
+	
+	for (i = cp + 1; i < eob; i++) {
+		a = i - cp;
+		l = MAX((cp - WIN_SIZ), 0);
+		
+		memset(subs, 0, sizeof(subs));
+		memcpy(subs, in + cp, a);
+
+		for (; l < cp; l++) {
+			memset(match, 0, sizeof(match));
+			p = cp - l;
+			
+			reps = a / p;
+			last = a % p;
+
+			for (m = 0; m < reps; m++)
+				memcpy(match + (m * p), in + l, p);
+
+			if (last)
+				memcpy(match + (m * p), in + l, last);
+
+			if (!strcmp((char *)match, (char *)subs) && a > *len) {
+				*dist = p;
+				*len = a;
+			}
+		}
+	}
+}
+void lz77 (uint8_t *in, int bytes, uint8_t *out, int win_size)
+{
+	int i = 0, length, pos;
+
+	while (i < bytes) {
+		get_longest_match(in, bytes, i, &pos, &length);
+		
+		if (length > 0) {
+			printf("<%d, %d, %c>, ", pos, length, *(in + i + length + 1));
+			i += length + 1;
+		} else {
+			printf("<0, %d>, ", in[i]);
+			i++;
+		}
+	}
+	
+	printf("\n");
+}
+
+void test_lz77 (void)
+{
+	uint8_t out[256];
+	uint8_t *in = (uint8_t *)"aacaacabcabaaac";
+	
+	printf("[%s]: testing lzw\n", __func__);
+	printf("expected, output:\n<0, 97>, <1, 1, a>, <3, 4, c>, <3, 3, a>, <12, 3, />\n");
+	
+	lz77(in, strlen((char *)in), out, 1);
+	
+	printf("\n");
+}
+
+#ifdef LZW
+}
+#endif
+
+/****************************************************************************************/
+/*	gzip writer	*/
+/****************************************************************************************/
+#ifdef GZIP_WRITER
+{
+#endif
+struct gz_header {
+	uint8_t id0;
+	uint8_t id1;
+	uint8_t comp_method;
+	uint8_t flags;
+	uint32_t mtime;
+	uint8_t extra_flags;
+	uint8_t os;
+};
+
+struct gz_trailer {
+	uint32_t crc32;
+	uint32_t isize;
+};
+
 int write_gzdata_blocked (unsigned char *src, int len, int fd, int blk_size)
 {
 	int ret, pos = 0, toc;
@@ -758,107 +873,28 @@ int write_gzfile (const char *src, const char *dst)
 
 	close(src_fd);
 	
-	free(buf);
+	free(buf); 
 	
 	return 0;
 }
-#ifdef TEST
+#ifdef TEST 
 }
 #endif
 
-/****************************************************************************************/
-/*	gzip writer	*/
-/****************************************************************************************/
-#define LA_SIZ	8
-#define WIN_SIZ	256
-
-/* bring plot of data size vs time */
-
-void get_longest_match (uint8_t *in, int bytes, int cp, int *dist, int *len)
-{
-	int eob = (cp + LA_SIZ) > (bytes + 1) ? (bytes + 1) : (cp + LA_SIZ);
-	int i, l, a, m, p;
-	int reps, last;
-	uint8_t subs[WIN_SIZ];
-	uint8_t match[WIN_SIZ];
-		
-	*dist = *len = -1;
-	
-	for (i = cp + 1; i < eob; i++) {
-		a = i - cp;
-		l = (cp - WIN_SIZ) < 0 ? 0 : (cp - WIN_SIZ);
-		
-		memset(subs, 0, sizeof(subs));
-		memcpy(subs, in + cp, a);
-
-		for (; l < cp; l++) {
-			memset(match, 0, sizeof(match));
-			p = cp - l;
-			
-			reps = a / p;
-			last = a % p;
-
-			for (m = 0; m < reps; m++)
-				memcpy(match + (m * p), in + l, p);
-
-			if (last)
-				memcpy(match + (m * p), in + l, last);
-
-			if (!strcmp((char *)match, (char *)subs) && a > *len) {
-				*dist = p;
-				*len = a;
-			}
-		}
-	}
-}
-void lz77 (uint8_t *in, int bytes, uint8_t *out, int win_size)
-{
-	int i = 0, length, pos;
-
-	while (i < bytes) {
-		get_longest_match(in, bytes, i, &pos, &length);
-		
-		if (length > 0) {
-			printf("<%d, %d, %c>, ", pos, length, *(in + i + length + 1));
-			i += length + 1;
-		} else {
-			printf("<0, %d>, ", in[i]);
-			i++;
-		}
-	}
-	
-	printf("\n");
-}
-
 int main (void)
 {
-
 	encode_hlist (NULL, 0);
 
-	uint8_t test[17] = {1, 2, 1, 2, 3, 4, 4, 4, 5, 6, 7, 7, 7, 7, 7, 7, 10};
-	struct huff_list *hlist;
-	huff_encode(test, 17, &hlist);
-	
-	print_huffcodes(hlist, 17);
-	
-	free(hlist);
+	test_hcoder();
  
 	test_bit_stream();
 	
-	uint8_t out[256];
-	uint8_t *in = (uint8_t *)"aacaacabcabaaac";
-	
-	lz77(in, strlen((char *)in), out, 1);
-	//(0, 0, "a") (1, 1, "c") (3, 4, "b") (3, 3, "a") (12, 3, "$"). 
-	/* .tar encoder works, huffman encoder works, bitstream works, gzip not done yet */
-	
-	//return 0;
-	
+	test_lz77();
+
 	//make_tar_file("/Users/nobody1/Desktop/work", 
 	//			"/Users/nobody1/Desktop/test.tar");
 				
 	return write_gzfile("/Users/nobody1/Desktop/test.tar",
 				"/Users/nobody1/Desktop/test1.gz");
 }
-
 
