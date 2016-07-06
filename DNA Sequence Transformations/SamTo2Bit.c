@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "writeJson.h"
 
-int samTo4Bit(const char* input, char * output, char * headers, int* positions,  long inputsize, long * outputsize, long * headersize, long * positionsize){
+long samTo2Bit(const char* input, char * output, char * headers, int* positions,  long inputsize, long * outputsize, long * headersize, long * positionsize){
 
 	int i = 0;
 	while(input[i] == '@'){				//Skip over heading tag information
@@ -12,6 +12,7 @@ int samTo4Bit(const char* input, char * output, char * headers, int* positions, 
 	}
 
 	int numtabs;
+	int numBases = 0;
 	int k = 0;
 	int h = 0;
 	int p = 0;
@@ -31,18 +32,21 @@ int samTo4Bit(const char* input, char * output, char * headers, int* positions, 
 
 		while(input[i] != '\t'){		//Convert sequence and write it
 			char byt = input[i++];
+			numBases++;
 			byt &= '\x06';
 			byt <<= 5;
 			int j;
 			for(j=2;j>0;--j){
 				if(input[i] != '\t'){
 					char temp = (input[i++] & '\x06');
+					numBases++;
 					temp <<= (j*2) - 1;
 					byt |= temp;
 				}
 			}
 			if(input[i] != '\t'){
 				char temp = (input[i++] & '\x06');
+				numBases++;
 				temp >>= 1;
 				byt |= temp;
 			}
@@ -55,7 +59,7 @@ int samTo4Bit(const char* input, char * output, char * headers, int* positions, 
 	*outputsize = k;
 	*headersize = h;
 	*positionsize = p; 
-	return 0;
+	return numBases;
 
 }
 
@@ -109,12 +113,12 @@ int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][headerFil
 	long outputsize = 0;
 	long headersize = 0;
 	long positionsize = 0;
-	
 	float *times ;
 	int runs = 0;
 	int numTimes = 0;
+	long numBases = 0;
 	if(argc == 5){
-		samTo4Bit(input,output,headers,positions,inputsize,&outputsize,&headersize,&positionsize);
+		numBases = samTo2Bit(input,output,headers,positions,inputsize,&outputsize,&headersize,&positionsize);
 	}
 	if(argc == 6){	//if a number of runs is given but no number of minimum times, default number of min times is 3
 		runs = atoi(argv[5]);
@@ -124,7 +128,7 @@ int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][headerFil
 		int i;
 		for(i=0;i<runs;i++){ // Record time of each run
 			gettimeofday(&time0,NULL);
-			samTo4Bit(input,output,headers,positions,inputsize,&outputsize,&headersize,&positionsize);
+			numBases = samTo2Bit(input,output,headers,positions,inputsize,&outputsize,&headersize,&positionsize);
 			gettimeofday(&time1,NULL);
 			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 		}
@@ -138,7 +142,7 @@ int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][headerFil
                 int i;
                 for(i=0;i<runs;i++){ // Record time of each run
                         gettimeofday(&time0,NULL);
-                        samTo4Bit(input,output,headers,positions,inputsize,&outputsize,&headersize,&positionsize);
+                        numBases = samTo2Bit(input,output,headers,positions,inputsize,&outputsize,&headersize,&positionsize);
                         gettimeofday(&time1,NULL);
                         times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
                 }
@@ -147,7 +151,7 @@ int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][headerFil
 
 	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
 	if(argc > 5){ 
-		if(write_time_file(times, runs, numTimes,inputsize) < 0)
+		if(write_time_file(times, runs, numTimes, numBases) < 0)
 			printf("error writing time file\n");
 		free(times);
 	}

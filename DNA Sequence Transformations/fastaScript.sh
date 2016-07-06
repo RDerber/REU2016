@@ -57,8 +57,18 @@ cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
 echo "" >> timing.json
 cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
 
+./FastaTo2Bit tests/fastaTests/fasta300k.fasta tests/fastaTests/$today/300kOut.txt 100 3
+./jsonTitle timing.json "300k bases" "-c"
+echo "" >> timing.json
+cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+
 ./FastaTo2Bit tests/fastaTests/fasta500k.fasta tests/fastaTests/$today/500kOut.txt 100 3
 ./jsonTitle timing.json "500k bases" "-c"
+echo "" >> timing.json
+cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+
+./FastaTo2Bit tests/fastaTests/fasta700k.fasta tests/fastaTests/$today/700kOut.txt 100 3
+./jsonTitle timing.json "700k bases" "-c"
 echo "" >> timing.json
 cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
 
@@ -114,8 +124,9 @@ folder="./tests/fastaTests/$today"
 graph="$folder/$plotfile"
 touch $folder/$output
 outpath="$folder/$output"
+graphTitle="Fasta To 2Bit"
 
-gnuplot -c plotLineScript.sh $graph $output $outpath
+gnuplot -c plotLineScript.sh $graph "$graphTitle" $outpath
 
 
 

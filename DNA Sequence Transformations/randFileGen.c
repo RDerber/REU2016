@@ -3,8 +3,15 @@
 *
 *Generates random DNA sequence files for testing
 *
-* Input: [char fileType] [int fileSize (in bytes)] [name of file to be created]
+* Input: [char fileType] [int fileSize (in bytes)] [FileName] [number of sequences]
 *
+*File Types	Character
+*---------	---------
+*Fasta		    f
+*MultiFasta	    m
+*Sam		    s
+*Fastq		    q    * unavailable 
+*Bam		    b    * unavailable
 */
 
 #include <stdio.h>
@@ -115,29 +122,29 @@ int randGen (char* fileType, int fileSize, char* fileName, int numSeq) {
 			int seqSize = 36;
 			int remainder = fileSize%seqSize;
 		for(i=0; i<numSeq; i++){
-				
+			if(i != numSeq-1){
 				fprintf(ofp,"%d\t", i);
 				fprintf(ofp,"%d\t", rand()%150);
 				fprintf(ofp,"%d\t", 10);
 				fprintf(ofp,"%d\t", rand()%120000+70000);
 				fprintf(ofp,"%d\t", 0);
-				fprintf(ofp,"%s\t", "36M");
+				fprintf(ofp,"%d%s\t", seqSize,"M");
 				fprintf(ofp,"%c\t", '*');
 				fprintf(ofp,"%d\t", 0);
 				fprintf(ofp,"%d\t", 0);
-				if(i != numSeq-1){
-					for(j=0; j < seqSize; ++j){
-						int letter = rand()%4;
-						if(letter == 0){			
-							fprintf(ofp,"%c",'A');
-						}else if(letter == 1){			
-							fprintf(ofp,"%c",'C');
-						}else if(letter == 2){			
-							fprintf(ofp,"%c",'G');
-						}else if(letter == 3){			
-							fprintf(ofp,"%c",'T');
-						}
+				
+				for(j=0; j < seqSize; ++j){
+					int letter = rand()%4;
+					if(letter == 0){			
+						fprintf(ofp,"%c",'A');
+					}else if(letter == 1){			
+						fprintf(ofp,"%c",'C');
+					}else if(letter == 2){			
+						fprintf(ofp,"%c",'G');
+					}else if(letter == 3){			
+						fprintf(ofp,"%c",'T');
 					}
+				}
 					fprintf(ofp,"%c",'\t');
 					for(j=0;j <seqSize; ++j){
 						fprintf(ofp,"%c",(rand()%93 + 33)); 
@@ -145,19 +152,29 @@ int randGen (char* fileType, int fileSize, char* fileName, int numSeq) {
 					fprintf(ofp,"%c",'\t');
 					fprintf(ofp,"%s\n","NM:i:0");
 				}
-				else{					// Attatch remainder to the last sequence 
-					for(j=0; j < remainder; ++j){
-						int letter = rand()%4;
-						if(letter == 0){			
-							fprintf(ofp,"%c",'A');
-						}else if(letter == 1){			
-							fprintf(ofp,"%c",'C');
-						}else if(letter == 2){			
-							fprintf(ofp,"%c",'G');
-						}else if(letter == 3){			
-							fprintf(ofp,"%c",'T');
-						}
+			else{					// Attatch remainder to the last sequence 
+			
+				fprintf(ofp,"%d\t", i);
+				fprintf(ofp,"%d\t", rand()%150);
+				fprintf(ofp,"%d\t", 10);
+				fprintf(ofp,"%d\t", rand()%120000+70000);
+				fprintf(ofp,"%d\t", 0);
+				fprintf(ofp,"%d%s\t", (seqSize+remainder),"M");
+				fprintf(ofp,"%c\t", '*');
+				fprintf(ofp,"%d\t", 0);
+				fprintf(ofp,"%d\t", 0);
+				for(j=0; j < (seqSize+remainder); ++j){
+					int letter = rand()%4;
+					if(letter == 0){			
+						fprintf(ofp,"%c",'A');
+					}else if(letter == 1){			
+						fprintf(ofp,"%c",'C');
+					}else if(letter == 2){			
+						fprintf(ofp,"%c",'G');
+					}else if(letter == 3){			
+						fprintf(ofp,"%c",'T');
 					}
+			}
 					fprintf(ofp,"%c",'\t');
 					for(j=0;j <seqSize+remainder; ++j){
 						fprintf(ofp,"%c",(rand()%93 + 33)); 

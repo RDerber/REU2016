@@ -71,8 +71,8 @@ graph="$folder/$plotfile"
 touch $folder/$output
 outpath="$folder/$output"
 xlabel="Number of Codons"
-
-gnuplot -c plotLineScript.sh $graph $output $outpath "$xlabel"
+graphTitle="Codon To Amino Acid Transformation"
+gnuplot -c plotLineScript.sh $graph "$graphTitle" $outpath "$xlabel"
 
 
 

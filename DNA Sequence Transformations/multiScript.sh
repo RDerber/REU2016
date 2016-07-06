@@ -57,8 +57,18 @@ cat timing.json >> ./tests/multiTests/$today/mt2bTimeStats.json
 echo "" >> timing.json
 cat timing.json >> ./tests/multiTests/$today/mt2bTimeStats.json
 
+./MultiFastaTo2Bit tests/multiTests/multi300k.fasta tests/multiTests/$today/300kOut.txt tests/multiTests/$today/300kHead.txt tests/multiTests/$today/100kPosition.txt 100 3
+./jsonTitle timing.json "300k bases" "-c"
+echo "" >> timing.json
+cat timing.json >> ./tests/multiTests/$today/mt2bTimeStats.json
+
 ./MultiFastaTo2Bit tests/multiTests/multi500k.fasta tests/multiTests/$today/500kOut.txt tests/multiTests/$today/500kHead.txt tests/multiTests/$today/500kPosition.txt 100 3
 ./jsonTitle timing.json "500k bases" "-c"
+echo "" >> timing.json
+cat timing.json >> ./tests/multiTests/$today/mt2bTimeStats.json
+
+./MultiFastaTo2Bit tests/multiTests/multi700k.fasta tests/multiTests/$today/700kOut.txt tests/multiTests/$today/700kHead.txt tests/multiTests/$today/100kPosition.txt 700 3
+./jsonTitle timing.json "700k bases" "-c"
 echo "" >> timing.json
 cat timing.json >> ./tests/multiTests/$today/mt2bTimeStats.json
 
@@ -114,8 +124,8 @@ folder="./tests/multiTests/$today"
 graph="$folder/$plotfile"
 touch $folder/$output
 outpath="$folder/$output"
-
-gnuplot -c plotLineScript.sh $graph $output $outpath
+graphTitle="MultiFasta To 2Bit"
+gnuplot -c plotLineScript.sh $graph "$graphTitle" $outpath
 
 
 

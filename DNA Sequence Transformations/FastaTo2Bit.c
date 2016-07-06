@@ -38,7 +38,7 @@
 *@param size of input buffer
 *@return size of the output buffer
 */
-int twoBit(char * input, char * output, long inputsize){ 
+int twoBit(char * input, char * output, long inputsize, long * numBases){ 
 	
 	// Move header line into output buffer // 
 	size_t firstlnlen;
@@ -93,6 +93,7 @@ int twoBit(char * input, char * output, long inputsize){
 	output[k] = byt;
 
 	}
+	*numBases = 4*((k+1)-firstlnlen);
 	return k+1; // returns the size of the output array 
 }
 
@@ -146,8 +147,9 @@ int main(int argc, char *argv[]){
 	float *times;
 	int runs = 0;
 	int numTimes = 0;
+	long numBases = 0;
 	if(argc == 3){
-		outputsize = twoBit(input,output,inputsize);
+		outputsize = twoBit(input,output,inputsize,&numBases);
 	}
 	if(argc == 4){	//if a number of runs is given but no number of minimum times, default number of min times is 3
 		runs = atoi(argv[3]);
@@ -157,7 +159,7 @@ int main(int argc, char *argv[]){
 		int i;
 		for(i=0;i<runs;i++){ // Record time of each run
 			gettimeofday(&time0,NULL);
-			outputsize = twoBit(input,output,inputsize);
+			outputsize = twoBit(input,output,inputsize,&numBases);
 			gettimeofday(&time1,NULL);
 			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 		}
@@ -171,7 +173,7 @@ int main(int argc, char *argv[]){
                 int i;
                 for(i=0;i<runs;i++){ // Record time of each run
                         gettimeofday(&time0,NULL);
-                        outputsize = twoBit(input,output,inputsize);
+                        outputsize = twoBit(input,output,inputsize,&numBases);
                         gettimeofday(&time1,NULL);
                         times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
                 }
@@ -180,7 +182,7 @@ int main(int argc, char *argv[]){
 
 	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
 	if(argc > 3){
-		if(write_time_file(times, runs, numTimes,inputsize) < 0)
+		if(write_time_file(times, runs, numTimes,numBases) < 0)
 			printf("error writing time file\n");
 		free(times);
 	}

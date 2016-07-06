@@ -35,8 +35,9 @@ graph="$folder/$plotfile"
 touch $folder/$output
 outpath="$folder/$output"
 xlabel="Number of inputs"
+graphTitle="SuperOptimizer Performance"
 
-gnuplot -c plotLineScript.sh $graph $output $outpath "$xlabel"
+gnuplot -c plotLineScript.sh $graph "$graphTitle" $outpath "$xlabel"
 
 
 

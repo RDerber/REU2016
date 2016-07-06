@@ -55,8 +55,18 @@ cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 echo "" >> timing.json
 cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
+./SamTo2Bit tests/samTests/sam300k.SAM tests/samTests/$today/300kOut.txt tests/samTests/$today/300kheaders.txt tests/samTests/$today/300kpositions.txt 100 3
+./jsonTitle timing.json "300k bases" "-c"
+echo "" >> timing.json
+cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+
 ./SamTo2Bit tests/samTests/sam500k.SAM tests/samTests/$today/500kOut.txt tests/samTests/$today/500kheaders.txt tests/samTests/$today/500kpositions.txt 100 3
 ./jsonTitle timing.json "500k bases" "-c"
+echo "" >> timing.json
+cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+
+./SamTo2Bit tests/samTests/sam700k.SAM tests/samTests/$today/700kOut.txt tests/samTests/$today/700kheaders.txt tests/samTests/$today/700kpositions.txt 100 3
+./jsonTitle timing.json "700k bases" "-c"
 echo "" >> timing.json
 cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
 
@@ -100,8 +110,9 @@ folder="./tests/samTests/$today"
 graph="$folder/$plotfile"
 touch $folder/$output
 outpath="$folder/$output"
+graphTitle="Sam To 2Bit"
 
-gnuplot -c plotLineScript.sh $graph $output $outpath
+gnuplot -c plotLineScript.sh $graph "$graphTitle" $outpath
 
 
 

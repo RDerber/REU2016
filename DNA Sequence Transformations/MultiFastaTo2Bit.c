@@ -33,10 +33,13 @@ int multiTo2Bit(const char * input,char * output,char * headers, int * positions
 			++i;
 			headers[h++] = '\x00';
 		}
-		if(i < inputsize && input[i] != '>'){
+		if(i < inputsize && input[i] != '>' && (input[i] & '\x60')){
 			byt = input[i++]& '\x06';
 			byt <<= 5;
-		}else continue;
+		}else{
+			++i;
+			 continue;
+		}
 
 		for(j=2;j>0;--j){
 			while(!(input[i] & '\x60')) ++i;
@@ -153,7 +156,8 @@ int main(int argc, char *argv[]){ // [input][output][headerfile][positionfile][n
 
 	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
 	if(argc > 5){
-		if(write_time_file(times, runs, numTimes,inputsize) < 0)
+		long numBases = outputsize*4;
+		if(write_time_file(times, runs, numTimes,numBases) < 0)
 			printf("error writing time file\n");
 		free(times);
 	}

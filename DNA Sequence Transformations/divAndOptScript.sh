@@ -71,8 +71,9 @@ graph="$folder/$plotfile"
 touch $folder/$output
 outpath="$folder/$output"
 xlabel="Number of Key Inputs"
+graphTitle="Divide And Optimize Key Mapping"
 
-gnuplot -c plotLogScript.sh $graph $output $outpath "$xlabel"
+gnuplot -c plotLogScript.sh $graph "$graphTitle" $outpath "$xlabel"
 
 
 
