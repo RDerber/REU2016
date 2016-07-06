@@ -277,7 +277,7 @@ int write_bit_stream (struct bit_stream *bs, uint64_t src, int bits)
 	int i;
 	
 	for (i = 0; i < bits; i++) {
-		if ((bs->bit_pos + 1) >= 8) {
+		if (bs->bit_pos >= 8) {
 			bs->bit_pos = 0;
 			if ((++bs->byte_pos) >= bs->bytes) 
 				return -1;
@@ -291,8 +291,8 @@ int write_bit_stream (struct bit_stream *bs, uint64_t src, int bits)
 		bs->bit_pos++;
 	}
 	
-	//printf("wrote %d bits to stream (now at byte %d bit %d)\n", 
-	//	bits, bs->byte_pos, bs->bit_pos);
+	printf("wrote %d bits to stream (now at byte %d bit %d)\n", 
+		bits, bs->byte_pos, bs->bit_pos);
 
 	return 0;
 }
@@ -724,7 +724,12 @@ void lz77 (uint8_t *in, int bytes, uint8_t *out, int win_size)
 		get_longest_match(in, bytes, i, &pos, &length);
 		
 		if (length > 0) {
-			printf("<%d, %d, %c>, ", pos, length, *(in + i + length + 1));
+			if ((i + length + 1) > bytes) {
+				printf("<%d, %d, />, ", pos, length);
+			}else{
+				printf("<%d, %d, %c>, ", pos, length, 
+					*(in + i + length + 1));
+			}
 			i += length + 1;
 		} else {
 			printf("<0, %d>, ", in[i]);
@@ -737,7 +742,7 @@ void lz77 (uint8_t *in, int bytes, uint8_t *out, int win_size)
 
 void test_lz77 (void)
 {
-	uint8_t out[256];
+	uint8_t out[256] = { 0 };
 	uint8_t *in = (uint8_t *)"aacaacabcabaaac";
 	
 	printf("[%s]: testing lzw\n", __func__);
