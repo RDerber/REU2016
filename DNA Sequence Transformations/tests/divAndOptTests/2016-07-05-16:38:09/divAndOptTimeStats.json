@@ -1,0 +1,81 @@
+"divideAndOptimize divAndOptAminoAcidKey.txt": {
+    "key1": {
+        "file size (bytes)": 3.000000,
+        "total # runs": 100.000000,
+        "# runs saved": 3.000000,
+        "microseconds": 2164.000000,
+        "microseconds": 2164.000000,
+        "microseconds": 2164.000000,
+        "sysname": "Linux",
+        "release": "3.10.0-327.18.2.el7.x86_64",
+        "machine": "x86_64",
+        "time": "07/05/16 - 04:38PM",
+        "avg. microseconds": 2163.999939
+    },
+    "key2": {
+        "file size (bytes)": 6.000000,
+        "total # runs": 100.000000,
+        "# runs saved": 3.000000,
+        "microseconds": 3544.000000,
+        "microseconds": 3544.000000,
+        "microseconds": 3544.000000,
+        "sysname": "Linux",
+        "release": "3.10.0-327.18.2.el7.x86_64",
+        "machine": "x86_64",
+        "time": "07/05/16 - 04:38PM",
+        "avg. microseconds": 3544.000122
+    },
+    "key3": {
+        "file size (bytes)": 12.000000,
+        "total # runs": 100.000000,
+        "# runs saved": 3.000000,
+        "microseconds": 4746.000000,
+        "microseconds": 4747.000000,
+        "microseconds": 4748.000000,
+        "sysname": "Linux",
+        "release": "3.10.0-327.18.2.el7.x86_64",
+        "machine": "x86_64",
+        "time": "07/05/16 - 04:38PM",
+        "avg. microseconds": 4747.000000
+    },
+    "key4": {
+        "file size (bytes)": 24.000000,
+        "total # runs": 100.000000,
+        "# runs saved": 3.000000,
+        "microseconds": 5745.000000,
+        "microseconds": 5745.000000,
+        "microseconds": 5746.000000,
+        "sysname": "Linux",
+        "release": "3.10.0-327.18.2.el7.x86_64",
+        "machine": "x86_64",
+        "time": "07/05/16 - 04:38PM",
+        "avg. microseconds": 5745.333374
+    },
+    "key5": {
+        "file size (bytes)": 36.000000,
+        "total # runs": 100.000000,
+        "# runs saved": 3.000000,
+        "microseconds": 6221.000000,
+        "microseconds": 6222.000000,
+        "microseconds": 6222.000000,
+        "sysname": "Linux",
+        "release": "3.10.0-327.18.2.el7.x86_64",
+        "machine": "x86_64",
+        "time": "07/05/16 - 04:38PM",
+        "avg. microseconds": 6221.666748
+    },
+    "key6": {
+        "file size (bytes)": 48.000000,
+        "total # runs": 100.000000,
+        "# runs saved": 3.000000,
+        "microseconds": 6991.000000,
+        "microseconds": 6991.000000,
+        "microseconds": 6991.000000,
+        "sysname": "Linux",
+        "release": "3.10.0-327.18.2.el7.x86_64",
+        "machine": "x86_64",
+        "time": "07/05/16 - 04:38PM",
+        "avg. microseconds": 6990.999756
+    },
+    
+}
