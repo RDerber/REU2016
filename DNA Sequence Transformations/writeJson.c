@@ -18,7 +18,7 @@
 #include <time.h> 
 #include "writeJson.h"
 
-#define TIME_OUTPUT	"./timing.json"
+#define TEMP_FILE	"./.json"
 
 /* read data from json file */
 /* document code */
@@ -27,6 +27,7 @@
 /****************************************************************************************/
 /*	util functions */
 /****************************************************************************************/
+
 
 void swap (char *a, char *b)
 {
@@ -212,6 +213,7 @@ int write_time_file (float *time_array, int runs, int k, long inputsize)
 	int out_len;
 	time_t ts_val;
 	char time_buf[80];
+	int nest_level = 0;
 	
 	if ((time_fd = open(TIME_OUTPUT, O_CREAT|O_TRUNC|O_RDWR, 0777)) < 0)//0777 mode allows all (user,group,others) to read write and execute
 		{
@@ -280,6 +282,88 @@ int write_time_file (float *time_array, int runs, int k, long inputsize)
 	
 	return 0;
 }
+
+int write_data_file (double **data_arr, char **label_arr, long numLabels, long numRuns)
+{ 
+	int first = 1;
+	int time_fd, i, j;
+	float *lowest_times;
+	double avg_lowest = 0;
+	struct utsname un;
+	char tmp_buf[512];
+	int out_len;
+	time_t ts_val;
+	char time_buf[80];
+	
+	if ((time_fd = open(TIME_OUTPUT, O_CREAT|O_TRUNC|O_RDWR, 0777)) < 0)//0777 mode allows all (user,group,others) to read write and execute
+		{
+			printf("time_fd\n"); // File could not be created and opened
+			return -1;
+		}
+
+	for(i = 0; i < numLabels; ++i){
+		for(j = 0; j < numRuns; ++j)
+			if(write_num_json(time_fd, 0, 0, label_arr[i], data_arr[i][j].data, &first) < 0){
+				printf("%s %d\n%s %s\n %s %d\n","error writing element: ", i, "label: ",
+					data_array[i].label, "data: ", data_array[i].data);
+				return -1;
+		}
+	}
+//	find_lowest_x_floats(time_array, runs, &lowest_times, k);
+	
+//	for (i = 0; i < k; i++) {
+//		if (write_num_json(time_fd, 0, 0, "microseconds", 
+//				   (double)lowest_times[i], &first) < 0)
+//			{
+//			printf("lowest_times\n");
+//			return -1;
+//			}
+//		avg_lowest += (lowest_times[i] / k);
+//	}
+
+//	free(lowest_times);
+
+
+// Writing System Information
+	
+	if (uname(&un))
+		printf("error getting OS data\n");
+
+
+	if ((out_len = write_tag_json (tmp_buf, 1, 0, "sysname", un.sysname, &first)) > 0)
+		if (write(time_fd, tmp_buf, out_len) != out_len)
+			printf("error writing tag\n");
+			
+	if ((out_len = write_tag_json (tmp_buf, 1, 0, "release", un.release, &first)) > 0)
+		if (write(time_fd, tmp_buf, out_len) != out_len)
+			printf("error writing tag\n");
+			
+	if ((out_len = write_tag_json (tmp_buf, 1, 0, "machine", un.machine, &first)) > 0)
+		if (write(time_fd, tmp_buf, out_len) != out_len)
+			printf("error writing tag\n");		
+
+// Writing Time
+
+	time(&ts_val);
+	strftime(time_buf, 80, "%x - %I:%M%p", localtime(&ts_val));
+	
+	if ((out_len = write_tag_json (tmp_buf, 1, 0, "time", time_buf, &first)) > 0)
+		if (write(time_fd, tmp_buf, out_len) != out_len)
+			printf("error writing tag\n");	
+	
+	if (write_num_json(time_fd, 0, 0, "avg. microseconds", avg_lowest, &first) < 0)
+		{
+			printf("avg_lowest\n");
+			return -1;
+		}
+//	write(time_fd,"\n",1);
+	close(time_fd);
+	
+	fprintf(stderr, "[%s]: wrote timing data\n", __func__);
+	
+	return 0;
+}
+
 
 /* research compression methods and find ease of decoding,  */
 /* find larger test images */
