@@ -15,7 +15,7 @@ mkdir ./tests/superTests/$today
 
 #Run superOptimize for 100 times each for 1 through 200 inputs and store in timeStats.txt
 #Add new line character inbetween files when appending
-for i in {1..4}
+for i in {1..2}
 do
 		./superOptimizer $i
 		./jsonTitle timing.json "$i input(s)" "-c"
@@ -37,7 +37,7 @@ outpath="$folder/$output"
 xlabel="Number of inputs"
 graphTitle="SuperOptimizer Performance"
 
-gnuplot -c plotLineScript.sh $graph "$graphTitle" $outpath "$xlabel"
+gnuplot -c plotExpScript.sh $graph "$graphTitle" $outpath "$xlabel"
 
 
 
