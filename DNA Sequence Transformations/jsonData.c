@@ -70,7 +70,9 @@ int write_json_label (char *file_buf, char *title, int *buf_pos, int nest_level)
 	
 	nest_level *= 4;
 	
-	for (*buf_pos = 0; *buf_pos < nest_level; *buf_pos++)
+	int nest_identation = nest_level + *buf_pos; 
+	
+	for ((*buf_pos)= 0; (*buf_pos) < nest_identation; (*buf_pos)++)
 		file_buf[*buf_pos] = ' ';
 	
 	file_buf[(*buf_pos)++] = '\"';
@@ -92,7 +94,9 @@ int write_json_title (char *file_buf, char *title, int *buf_pos, int nest_level)
 	int len;
 	nest_level *= 4;
 	
-	for (*buf_pos = 0; *buf_pos < nest_level; *buf_pos++)
+	int nest_identation = nest_level + *buf_pos; 
+	
+	for ((*buf_pos) = 0; (*buf_pos) < nest_identation; (*buf_pos)++)
 		file_buf[*buf_pos] = ' ';
 	
 	file_buf[(*buf_pos)++] = '\"';
@@ -192,8 +196,7 @@ int write_tag_json (char *file_buf, int nest_level,
 	return buf_pos;
 }
 
-int write_super_file (double **data_arr, char **label_arr, long num_labels, long num_runs, char * opsSeq, int * numSeq, int maxNumOps, char* input, char* output, int inputSize)
-{
+int write_super_file (double **data_arr, char **label_arr, int num_labels, int num_runs, char * opsSeq, int * numSeq, int maxNumOps, char* input, char* output, int inputSize){
 
 /******************************************************************************************
 input set 1:{ write_super_file output is formated as show below:
@@ -234,8 +237,9 @@ input set 1:{ write_super_file output is formated as show below:
 
 ******************************************************************************************/
 
-
-
+ISSUES: superOptimizer2 output temp file is incorrect
+	- input/output not printing
+	- Strange characters being printed out
 
 	int first = 1; // First line has not been printed 
 	int nest_level = 3; //Two titles come before the data is printed
@@ -243,28 +247,34 @@ input set 1:{ write_super_file output is formated as show below:
 	FILE * dfp;
 	int numOps = 0;
 	for(i=0; i<maxNumOps; ++i){
-		if(numSeq == 0) ++numOps;
+		if(numSeq[i] != 0) ++numOps;
 	}
 	
-	if((dfp = fopen(TEMP_FILE,"a")) == NULL)
-		{
+	if((dfp = fopen(TEMP_FILE,"a")) == NULL){
 			printf("Data file could not be appended\n"); // File could not be created and opened
 			return -1;
 		}
 		
 	//print inputs
 	for(i<0; i<inputSize; ++i){
-		fprintf(dfp,"%s%d%s%d\n","input",i,": ", input[i]);
+		write_num_json (dfp, nest_level, "input"+i, input[i], &first);
+		//fprintf(dfp,"%s%d%s%d\n","input",i,": ", input[i]);
 	}
 	
 	//print outputs
 	for(i<0; i<inputSize; ++i){
-		fprintf(dfp,"%s%d%s%d\n","output",i,": ", output[i]);
+		write_num_json (dfp, nest_level, "output"+i, output[i], &first);
 	}
 	
 	//print operations
 	for(i<0; i<numOps; ++i){
-		fprintf(dfp,"%s%d%s %c%d\n","operation",i,": ", opsSeq[i], numSeq[i]);
+		char opBuf [30];
+		write_tag_json (opBuf, nest_level, "operation"+i, &opsSeq[i], &first);
+		fwrite(opBuf, sizeof(char), 30, dfp);
+		write_num_json (dfp, nest_level, "opvalue"+i, numSeq[i], &first);
+			
+
+		//fprintf(dfp,"%s%d%s %c%d\n","operation",i,": ", opsSeq[i], numSeq[i]);
 	}
 	
 	//print numOps
@@ -280,9 +290,9 @@ input set 1:{ write_super_file output is formated as show below:
 			printf("Error writing label");
 			return -1;
 		}
+		fflush(dfp);
 		++nest_level;
 		fwrite(label_buf, sizeof(char), label_size, dfp);
-		
 		// print data values for each run
 		for(j = 0; j < num_runs; ++j){ 						
 			char run_title [10];
@@ -301,12 +311,12 @@ input set 1:{ write_super_file output is formated as show below:
 		fprintf(dfp, "$c", '}'); 
 		
 	}
-	
 	//Nest and print closing bracket for all data in input set
 	for(j=0; j<nest_level; ++j)
 			fprintf(dfp, "$c", ' '); 
 			
 	fprintf(dfp, "$c", '}'); 
+	
 	
 	fclose(dfp);
 	
@@ -314,55 +324,4 @@ input set 1:{ write_super_file output is formated as show below:
 	
 	return 0;
 }
-
-int main(int argc, char** argv){ //[fileName]   Used to print system information to data file
-	// Writing System Information
-	int first = 1; 
-	int nest_level = 1;
-	struct utsname un;
-	char tmp_buf[512];
-	int out_len;
-	time_t ts_val;
-	char time_buf[80];
-	FILE * dfp;
-	if(argc != 2){
-		printf("bad arguments");
-		return -1;
-	}
-	if((dfp = fopen(argv[1],"a")) == NULL)
-		{
-			printf("Data file could not be appended\n"); // File could not be created and opened
-			return -1;
-		}
-		
-	
-	if (uname(&un))
-		printf("error getting OS data\n");
-
-
-	if ((out_len = write_tag_json (tmp_buf, nest_level, "sysname", un.sysname, &first)) > 0)
-		if (fwrite(tmp_buf, sizeof(char),out_len, dfp) != out_len)
-			printf("error writing tag\n");
-			
-	if ((out_len = write_tag_json (tmp_buf, nest_level, "release", un.release, &first)) > 0)
-		if (fwrite(tmp_buf, sizeof(char), out_len, dfp) != out_len)
-			printf("error writing tag\n");
-			
-	if ((out_len = write_tag_json (tmp_buf, nest_level, "machine", un.machine, &first)) > 0)
-		if (fwrite(tmp_buf, sizeof(char), out_len, dfp) != out_len)
-			printf("error writing tag\n");
-			
-			
-	// Writing Time
-
-	time(&ts_val);
-	strftime(time_buf, 80, "%x - %I:%M%p", localtime(&ts_val));
-	
-	if ((out_len = write_tag_json (tmp_buf, nest_level, "time", time_buf, &first)) > 0)
-		if (fwrite(tmp_buf, sizeof(char), out_len, dfp) != out_len)
-			printf("error writing tag\n");
-	
-	return 0;
-}
-
 

@@ -3,7 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <limits.h>
-#include "writeJson.h"
+#include "jsonData.h"
 
 enum operationID {add = 0, sub = 1, and = 2, xor = 3, lsl = 4, lsr = 5};
 char operations[] = {'+','-','&','^','<','>'};
@@ -119,7 +119,7 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size](for ra
 				//breaks the number generator
 
 	int runs = 10;
-	int numDataForms = 6; //RunTime, EvalTime, OpArray, numArray,input, output
+	int numDataForms = 2; //RunTime, EvalTime, OpArray, numArray,input, output
 	
 	char * input;
 	char * output;
@@ -158,10 +158,10 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size](for ra
 		opsSeq[i] = ' ';
 		numSeq[i] = 0;
 	}
-	char * testBuff = malloc(fileSize*sizeof(char));
+	char * testBuf = malloc(fileSize*sizeof(char));
 	srand(time(0));
 	for(i=0;i<fileSize;++i){
-		testBuff[i] = input[rand()%numDistInputs];
+		testBuf[i] = input[rand()%numDistInputs];
 	}
 	int success = -1;
 	struct timeval time0,time1;
@@ -184,13 +184,13 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size](for ra
 	for(i=0;i<runs;i++){
 		gettimeofday(&time0,NULL);
 		for(j = 0; j < fileSize; ++j){
-			evaluate(input[j], opsSeq, numSeq, maxNumOps);
+			evaluate(testBuf[j], opsSeq, numSeq, maxNumOps);
 		}
 		gettimeofday(&time1,NULL);
 		double evalTime = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 		evalTimes[i] = evalTime;
 	}
-	
+	free(testBuf);	
 
 	for(i=0; i < numDistInputs; ++i){
 			output[i] = evaluate(input[i], opsSeq, numSeq,maxNumOps);
@@ -205,14 +205,14 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size](for ra
 	labelArray[0] = "RunTimes";
 	labelArray[1] = "EvalTimes";
 	
-	int numLabels= sizeof(labelArray); 
+	int numLabels= sizeof(labelArray)/sizeof(char*); 
 	
-//	if(write_super_file(timeArray, labelArray, numLabels, runs, opRep, numSeq, maxNumOps, input, output, numDistInputs) < 0)
-//		printf("error writing data file\n"); 
+	if(write_super_file(timeArray, labelArray, numLabels, runs, opRep, numSeq, maxNumOps, input, output, numDistInputs) < 0)
+		printf("error writing data file\n"); 
 		
-	
-	free(input);	
-	free(output);                            
+	free(input);
+	free(output);
+
 
 //	int numOps = 0;
 //	for(i = 0; i<maxNumOps; ++i){

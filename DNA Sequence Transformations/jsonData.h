@@ -13,6 +13,6 @@ int write_num_json(FILE* dfp,int nest_level, char *title, double value, int *fir
 
 int write_tag_json(char *file_buf,int nest_level, char *title, char *text, int *first);
 
-int write_super_file (double **data_arr, char **label_arr, long num_labels, long num_runs, char * opsSeq, int * numSeq, int maxNumOps, char* input, char* output, int inputSize);
+int write_super_file (double **data_arr, char **label_arr, int num_labels, int num_runs, char * opsSeq, int * numSeq, int maxNumOps, char* input, char* output, int inputSize);
 
 #endif
