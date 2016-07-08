@@ -16,7 +16,7 @@
 #include <sys/time.h>
 #include <sys/utsname.h>
 #include <time.h> 
-#include "writeJson.h"
+#include "jsonData.h"
 
 #define TEMP_FILE	"./temp.json"
 
@@ -70,8 +70,8 @@ int write_json_label (char *file_buf, char *title, int *buf_pos, int nest_level)
 	
 	nest_level *= 4;
 	
-	for (buf_pos = 0; buf_pos < nest_level; buf_pos++)
-		file_buf[buf_pos] = ' ';
+	for (*buf_pos = 0; *buf_pos < nest_level; *buf_pos++)
+		file_buf[*buf_pos] = ' ';
 	
 	file_buf[(*buf_pos)++] = '\"';
 	if ((len = (int)strlen(title)) == 0)
@@ -87,13 +87,13 @@ int write_json_label (char *file_buf, char *title, int *buf_pos, int nest_level)
 	return 0;
 }
 
-int write_json_title (char *file_buf, char *title, int *buf_pos)
+int write_json_title (char *file_buf, char *title, int *buf_pos, int nest_level)
 {
 	int len;
 	nest_level *= 4;
 	
-	for (buf_pos = 0; buf_pos < nest_level; buf_pos++)
-		file_buf[buf_pos] = ' ';
+	for (*buf_pos = 0; *buf_pos < nest_level; *buf_pos++)
+		file_buf[*buf_pos] = ' ';
 	
 	file_buf[(*buf_pos)++] = '\"';
 	if ((len = (int)strlen(title)) == 0)
@@ -165,7 +165,7 @@ int write_tag_json (char *file_buf, int nest_level,
 	}
 	
 		
-	if (write_json_label(file_buf, title, &buf_pos) < 0)
+	if (write_json_label(file_buf, title, &buf_pos, nest_level) < 0)
 		return -1;
 	 
 	sscanf(text, "%*[ ]%c", (char *)&tmp);
@@ -192,65 +192,119 @@ int write_tag_json (char *file_buf, int nest_level,
 	return buf_pos;
 }
 
-int write_super_data_file (double **data_arr, char **label_arr, long num_labels, long num_runs, char * opsSeq, int * numSeq, int maxNumOps, char* input, char* output, int inputSize)
+int write_super_file (double **data_arr, char **label_arr, long num_labels, long num_runs, char * opsSeq, int * numSeq, int maxNumOps, char* input, char* output, int inputSize)
 {
-	int first = 1;
-	int nest_level = 0;
-	int i, j;
 
+/******************************************************************************************
+input set 1:{ write_super_file output is formated as show below:
+
+		input1: 1
+		input2: 3
+		.
+		.
+		.
+		output1: 5 
+		output2: 6
+		.
+		.
+		.
+		operation1: +3,
+		operation2: &4,
+		.
+		.
+		.
+		numOps: 2
+		superoptTime:{
+			run1: data
+			run2
+			run3
+			.
+			.
+			.
+			}
+		eval time: {
+			run1
+			run2
+			run3
+			.
+			.
+			.
+		} 
+	}
+
+******************************************************************************************/
+
+
+
+
+	int first = 1; // First line has not been printed 
+	int nest_level = 3; //Two titles come before the data is printed
+	int i, j;
 	FILE * dfp;
-	
-	
-	int numOps;
+	int numOps = 0;
 	for(i=0; i<maxNumOps; ++i){
 		if(numSeq == 0) ++numOps;
 	}
 	
-//	if ((data_fd = open(TEMP_FILE, O_CREAT|O_TRUNC|O_RDWR, 0777)) < 0)//0777 mode allows all (user,group,others) to read write and execute
 	if((dfp = fopen(TEMP_FILE,"a")) == NULL)
 		{
 			printf("Data file could not be appended\n"); // File could not be created and opened
 			return -1;
 		}
 		
-//	char title_buf[100];					//Write out file title and incease nest level 
-//	int title_size = 0;
-//	if(write_json_title(title_buf, title , &title_size) <0){
-//		printf("Error writing title");
-//		return -1;
-//	}
+	//print inputs
+	for(i<0; i<inputSize; ++i){
+		fprintf(dfp,"%s%d%s%d\n","input",i,": ", input[i]);
+	}
 	
-//	fwrite(title_buf, sizeof(char), title_size. dfp);
-//	++nest_level; 
-
+	//print outputs
+	for(i<0; i<inputSize; ++i){
+		fprintf(dfp,"%s%d%s%d\n","output",i,": ", output[i]);
+	}
+	
+	//print operations
+	for(i<0; i<numOps; ++i){
+		fprintf(dfp,"%s%d%s %c%d\n","operation",i,": ", opsSeq[i], numSeq[i]);
+	}
+	
+	//print numOps
+	fprintf(dfp,"%s%d","numOps: ", numOps);
 	
 	//print timing data
+	
+	//write label title before printing data values
 	for(i = 0; i < num_labels; ++i){
-		char nest_spaces [nest_level*4];
-		memset (nest_spaces, ' ', sizeof(nest_spaces));
-		fwrite(nest_spaces, sizeof(char),(nest_level*4),dfp); 		// indent 4 spaces for each nest level	
-		char label_buf[80];					//Write label title before printing data values
+		char label_buf[80];		
 		int label_size = 0;
-		if(write_json_title(label_buf, label_arr[i],&label_size)<0){
+		if(write_json_title(label_buf, label_arr[i],&label_size, nest_level)<0){
 			printf("Error writing label");
 			return -1;
 		}
 		++nest_level;
 		fwrite(label_buf, sizeof(char), label_size, dfp);
-		for(j = 0; j < num_runs; ++j){ // print data values for each run
+		
+		// print data values for each run
+		for(j = 0; j < num_runs; ++j){ 						
 			char run_title [10];
 			sprintf(run_title, "Run %d", j);
-			if(write_num_json(dfp, nest_level, run_title, data_arr[i][j].data, &first) < 0){ 
-				printf("%s %d\n%s %s\n %s %d\n","error writing element: ", i, "label: ",
-					data_array[i].label, "data: ", data_array[i].data);
+			if(write_num_json(dfp, nest_level, run_title, data_arr[i][j], &first) < 0){ 
+				printf("%s %d\n%s %s\n %s %d\n","error writing element: ", i, "label: ", 
+					label_arr[i], "data: ", data_arr[i]);
 				return -1;
 			}
 		}
 		--nest_level; 
+		//Print the closing bracket one nest level lower than data
+		for(j=0; j<nest_level; ++j)
+			fprintf(dfp, "$c", ' '); 
+			
+		fprintf(dfp, "$c", '}'); 
+		
 	}
 	
-
-	
+	//Nest and print closing bracket for all data in input set
+	for(j=0; j<nest_level; ++j)
+			fprintf(dfp, "$c", ' '); 
 			
 	fprintf(dfp, "$c", '}'); 
 	
@@ -261,8 +315,10 @@ int write_super_data_file (double **data_arr, char **label_arr, long num_labels,
 	return 0;
 }
 
-int main(int argc, char** argv){ [fileName]
+int main(int argc, char** argv){ //[fileName]   Used to print system information to data file
 	// Writing System Information
+	int first = 1; 
+	int nest_level = 1;
 	struct utsname un;
 	char tmp_buf[512];
 	int out_len;
