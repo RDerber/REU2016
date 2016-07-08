@@ -100,30 +100,35 @@ int superOptimizer (char * startingInput, char * input, int inputSize, int totOp
 	return -1;
 }
 
-int main(int argc, char** argv){	//[inputSize][fileSize]
+// MAKE EVALUATE FUNCTION
+
+int main(int argc, char** argv){	//[inputSize](for random inputs) or specify inputs and files to transform [input 1]...[input n][evaluateFile][outputFile]
 //	char input[] = {'\x00','\x01','\x02','\x03','\x04'};
 //	char input[] = {'A','C','G','T','N'};
 	int i,j,k;
 	int maxInputSize = 200;	//input size exceeding 200 causes our naive unique number generator to be extremely slow, exceeding 256
 				//breaks the number generator
+				
+	int numInputSets = 10; 
+	int runs = 10;
+	
 	char * input;
 	int inputSize;
-	if(argc != 2){
-		printf("should only be one argument (currently)");
+	if(argc != 3){
+		printf("Please provide an inputSize and a fileSize");
 		return -1;
 	}
 	if(atoi(argv[1]) >= maxInputSize){
 		printf("inputSize too large for unique random number generator");
 		return -1;
 	}
-	float *times;
-	int runs = 10;
+	float runTimes[][];
+	float evalTimes[][];
 	int maxNumOps = 6;
-	times = malloc(runs *sizeof(float)); 
-	for(i = 0; i < runs; ++i){
-		times[i] = FLT_MAX; 
-	} 
-	for(k=0;k < 10; ++k){
+	runTimes = malloc(runs *sizeof(float)); 
+	evalTimes = malloc(runs *sizeof(float)); 
+	
+	for(k=0;k < numInputSets; ++k){
 		inputSize = atoi(argv[1]);
 		input = calloc(sizeof(char),inputSize);
 		srand((unsigned int)time(0));
@@ -149,15 +154,25 @@ int main(int argc, char** argv){	//[inputSize][fileSize]
 			success = superOptimizer(input, input, inputSize, maxNumOps, maxNumOps, opsSeq, numSeq);
 			gettimeofday(&time1,NULL);
 			float runTime = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-			if(times[k] > runTime){
-				times[k] = runTime;
+			if(runTimes[k] > runTime){
+				runTimes[k] = runTime;
 			}
 		}
+		
+		for(i=0;i<runs;i++){
+			gettimeofday(&time0,NULL);
+			success = evaluate(input, input, inputSize, maxNumOps, maxNumOps, opsSeq, numSeq);
+			gettimeofday(&time1,NULL);
+			float evalTime = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+			if(evalTimes[k] > evalTime){
+				evalTimes[k] = evalTime;
+			}
+		}
+		
 		free(input);
 	} // End K Loop
-	int numTimes = 3;
 	if(write_time_file(times, runs, numTimes,inputSize) < 0)
-		printf("error writing time file\n");
+		printf("error writing time file\n");                             
 	free(times);
 
 //	int numOps = 0;
