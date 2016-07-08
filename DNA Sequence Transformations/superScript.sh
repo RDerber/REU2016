@@ -11,7 +11,7 @@ else
 	today=$(date +%Y-%m-%d-%T)
 fi
 
-mkdir ./tests/superTests/$today
+mkdir ./tests/superInputTests/$today
 
 #Run superOptimize for 100 times each for 1 through 200 inputs and store in timeStats.txt
 #Add new line character inbetween files when appending
@@ -20,17 +20,17 @@ do
 		./superOptimizer $i
 		./jsonTitle timing.json "$i input(s)" "-c"
 		echo "" >> timing.json
-		cat timing.json >> ./tests/superTests/$today/superTimeStats.json
+		cat timing.json >> ./tests/superInputTests/$today/superInputTimeStats.json
 
 done
 
-#Add Title to superTimeStats.txt file
-./jsonTitle ./tests/superTests/$today/superTimeStats.json "superOptimizer"  
+#Add Title to superInputTimeStats.txt file
+./jsonTitle ./tests/superInputTests/$today/superInputTimeStats.json "superOptimizer"  
 
-./jsonToCSV ./tests/superTests/$today/superTimeStats.json ./tests/superTests/$today/superTimeStats.csv
-plotfile="superTimeStats.csv"
+./jsonToCSV ./tests/superInputTests/$today/superInputTimeStats.json ./tests/superInputTests/$today/superInputTimeStats.csv
+plotfile="superInputTimeStats.csv"
 output="super.png"
-folder="./tests/superTests/$today"
+folder="./tests/superInputTests/$today"
 graph="$folder/$plotfile"
 touch $folder/$output
 outpath="$folder/$output"
