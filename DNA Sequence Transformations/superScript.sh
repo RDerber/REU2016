@@ -3,6 +3,7 @@
 #Recompile all files before running timing function
 gcc jsonTitle.c -o jsonTitle
 gcc writeJson.c superOptimizer2.c -o superOptimizer2
+gcc jsonToCSV.c -o jsonToCSV
 
 if [ $1 != NULL ]
 then
