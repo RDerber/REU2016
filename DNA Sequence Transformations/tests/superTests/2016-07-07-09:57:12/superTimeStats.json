@@ -1,0 +1,68 @@
+"superOptimizer": {
+    "1 input(s)": {
+        "file size (bytes)": 1.000000,
+        "total # runs": 10.000000,
+        "# runs saved": 3.000000,
+        "microseconds": 34.000000,
+        "microseconds": 35.000000,
+        "microseconds": 35.000000,
+        "sysname": "Linux",
+        "release": "3.10.0-327.18.2.el7.x86_64",
+        "machine": "x86_64",
+        "time": "07/07/16 - 09:57AM",
+        "avg. microseconds": 34.666667
+    },
+    "2 input(s)": {
+        "file size (bytes)": 2.000000,
+        "total # runs": 10.000000,
+        "# runs saved": 3.000000,
+        "microseconds": 2392.000000,
+        "microseconds": 2396.000000,
+        "microseconds": 2397.000000,
+        "sysname": "Linux",
+        "release": "3.10.0-327.18.2.el7.x86_64",
+        "machine": "x86_64",
+        "time": "07/07/16 - 09:57AM",
+        "avg. microseconds": 2395.000000
+    },
+    "3 input(s)": {
+        "file size (bytes)": 3.000000,
+        "total # runs": 10.000000,
+        "# runs saved": 3.000000,
+        "microseconds": 2904.000000,
+        "microseconds": 2906.000000,
+        "microseconds": 2907.000000,
+        "sysname": "Linux",
+        "release": "3.10.0-327.18.2.el7.x86_64",
+        "machine": "x86_64",
+        "time": "07/07/16 - 09:57AM",
+        "avg. microseconds": 2905.666687
+    },
+    "4 input(s)": {
+        "file size (bytes)": 4.000000,
+        "total # runs": 10.000000,
+        "# runs saved": 3.000000,
+        "microseconds": 3849.000000,
+        "microseconds": 3850.000000,
+        "microseconds": 3850.000000,
+        "sysname": "Linux",
+        "release": "3.10.0-327.18.2.el7.x86_64",
+        "machine": "x86_64",
+        "time": "07/07/16 - 09:57AM",
+        "avg. microseconds": 3849.666748
+    },
+    "5 input(s)": {
+        "file size (bytes)": 5.000000,
+        "total # runs": 10.000000,
+        "# runs saved": 3.000000,
+        "microseconds": 6101.000000,
+        "microseconds": 3828895.000000,
+        "microseconds": 3929911.000000,
+        "sysname": "Linux",
+        "release": "3.10.0-327.18.2.el7.x86_64",
+        "machine": "x86_64",
+        "time": "07/08/16 - 06:22AM",
+        "avg. microseconds": 2588302.416626
+    },
+    
+}
