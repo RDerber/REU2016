@@ -192,34 +192,39 @@ int write_tag_json (char *file_buf, int nest_level,
 	return buf_pos;
 }
 
-int write_data_file (double **data_arr, char **label_arr, long num_labels, long num_runs, char* title)
+int write_super_data_file (double **data_arr, char **label_arr, long num_labels, long num_runs, char * opsSeq, int * numSeq, int maxNumOps, char* input, char* output, int inputSize)
 {
 	int first = 1;
 	int nest_level = 0;
 	int i, j;
-	struct utsname un;
-	char tmp_buf[512];
-	int out_len;
-	time_t ts_val;
-	char time_buf[80];
+
 	FILE * dfp;
+	
+	
+	int numOps;
+	for(i=0; i<maxNumOps; ++i){
+		if(numSeq == 0) ++numOps;
+	}
+	
 //	if ((data_fd = open(TEMP_FILE, O_CREAT|O_TRUNC|O_RDWR, 0777)) < 0)//0777 mode allows all (user,group,others) to read write and execute
 	if((dfp = fopen(TEMP_FILE,"a")) == NULL)
 		{
-			printf("Data file could not be created\n"); // File could not be created and opened
+			printf("Data file could not be appended\n"); // File could not be created and opened
 			return -1;
 		}
 		
-	char title_buf[100];					//Write out file title and incease nest level 
-	int title_size = 0;
-	if(write_json_title(title_buf, title , &title_size) <0){
-		printf("Error writing title");
-		return -1;
-	}
+//	char title_buf[100];					//Write out file title and incease nest level 
+//	int title_size = 0;
+//	if(write_json_title(title_buf, title , &title_size) <0){
+//		printf("Error writing title");
+//		return -1;
+//	}
 	
-	fwrite(title_buf, sizeof(char), title_size. dfp);
-	++nest_level; 
+//	fwrite(title_buf, sizeof(char), title_size. dfp);
+//	++nest_level; 
+
 	
+	//print timing data
 	for(i = 0; i < num_labels; ++i){
 		char nest_spaces [nest_level*4];
 		memset (nest_spaces, ' ', sizeof(nest_spaces));
@@ -228,7 +233,7 @@ int write_data_file (double **data_arr, char **label_arr, long num_labels, long 
 		int label_size = 0;
 		if(write_json_title(label_buf, label_arr[i],&label_size)<0){
 			printf("Error writing label");
-			return -1; 
+			return -1;
 		}
 		++nest_level;
 		fwrite(label_buf, sizeof(char), label_size, dfp);
@@ -243,8 +248,37 @@ int write_data_file (double **data_arr, char **label_arr, long num_labels, long 
 		}
 		--nest_level; 
 	}
+	
 
-// Writing System Information
+	
+			
+	fprintf(dfp, "$c", '}'); 
+	
+	fclose(dfp);
+	
+	fprintf(stderr, "[%s]: wrote timing data\n", __func__);
+	
+	return 0;
+}
+
+int main(int argc, char** argv){ [fileName]
+	// Writing System Information
+	struct utsname un;
+	char tmp_buf[512];
+	int out_len;
+	time_t ts_val;
+	char time_buf[80];
+	FILE * dfp;
+	if(argc != 2){
+		printf("bad arguments");
+		return -1;
+	}
+	if((dfp = fopen(argv[1],"a")) == NULL)
+		{
+			printf("Data file could not be appended\n"); // File could not be created and opened
+			return -1;
+		}
+		
 	
 	if (uname(&un))
 		printf("error getting OS data\n");
@@ -260,25 +294,19 @@ int write_data_file (double **data_arr, char **label_arr, long num_labels, long 
 			
 	if ((out_len = write_tag_json (tmp_buf, nest_level, "machine", un.machine, &first)) > 0)
 		if (fwrite(tmp_buf, sizeof(char), out_len, dfp) != out_len)
-			printf("error writing tag\n");		
-
-// Writing Time
+			printf("error writing tag\n");
+			
+			
+	// Writing Time
 
 	time(&ts_val);
 	strftime(time_buf, 80, "%x - %I:%M%p", localtime(&ts_val));
 	
 	if ((out_len = write_tag_json (tmp_buf, nest_level, "time", time_buf, &first)) > 0)
 		if (fwrite(tmp_buf, sizeof(char), out_len, dfp) != out_len)
-			printf("error writing tag\n");	
-			
-	fprintf(dfp, "$c", '}'); 
-	
-	fclose(dfp);
-	
-	fprintf(stderr, "[%s]: wrote timing data\n", __func__);
+			printf("error writing tag\n");
 	
 	return 0;
 }
-
 
 

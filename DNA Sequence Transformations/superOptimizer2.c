@@ -3,7 +3,6 @@
 #include <string.h>
 #include <time.h>
 #include <limits.h>
-#include <float.h>
 #include "writeJson.h"
 
 enum operationID {add = 0, sub = 1, and = 2, xor = 3, lsl = 4, lsr = 5};
@@ -111,9 +110,15 @@ int main(int argc, char** argv){	//[inputSize](for random inputs) or specify inp
 				
 	int numInputSets = 10; 
 	int runs = 10;
+	int numDataForms = 6; //RunTime, EvalTime, OpArray, numArray,input, output
 	
 	char * input;
+	char * output;
 	int inputSize;
+	double runTimes[runs];
+	double evalTimes[runs];
+	int maxNumOps = 6;
+	
 	if(argc != 3){
 		printf("Please provide an inputSize and a fileSize");
 		return -1;
@@ -122,58 +127,71 @@ int main(int argc, char** argv){	//[inputSize](for random inputs) or specify inp
 		printf("inputSize too large for unique random number generator");
 		return -1;
 	}
-	float runTimes[][];
-	float evalTimes[][];
-	int maxNumOps = 6;
-	runTimes = malloc(runs *sizeof(float)); 
-	evalTimes = malloc(runs *sizeof(float)); 
 	
-	for(k=0;k < numInputSets; ++k){
-		inputSize = atoi(argv[1]);
-		input = calloc(sizeof(char),inputSize);
-		srand((unsigned int)time(0));
-		for(i=0;i<inputSize;++i){
-			input[i] = rand()%255;
-			for(j=0;j<i;++j){
-				if(input[i] == input[j]) --i;
-			}
+	runTimes = malloc(runs *sizeof(double)); 
+	evalTimes = malloc(runs *sizeof(double)); 
+	inputSize = atoi(argv[1]);
+	input = calloc(sizeof(char),inputSize);
+	output = calloc(sizeof(char),inputSize);
+	
+	srand((unsigned int)time(0));
+	for(i=0;i<inputSize;++i){
+		input[i] = rand()%255;
+		for(j=0;j<i;++j){
+			if(input[i] == input[j]) --i;
 		}
-			
+	}
 		
-		char opsSeq [maxNumOps];
-		int numSeq [maxNumOps] ;
-		for(i = 0; i < maxNumOps; ++i){
-			opsSeq[i] = ' ';
-			numSeq[i] = 0;
+	
+	char opsSeq [maxNumOps];
+	int numSeq [maxNumOps] ;
+	for(i = 0; i < maxNumOps; ++i){
+		opsSeq[i] = ' ';
+		numSeq[i] = 0;
+	}
+		
+	int success = -1;
+	struct timeval time0,time1;
+	for(i=0;i<runs;i++){
+		gettimeofday(&time0,NULL);
+		success = superOptimizer(input, input, inputSize, maxNumOps, maxNumOps, opsSeq, numSeq);
+		gettimeofday(&time1,NULL);
+		double runTime = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+		runTimes[i] = runTime;
+	}
+	
+	for(i=0;i<runs;i++){
+		gettimeofday(&time0,NULL);
+		success = evaluate(input, input, inputSize, maxNumOps, maxNumOps, opsSeq, numSeq);
+		gettimeofday(&time1,NULL);
+		double evalTime = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+		evalTimes[i] = evalTime;
 		}
+	}
 		
-		int success = -1;
-		struct timeval time0,time1;
-		for(i=0;i<runs;i++){
-			gettimeofday(&time0,NULL);
-			success = superOptimizer(input, input, inputSize, maxNumOps, maxNumOps, opsSeq, numSeq);
-			gettimeofday(&time1,NULL);
-			float runTime = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-			if(runTimes[k] > runTime){
-				runTimes[k] = runTime;
-			}
-		}
+	for(i=0; i < inputSize; ++i){
+		output[i] = evaluate(input[i],   );
+	}
+
+	
+	double **timeArray[numDataForms];
+	char *labelArray[numDataForms];	
+	timeArray[0] = runTimes;
+	timeArray[1] = evalTimes;
+	
+	labelArray[0] = "RunTimes";
+	labelArray[1] = "EvalTimes";
+	
+	int numLabels= sizeof(labelArray); 
+	
+	if(write_super_file(timeArray, labelArray, numLabels, runs, opsSeq, numSeq, maxNumOps, input, output, inputSize) < 0)
+		printf("error writing data file\n"); 
 		
-		for(i=0;i<runs;i++){
-			gettimeofday(&time0,NULL);
-			success = evaluate(input, input, inputSize, maxNumOps, maxNumOps, opsSeq, numSeq);
-			gettimeofday(&time1,NULL);
-			float evalTime = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-			if(evalTimes[k] > evalTime){
-				evalTimes[k] = evalTime;
-			}
-		}
-		
-		free(input);
-	} // End K Loop
-	if(write_time_file(times, runs, numTimes,inputSize) < 0)
-		printf("error writing time file\n");                             
-	free(times);
+	
+	free(input);	
+	free(output);                            
+	free(runTimes);
+	free(evalTimes);
 
 //	int numOps = 0;
 //	for(i = 0; i<maxNumOps; ++i){

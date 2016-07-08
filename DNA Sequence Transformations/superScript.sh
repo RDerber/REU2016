@@ -2,7 +2,7 @@
 
 #Recompile all files before running timing function
 gcc jsonTitle.c -o jsonTitle
-gcc writeJson.c superOptimizer.c -o superOptimizer
+gcc writeJson.c superOptimizer2.c -o superOptimizer2
 
 if [ $1 != NULL ]
 then
@@ -13,15 +13,30 @@ fi
 
 mkdir ./tests/superInputTests/$today
 
+runs=10
+maxNumInputs=2
 #Run superOptimize for 100 times each for 1 through 200 inputs and store in timeStats.txt
 #Add new line character inbetween files when appending
-for i in {1..2}
-do
-		./superOptimizer $i
-		./jsonTitle timing.json "$i input(s)" "-c"
-		echo "" >> timing.json
-		cat timing.json >> ./tests/superInputTests/$today/superInputTimeStats.json
 
+for i in { 1..$maxNumInputs }
+do
+	rm temp1.json
+	rm temp2.json
+	for inputSet in { 1..$runs }
+		do
+			./superOptimizer2 $i
+			./jsonTitle temp1.json "Input Set $inputSet" "-c"
+			echo "" >> temp1.json
+			cat temp1.json >> temp2.json
+		done
+	if [ i -eq maxNumInputs ]
+	then
+		./jsonTitle temp2.json "$i input(s)"
+	else
+		./jsonTitle temp2.json "$i input(s)" "-c"
+	fi
+	echo "" >> temp2.json
+	cat  temp2.json >> ./tests/superInputTests/$today/superInputTimeStats.json
 done
 
 #Add Title to superInputTimeStats.txt file
