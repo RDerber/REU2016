@@ -1,9 +1,10 @@
 #/bin/bash
 
 #Recompile all files before running timing function
-gcc -g jsonTitle.c -o jsonTitle
-gcc -g jsonData.c superOptimizer2.c -o superOptimizer2
-gcc -g jsonToCSV.c -o jsonToCSV
+gcc jsonTitle.c -o jsonTitle
+gcc jsonData.c superOptimizer2.c -o superOptimizer2
+gcc superJsonToCSV.c -o superJsonToCSV
+gcc jsonData.c jsonSystemStats.c -o jsonSystemStats
 
 if [ "$1" != "" ]
 then
@@ -19,6 +20,8 @@ maxNumInputs=2
 fileSize=10000
 #Run superOptimize for 100 times each for 1 through 200 inputs and store in timeStats.txt
 #Add new line character inbetween files when appending
+
+./jsonSystemStats ./tests/superInputTests/$today/superInputTimeStats.json
 
 for ((i=1; i<(maxNumInputs+1); ++i))
 do
@@ -53,7 +56,7 @@ done
 #Add Title to superInputTimeStats.txt file
 ./jsonTitle ./tests/superInputTests/$today/superInputTimeStats.json "superOptimizer"  
 
-./jsonToCSV ./tests/superInputTests/$today/superInputTimeStats.json ./tests/superInputTests/$today/superInputTimeStats.csv
+./superJsonToCSV ./tests/superInputTests/$today/superInputTimeStats.json ./tests/superInputTests/$today/superInputTimeStats.csv ./tests/superInputTests/$today/superNumOpTimeStats.csv $maxNumInputs $runs 10 3
 plotfile="superInputTimeStats.csv"
 output="super.png"
 folder="./tests/superInputTests/$today"
