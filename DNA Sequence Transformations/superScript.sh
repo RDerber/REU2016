@@ -1,9 +1,9 @@
 #/bin/bash
 
 #Recompile all files before running timing function
-gcc jsonTitle.c -o jsonTitle
-gcc jsonData.c superOptimizer2.c -o superOptimizer2
-gcc jsonToCSV.c -o jsonToCSV
+gcc -g jsonTitle.c -o jsonTitle
+gcc -g jsonData.c superOptimizer2.c -o superOptimizer2
+gcc -g jsonToCSV.c -o jsonToCSV
 
 if [ "$1" != "" ]
 then
@@ -24,9 +24,16 @@ for ((i=1; i<(maxNumInputs+1); ++i))
 do
 	for((inputSet=1; inputSet<(runs+1); ++inputSet))
 		do
+			echo "input set number $inputSet is being printed"
 			./superOptimizer2 $i $fileSize
-			./jsonTitle temp1.json "Input Set $inputSet" "-c"
-			echo "" >> temp1.json
+			if [ $inputSet -eq $runs ]
+			then
+				./jsonTitle temp1.json "Input Set $inputSet"
+			else	
+				./jsonTitle temp1.json "Input Set $inputSet" "-c"
+				echo "" >> temp1.json
+			fi
+			
 			cat temp1.json >> temp2.json
 		done
 	if [ $i -eq $maxNumInputs ]
@@ -34,11 +41,13 @@ do
 		./jsonTitle temp2.json "$i input(s)"
 	else
 		./jsonTitle temp2.json "$i input(s)" "-c"
+		echo "" >> temp2.json
+		rm temp1.json
 	fi
-	echo "" >> temp2.json
+	
 	cat  temp2.json >> ./tests/superInputTests/$today/superInputTimeStats.json
-	rm temp1.json
 	rm temp2.json
+	
 done
 
 #Add Title to superInputTimeStats.txt file
