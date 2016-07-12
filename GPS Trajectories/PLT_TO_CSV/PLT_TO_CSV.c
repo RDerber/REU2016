@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-#include <regex.h>
 
 #define ID "000"
 #define LINE_OFFSET 6
