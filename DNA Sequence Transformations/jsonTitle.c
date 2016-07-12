@@ -82,7 +82,11 @@ int jsonTitle(char* filename, char * title, char* titleType){
 
 	free(input);
 	
-	FILE * ofp = fopen(filename,"w"); // Open the file again for writing, erasing its contents
+	FILE * ofp;
+	if((ofp = fopen(filename,"w")) == NULL){ // Open the file again for writing, erasing its contents
+		printf("Error creating output file");
+		return -1; 
+	}
 
 
 	if(titleType == NULL){

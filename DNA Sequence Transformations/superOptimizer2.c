@@ -64,9 +64,9 @@ int compare (char* input, int numDistInputs, char * startingInput){
 		if(matches != i+1) return -1;
 	}
 	if(matches == numDistInputs){
-		printf("Transformations:\nInput:\tOutput:\n");
-		for(i=0;i<numDistInputs;++i)
-			printf("%d%s%d\n",startingInput[i],"   ->   ", input[i]);
+		//printf("Transformations:\nInput:\tOutput:\n");
+		//for(i=0;i<numDistInputs;++i)
+		//	printf("%d%s%d\n",startingInput[i],"   ->   ", input[i]);
 		return 0;
 	}
 }
@@ -111,7 +111,7 @@ char evaluate(int input, char * opsSeq, int * numSeq, int maxNumOps){
 	return output;
 }
 
-int main(int argc, char** argv){	//[number of Distinct Inputs][file size](for random inputs and file size) or specify inputs and files to transform [input 1]...[input n][evaluateFile][outputFile]
+int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random seed](for random inputs and file size) or specify inputs and files to transform [input 1]...[input n][evaluateFile][outputFile]
 //	char input[] = {'\x00','\x01','\x02','\x03','\x04'};
 //	char input[] = {'A','C','G','T','N'};
 	int i,j,k;
@@ -129,8 +129,8 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size](for ra
 	int maxNumOps = 6;
 	long fileSize = atoi(argv[2]);
 	
-	if(argc != 3){
-		printf("Please provide an numDistInputs and a fileSize");
+	if(argc != 4){
+		printf("Please provide a numDistInputs and a fileSize");
 		return -1;
 	}
 	if(atoi(argv[1]) >= maxNumDistInputs){
@@ -142,14 +142,13 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size](for ra
 	input = calloc(sizeof(char),numDistInputs);
 	output = calloc(sizeof(char),numDistInputs);
 	
-	srand((unsigned int)time(0));
+	srand(atoi(argv[3]));
 	for(i=0;i<numDistInputs;++i){
 		input[i] = rand()%255;
 		for(j=0;j<i;++j){
 			if(input[i] == input[j]) --i;
 		}
 	}
-		
 	
 	char opsSeq [maxNumOps];
 	char opRep [maxNumOps];

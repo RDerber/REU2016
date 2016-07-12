@@ -1,10 +1,10 @@
 #/bin/bash
 
 #Recompile all files before running timing function
-gcc jsonTitle.c -o jsonTitle
-gcc jsonData.c superOptimizer2.c -o superOptimizer2
-gcc superJsonToCSV.c -o superJsonToCSV
-gcc jsonData.c jsonSystemStats.c -o jsonSystemStats
+gcc -g jsonTitle.c -o jsonTitle
+gcc -g jsonData.c superOptimizer2.c -o superOptimizer2
+gcc -g superJsonToCSV.c -o superJsonToCSV
+gcc -g jsonData.c jsonSystemStats.c -o jsonSystemStats
 
 if [ "$1" != "" ]
 then
@@ -28,7 +28,7 @@ do
 	for((inputSet=1; inputSet<(runs+1); ++inputSet))
 		do
 			echo "input set number $inputSet is being printed"
-			./superOptimizer2 $i $fileSize
+			./superOptimizer2 $i $fileSize $(( RANDOM ))
 			if [ $inputSet -eq $runs ]
 			then
 				./jsonTitle temp1.json "Input Set $inputSet"
@@ -56,7 +56,7 @@ done
 #Add Title to superInputTimeStats.txt file
 ./jsonTitle ./tests/superInputTests/$today/superInputTimeStats.json "superOptimizer"  
 
-./superJsonToCSV ./tests/superInputTests/$today/superInputTimeStats.json ./tests/superInputTests/$today/superInputTimeStats.csv ./tests/superInputTests/$today/superNumOpTimeStats.csv $maxNumInputs $runs 10 3
+valgrind ./superJsonToCSV ./tests/superInputTests/$today/superInputTimeStats.json ./tests/superInputTests/$today/superInputTimeStats.csv ./tests/superInputTests/$today/superNumOpTimeStats.csv $maxNumInputs $runs 10 3
 plotfile="superInputTimeStats.csv"
 output="super.png"
 folder="./tests/superInputTests/$today"
@@ -66,7 +66,8 @@ outpath="$folder/$output"
 xlabel="Number of inputs"
 graphTitle="SuperOptimizer Performance"
 
-gnuplot -c plotExpScript.sh $graph "$graphTitle" $outpath "$xlabel"
+
+gnuplot -c plotExpScript.sh $graph "$graphTitle" $outpath "$xlabel" "1" "2"
 
 
 
