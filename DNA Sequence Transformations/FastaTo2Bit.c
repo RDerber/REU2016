@@ -97,7 +97,7 @@ int twoBit(char * input, char * output, long inputsize, long * numBases){
 }
 
 int main(int argc, char *argv[]){
-	if(!(argc == 3||argc == 4||argc == 5)){
+	if(!(argc == 3||argc == 4)){
 		printf("Incompatible number of arguments\n");
                 return -1;
         } 
@@ -162,26 +162,16 @@ int main(int argc, char *argv[]){
 		}
 
 	}
-	if(argc == 5){ //if both number of runs and the number of minimum times is given
-		runs = atoi(argv[3]);
-                times = calloc(runs, sizeof(double));
-                struct timeval time0, time1; 
-                int i;
-                for(i=0;i<runs;i++){ // Record time of each run
-                        gettimeofday(&time0,NULL);
-                        outputsize = twoBit(input,output,inputsize,&numBases);
-                        gettimeofday(&time1,NULL);
-                        times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-                }
-
-	}
-
+	
 	// JSON timing.txt file output if [runs] is included // 
-	char *labelArr[1];
-	labelArr[0] = "Transform Times";
-	int numLabels = sizeof(labelArr)/sizeof(char*); 
+
 	
 	if(argc > 3){
+		char *labelArr[1];
+		labelArr[0] = "Transform Times";
+		int numLabels = sizeof(labelArr)/sizeof(char*); 
+	
+	
 		if(write_time_file(&times, labelArr, numLabels, runs) < 0)
 			printf("error writing time file\n");
 		free(times);

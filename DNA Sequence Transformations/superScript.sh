@@ -71,10 +71,10 @@ output4="superNumOpEval.png"
 inputDataFile="$folder/$inputPlotFile"
 numOpDataFile="$folder/$numOpPlotFile"
 
-#touch $folder/$output1
-#touch $folder/$output2
-#touch $folder/$output3
-#touch $folder/$output4
+touch $folder/$output1
+touch $folder/$output2
+touch $folder/$output3
+touch $folder/$output4
 
 
 outpath1="$folder/$output1"
@@ -91,12 +91,11 @@ graphTitle3="Number of Operations Run Time"
 graphTitle4="Number of Operations Evaluation Time"
 
 
+gnuplot -c plotExpScript.sh $inputDataFile "$graphTitle1" $outpath1 "$inputXlabel" "1" "2"
+gnuplot -c plotLineScript.sh $inputDataFile "$graphTitle2" $outpath2 "$inputXlabel" "1" "3"
 
-#gnuplot -c plotExpScript.sh $inputDataFile "$graphTitle1" $outpath1 "$inputXlabel" "1" "2"
-#gnuplot -c plotLineScript.sh $inputDataFile "$graphTitle2" $outpath2 "$inputXlabel" "1" "3"
-
-#gnuplot -c plotExpScript.sh $numOpDataFile "$graphTitle3" $outpath3 "$numOpXlabel" "1" "2"
-#gnuplot -c plotLineScript.sh $numOpDataFile "$graphTitle4" $outpath4 "$numOpXlabel" "1" "3"
+gnuplot -c plotExpScript.sh $numOpDataFile "$graphTitle3" $outpath3 "$numOpXlabel" "1" "2"
+gnuplot -c plotLineScript.sh $numOpDataFile "$graphTitle4" $outpath4 "$numOpXlabel" "1" "3"
 
 
 
