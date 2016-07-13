@@ -18,7 +18,7 @@
 #include <time.h> 
 #include "writeJson.h"
 
-#define TEMP_FILE	"./.json"
+#define TIME_OUTPUT	"./timing.json"
 
 /* read data from json file */
 /* document code */

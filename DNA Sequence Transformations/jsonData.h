@@ -15,4 +15,6 @@ int write_tag_json(FILE* dfp,int nest_level, char *title, char *text, int *first
 
 int write_super_file (double **data_arr, char **label_arr, int num_labels, int num_runs, char * opsSeq, int * numSeq, int maxNumOps, char* input, char* output, int inputSize);
 
+int write_time_file (double **data_arr, char **label_arr, int num_labels, int num_runs);
+
 #endif

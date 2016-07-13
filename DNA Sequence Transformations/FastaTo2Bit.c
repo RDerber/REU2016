@@ -29,8 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
-#include <float.h>
-#include "writeJson.h"
+#include "jsonData.h"
 /*
 * Reads in A,C,G,T characters from input buffer, converts to 00, 01, 11, and 10 respectively, and writes to output buffer
 *@param input buffer
@@ -144,17 +143,15 @@ int main(int argc, char *argv[]){
 	char * output = malloc(sizeof(char)* (inputsize+1));
 	int outputsize = 0;
 	
-	float *times;
+	double *times;
 	int runs = 0;
-	int numTimes = 0;
 	long numBases = 0;
 	if(argc == 3){
 		outputsize = twoBit(input,output,inputsize,&numBases);
 	}
 	if(argc == 4){	//if a number of runs is given but no number of minimum times, default number of min times is 3
 		runs = atoi(argv[3]);
-		numTimes = 3;
-		times = calloc(runs, sizeof(float)); 
+		times = calloc(runs, sizeof(double)); 
 		struct timeval time0, time1; 
 		int i;
 		for(i=0;i<runs;i++){ // Record time of each run
@@ -167,8 +164,7 @@ int main(int argc, char *argv[]){
 	}
 	if(argc == 5){ //if both number of runs and the number of minimum times is given
 		runs = atoi(argv[3]);
-                numTimes = atoi(argv[4]);
-                times = calloc(runs, sizeof(float));
+                times = calloc(runs, sizeof(double));
                 struct timeval time0, time1; 
                 int i;
                 for(i=0;i<runs;i++){ // Record time of each run
@@ -180,9 +176,13 @@ int main(int argc, char *argv[]){
 
 	}
 
-	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
+	// JSON timing.txt file output if [runs] is included // 
+	char *labelArr[1];
+	labelArr[0] = "Transform Times";
+	int numLabels = sizeof(labelArr)/sizeof(char*); 
+	
 	if(argc > 3){
-		if(write_time_file(times, runs, numTimes,numBases) < 0)
+		if(write_time_file(&times, labelArr, numLabels, runs) < 0)
 			printf("error writing time file\n");
 		free(times);
 	}

@@ -19,6 +19,7 @@
 #include "jsonData.h"
 
 #define TEMP_FILE	"./temp1.json"
+#define TIME_OUT	"./timing.json"
 
 /* read data from json file */
 /* document code */
@@ -233,7 +234,7 @@ input set 1:{ write_super_file output is formated as show below:
 		.
 		.
 		numOps: 2
-		superoptTime:{
+		runTime:{
 			run1: data
 			run2
 			run3
@@ -241,7 +242,7 @@ input set 1:{ write_super_file output is formated as show below:
 			.
 			.
 			}
-		eval time: {
+		evalTime: {
 			run1
 			run2
 			run3
@@ -330,7 +331,7 @@ input set 1:{ write_super_file output is formated as show below:
 		}
 		--nest_level; 
 		//Print the closing bracket one nest level lower than data
-		fprintf(dfp, "%c\n", ','); 
+		fprintf(dfp, "%c", '\n'); 
 		for(j=0; j<nest_level*4; ++j)
 			fprintf(dfp, "%c", ' '); 
 			
@@ -351,4 +352,74 @@ input set 1:{ write_super_file output is formated as show below:
 	
 	return 0;
 }
+
+int write_time_file (double **data_arr, char **label_arr, int num_labels, int num_runs){
+
+/******************************************************************************************
+write_timing_file output is formated as show below:
+	{
+		Transformation Time: {
+			run1: data
+			run2
+			run3
+			.
+			.
+			.
+			}
+		
+	 
+	}
+
+******************************************************************************************/
+
+	int first = 1; // First line has not been printed 
+	int nest_level = 0; //Two titles come before the data is printed
+	int i, j;
+	FILE * dfp;
+	
+	if((dfp = fopen(TIME_OUT,"w+")) == NULL){
+			printf("Data file could not be appended\n"); // File could not be created and opened
+			return -1;
+		}
+		
+	//print timing data
+	
+	//write label title before printing data values
+	
+	for(i = 0; i < num_labels; ++i){
+		if(write_json_title(dfp, nest_level, label_arr[i], &first)<0){
+			printf("Error writing label");
+			return -1;
+		}
+		fflush(dfp);
+		++nest_level;
+		// print data values for each run
+		first = 1;
+		for(j = 0; j < num_runs; ++j){ 						
+			char run_title [10];
+			sprintf(run_title, "Run %d", j);
+			if(write_num_json(dfp, nest_level, run_title, data_arr[i][j], &first) < 0){ 
+				printf("%s %d\n%s %s\n %s %d\n","error writing element: ", i, "label: ", 
+					label_arr[i], "data: ", data_arr[i]);
+				return -1;
+			}
+		}
+		--nest_level; 
+		//Print the closing bracket one nest level lower than data
+		fprintf(dfp, "%c", '\n'); 
+		for(j=0; j<nest_level*4; ++j)
+			fprintf(dfp, "%c", ' '); 
+			
+		fprintf(dfp, "%c", '}'); 
+		
+	}
+		
+	
+	fclose(dfp);
+	
+	fprintf(stderr, "[%s]: wrote timing data\n", __func__);
+	
+	return 0;
+}
+
 

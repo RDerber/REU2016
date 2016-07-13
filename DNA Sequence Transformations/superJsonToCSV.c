@@ -52,7 +52,7 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 		int a=0;
 		char numBuf[20];
 //		printf("%s %d\n","loc:",loc);
-		while((c = input[(loc++)+end]) != '"'){
+		while((c = input[(loc++)+end]) != ' '){
 //			printf("%c",c);
 			numBuf[a++] = c;
 		}
@@ -93,7 +93,7 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 		char numBuf [20];
 		char c;
 		int a=0;
-		while((c=input[(loc++)+end]) != ','){
+		while((c=input[(loc++)+end]) != ',' && c!='\n' && c!='\r'){
 			numBuf[a++] = c;
 		}
 		numBuf[a] = '\x00';
