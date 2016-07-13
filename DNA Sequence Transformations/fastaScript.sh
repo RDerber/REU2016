@@ -20,6 +20,8 @@ runs=100
 k=3
 folder="./tests/fastaTests/$today"
 
+./jsonSystemStats $folder/ft2bTimeStats/json
+
 #Run Fasta To 2 Bit Tests and Store in timeStats.txt
 ./FastaTo2Bit tests/fastaTests/fasta100.fasta $folder/100Out.txt $runs $k
 ./jsonTitle timing.json "100 bases" "-c"

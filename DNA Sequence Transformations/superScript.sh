@@ -15,6 +15,7 @@ fi
 
 mkdir ./tests/superInputTests/$today
 
+folder="./tests/superInputTests/$today"
 runs=10
 maxNumInputs=3
 fileSize=10000
@@ -23,7 +24,7 @@ k=3
 #Run superOptimize for 100 times each for 1 through 200 inputs and store in timeStats.txt
 #Add new line character inbetween files when appending
 
-./jsonSystemStats ./tests/superInputTests/$today/superInputTimeStats.json
+./jsonSystemStats $folder/superInputTimeStats.json
 
 for ((i=1; i<(maxNumInputs+1); ++i))
 do
@@ -50,15 +51,15 @@ do
 		rm temp1.json
 	fi
 	
-	cat  temp2.json >> ./tests/superInputTests/$today/superInputTimeStats.json
+	cat  temp2.json >> $folder/superInputTimeStats.json
 	rm temp2.json
 	
 done
 
 #Add Title to superInputTimeStats.txt file
-./jsonTitle ./tests/superInputTests/$today/superInputTimeStats.json "superOptimizer"  
+./jsonTitle $folder/superInputTimeStats.json "superOptimizer"  
 
-./superJsonToCSV ./tests/superInputTests/$today/superInputTimeStats.json ./tests/superInputTests/$today/superInputTimeStats.csv ./tests/superInputTests/$today/superNumOpTimeStats.csv $maxNumInputs $numInputSets $runs $k
+./superJsonToCSV $folder/superInputTimeStats.json $folder/superInputTimeStats.csv $folder/superNumOpTimeStats.csv $maxNumInputs $numInputSets $runs $k
 inputPlotFile="superInputTimeStats.csv"
 numOpPlotFile="superNumOpTimeStats.csv"
 
@@ -66,9 +67,6 @@ output1="superInRun.png"
 output2="superInEval.png"
 output3="superNumOpRun.png"
 output4="superNumOpEval.png"
-
-
-folder="./tests/superInputTests/$today"
 
 inputDataFile="$folder/$inputPlotFile"
 numOpDataFile="$folder/$numOpPlotFile"
