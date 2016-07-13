@@ -7,7 +7,7 @@
 #define LINE_OFFSET 1
 #define MAX_LINE_SIZE 64
 
-size_t load_plt_to_buffer(char *filepath, char **buffer) {
+size_t load_csv_to_buffer(char *filepath, char **buffer) {
 	//open file
 	FILE *file = fopen(filepath, "r");
 	if (file == NULL) {
@@ -133,7 +133,7 @@ int main() {
     char *fileBuffer;
     char *csvBuffer;
     
-    size_t fileLength = load_plt_to_buffer(
+    size_t fileLength = load_csv_to_buffer(
             "metaData_taxistandsID_name_GPSlocation.csv", &fileBuffer);
     // printf("%s", fileBuffer);
     int numCoordinates = count_GPS_coordinates(fileBuffer);
@@ -150,5 +150,4 @@ int main() {
     free(csvBuffer);
     
     return 0;
-
 }

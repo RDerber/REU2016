@@ -8,7 +8,7 @@
 #define MAX_LINE_SIZE 64
 #define NUM_FIELDS 9
 
-size_t load_plt_to_buffer(char *filepath, char **buffer) {
+size_t load_csv_to_buffer(char *filepath, char **buffer) {
 	//open file
 	FILE *file = fopen(filepath, "r");
 	if (file == NULL) {
@@ -32,6 +32,32 @@ size_t load_plt_to_buffer(char *filepath, char **buffer) {
 }
 
 int count_GPS_coordinates(char *fileBuffer) {
+    char *fileDelimiters = "\n";
+    char *token;
+
+    token = strtok(fileBuffer, fileDelimiters);
+    
+    int i;
+    for (i = 0; i < LINE_OFFSET; ++i) {
+        fileBuffer += strlen(token) + 1;
+        token = strtok(fileBuffer, fileDelimiters);
+    }
+    
+    int fileSize = 0;
+    i = 0;
+    while (token != NULL) {
+        fileBuffer += strlen(token) + 1;
+        // printf("%s\n", token);
+        fileSize += helper_count_coordinates(token);
+        // printf("%f\n", csvCoordinates[i][0]);
+        // printf("%f\n", csvCoordinates[i][1]);
+        i++;
+        token = strtok(fileBuffer, fileDelimiters);
+    }
+    return fileSize;
+}
+
+int helper_count_coordinates(char *token) {
     char *tokenDelimiters = ",[]";
     char *lattitude;
     char *longitude;
@@ -48,23 +74,9 @@ int count_GPS_coordinates(char *fileBuffer) {
     longitude = strtok(NULL, tokenDelimiters);
     
     int length = 0;
-    while(lattitude != NULL) {
-        printf("lattitude: %s\n", lattitude);
-        printf("longitude: %s\n", longitude);
-        
-        // fprintf(*marker,"%s,%s\n", lattitude, longitude);
-        memcpy(*marker, id, strlen(id) * sizeof(char));
-        *marker += strlen(id) * sizeof(char);
-        memcpy(*marker, comma, sizeof(char));
-        *marker += sizeof(char);
-        memcpy(*marker, lattitude, strlen(lattitude) * sizeof(char));
-        *marker += strlen(lattitude) * sizeof(char);
-        memcpy(*marker, comma, sizeof(char));
-        *marker += sizeof(char);
-        memcpy(*marker, longitude, strlen(longitude) * sizeof(char));
-        *marker += strlen(longitude) * sizeof(char);
-        memcpy(*marker, newline, 1);
-        *marker+= sizeof(char);
+    while(lattitude != NULL && longitude != NULL) {
+        // printf("lattitude: %s\n", lattitude);
+        // printf("longitude: %s\n", longitude);
         
         length += (strlen(id) + strlen(lattitude) + strlen(longitude) + 3) * 
             sizeof(char);
@@ -72,22 +84,13 @@ int count_GPS_coordinates(char *fileBuffer) {
         lattitude = strtok(NULL, tokenDelimiters);
         longitude = strtok(NULL, tokenDelimiters);
     }
-    
-    // double lattitude, longitude;
-    // lattitude = atof(strtok(token, tokenDelimiters));
-    // longitude = atof(strtok(NULL, tokenDelimiters));
-    // csvCoordinates[currIndex][0] = lattitude;
-    // csvCoordinates[currIndex][1] = longitude;
-    // printf("%f\n", lattitude);
-    // printf("%f\n", longitude);
-    
     return length;
 }
 
 int input_coordinates(char *token, int numCoordinates, 
         double csvCoordinates[numCoordinates][2], int currIndex, 
         char **marker) {
-    char *tokenDelimiters = ",[]\"";
+    char *tokenDelimiters = ",[]\" ";
     char *lattitude;
     char *longitude;
     char *id;
@@ -95,15 +98,17 @@ int input_coordinates(char *token, int numCoordinates,
     char *newline = "\n";
     
     id = strtok(token, tokenDelimiters);
+    printf("%s\n", id);
     int i;
     for (i = 0; i < NUM_FIELDS - 2; ++i) {
         strtok(NULL, tokenDelimiters);   
     }
     lattitude = strtok(NULL, tokenDelimiters);
     longitude = strtok(NULL, tokenDelimiters);
-    
+    printf("reached4\n");
     int length = 0;
-    while(lattitude != NULL) {
+    while(lattitude != NULL && longitude != NULL) {
+        printf("reached5\n");
         printf("lattitude: %s\n", lattitude);
         printf("longitude: %s\n", longitude);
         
@@ -145,6 +150,8 @@ int convert_to_csv(char *fileBuffer, int numCoordinates, char **csvBuffer) {
     double csvCoordinates[numCoordinates][2];
     char *fileDelimiters = "\n";
     char *token;
+    
+    printf("reached2\n");
 
     token = strtok(fileBuffer, fileDelimiters);
     char *marker = *csvBuffer;
@@ -158,6 +165,8 @@ int convert_to_csv(char *fileBuffer, int numCoordinates, char **csvBuffer) {
     int fileSize = 0;
     i = 0;
     while (token != NULL) {
+        
+        printf("reached3\n");
         fileBuffer += strlen(token) + 1;
         // printf("%s\n", token);
         fileSize += input_coordinates(token, numCoordinates, csvCoordinates, i, 
@@ -180,12 +189,15 @@ int main() {
     char *fileBuffer;
     char *csvBuffer;
     
-    size_t fileLength = load_plt_to_buffer(
-            "metaData_taxistandsID_name_GPSlocation.csv", &fileBuffer);
+    size_t fileLength = load_csv_to_buffer(
+            "Porto_taxi_data_test_partial_trajectories.csv", &fileBuffer);
     // printf("%s", fileBuffer);
     int numCoordinates = count_GPS_coordinates(fileBuffer);
+    printf("Coordinates: %d\n", numCoordinates);
     
     csvBuffer = malloc(numCoordinates * MAX_LINE_SIZE * sizeof(char));
+    
+    printf("reached1\n");
     
     int fileSize = convert_to_csv(fileBuffer, numCoordinates, &csvBuffer);
     
