@@ -16,7 +16,7 @@ fi
 mkdir ./tests/superInputTests/$today
 
 runs=10
-maxNumInputs=2
+maxNumInputs=3
 fileSize=10000
 #Run superOptimize for 100 times each for 1 through 200 inputs and store in timeStats.txt
 #Add new line character inbetween files when appending
@@ -57,17 +57,46 @@ done
 ./jsonTitle ./tests/superInputTests/$today/superInputTimeStats.json "superOptimizer"  
 
 valgrind ./superJsonToCSV ./tests/superInputTests/$today/superInputTimeStats.json ./tests/superInputTests/$today/superInputTimeStats.csv ./tests/superInputTests/$today/superNumOpTimeStats.csv $maxNumInputs $runs 10 3
-plotfile="superInputTimeStats.csv"
-output="super.png"
+inputPlotFile="superInputTimeStats.csv"
+numOpPlotFile="superNumOpTimeStats.csv"
+
+output1="superInRun.png"
+output2="superInEval.png"
+output3="superNumOpRun.png"
+output4="superNumOpEval.png"
+
+
 folder="./tests/superInputTests/$today"
-graph="$folder/$plotfile"
-touch $folder/$output
-outpath="$folder/$output"
-xlabel="Number of inputs"
-graphTitle="SuperOptimizer Performance"
+
+inputDataFile="$folder/$inputPlotFile"
+numOpDataFile="$folder/$numOpPlotFile"
+
+touch $folder/$output1
+touch $folder/$output2
+touch $folder/$output3
+touch $folder/$output4
 
 
-gnuplot -c plotExpScript.sh $graph "$graphTitle" $outpath "$xlabel" "1" "2"
+outpath1="$folder/$output1"
+outpath2="$folder/$output2"
+outpath3="$folder/$output3"
+outpath4="$folder/$output4"
+
+inputXlabel="Number of inputs"
+numOpXlabel="Number of operations"
+
+graphTitle1="Input Run Time"
+graphTitle2="Input Evaluation Time"
+graphTitle3="Number of Operations Run Time"
+graphTitle4="Number of Operations Evaluation Time"
+
+
+
+gnuplot -c plotExpScript.sh $inputDataFile "$graphTitle1" $outpath1 "$inputXlabel" "1" "2"
+gnuplot -c plotLineScript.sh $inputDataFile "$graphTitle2" $outpath2 "$inputXlabel" "1" "3"
+
+gnuplot -c plotExpScript.sh $numOpDataFile "$graphTitle3" $outpath3 "$numOpXlabel" "1" "2"
+gnuplot -c plotLineScript.sh $numOpDataFile "$graphTitle4" $outpath4 "$numOpXlabel" "1" "3"
 
 
 

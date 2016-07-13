@@ -154,10 +154,16 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	double numOpAvgEvalTime [metaNumOps];
 	double inputAvgRunTime [maxNumInputs];
 	double inputAvgEvalTime [maxNumInputs];
-	
 	double numOpCount[metaNumOps];
+	
 	for(i=0;i<metaNumOps;++i){
 		numOpCount[i]=0;
+		numOpAvgEvalTime[i] = 0;
+		numOpAvgRunTime[i] = 0;
+	}
+	for(i=0;i<maxNumInputs;++i){
+		inputAvgRunTime[i] = 0;
+		inputAvgEvalTime[i] = 0;
 	}
 	double avgTime = 0;
 	double lowTime[k];
@@ -196,7 +202,7 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 					numOpCount[numOps-1]++;
 					//printf("%s %d %s %f\n","numOps:",numOps,"numOpAvgRunTime[numOps]:",numOpAvgRunTime[numOps]);
 					inputAvgRunTime[h] += avgLowTime;
-					//printf("%s %d %s %f\n","numInputs:",h,"InputAvgRunTime[numOps]:",inputAvgRunTime[h]);
+					//printf("%s %d %s %f\n","numInputs:",h,"InputAvgRunTime[h]:",inputAvgRunTime[h]);
 					//printf("%s %d %s %f\n","g:",g,"avgLowTime",avgLowTime);
 				}else{ // EvalTimes Avg - running sum
 					int numOps = numOpArr[h*numInputSets+i];
@@ -240,17 +246,21 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	}
 			
 	//Print out CSV Files
-	
 	for(i=0;i<maxNumInputs; ++i){ 
-		fprintf(ofp1,"%d, %d, %lf, %lf\n", inArr[i], numOpArr[i],inputAvgRunTime[i],inputAvgEvalTime[i]);
-		printf("%s %d\n", "i:", i);
-		printf("%s %d\n", "inArr[i]:", inArr[i]);
-		printf("%s %d\n", "numOpArr[i]:", numOpArr[i]);
-		printf("%s %d\n", "inputAvgRunTime[i]:", inputAvgRunTime[i]);
-		printf("%s %d\n", "inputAvgEvalTime[i]:", inputAvgEvalTime[i]);
+		fprintf(ofp1,"%d,%f,%f\n", inArr[i],inputAvgRunTime[i],inputAvgEvalTime[i]);
+	//	printf("%s %d\n", "i:", i);
+	//	printf("%s %d, %p\n", "inArr[i]:", inArr[i], inArr);
+	//	printf("%s %f, %p\n", "inputAvgRunTime[i]:", inputAvgRunTime[i], inputAvgRunTime);
+	//	printf("%s %f, %p\n", "inputAvgEvalTime[i]:", inputAvgEvalTime[i], inputAvgEvalTime);
 	}
 	
-	fprintf(ofp2,"%s","Testing");
+	for(i=0;i<maxNumOps; ++i){ 
+		fprintf(ofp2,"%d,%f,%f\n", i+1,numOpAvgRunTime[i],numOpAvgEvalTime[i]);
+	//	printf("%s %d\n", "i:", i);
+	//	printf("%s %d, %p\n", "inArr[i]:", inArr[i], inArr);
+	//	printf("%s %f, %p\n", "inputAvgRunTime[i]:", inputAvgRunTime[i], inputAvgRunTime);
+	//	printf("%s %f, %p\n", "inputAvgEvalTime[i]:", inputAvgEvalTime[i], inputAvgEvalTime);
+	}
 	
 	return 0;
 	

@@ -13,19 +13,26 @@ outputPath=ARG3
 myXLabel=ARG4
 
 #column of x values
-xvals=ARG5
+xvals=ARG5 + 0
 
 #column of y values
-yvals=ARG6
+yvals=ARG6 + 0
 
 set term png
+set datafile separator ","
 set output outputPath
 set title graphTitle
+
+print graph
+print xvals
+print yvals
 
 set xlabel myXLabel
 set ylabel "Transform Time (µsec)"
 set key center bottom right title box 3
+a=100
+b=50
 f(x)=a**x+b
-fit f(x) graph u xvals:yvals via a,b
+fit f(x) graph using xvals:yvals via a,b
 title_f(a,b)=sprintf('f(x)=%.2f^{x}+%.2f',a,b)
-plot graph with linespoints,f(x) t title_f(a,b)
+plot graph u xvals:yvals with linespoints,f(x) t title_f(a,b)
