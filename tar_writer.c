@@ -291,8 +291,8 @@ int write_bit_stream (struct bit_stream *bs, uint64_t src, int bits)
 		bs->bit_pos++;
 	}
 	
-	printf("wrote %d bits to stream (now at byte %d bit %d)\n", 
-		bits, bs->byte_pos, bs->bit_pos);
+	printf("wrote %d bits (%llu) to stream (now at byte %d bit %d)\n", 
+		bits, src, bs->byte_pos, bs->bit_pos);
 
 	return 0;
 }
@@ -667,6 +667,79 @@ void encode_hlist (struct huff_list *hlist, int num)
 #endif
 
 /****************************************************************************************/
+/*	dist len coder	*/
+/****************************************************************************************/
+#ifdef DLC
+{
+#endif
+
+/*                  Extra           Extra               Extra
+             Code Bits Dist  Code Bits   Dist     Code Bits Distance
+             ---- ---- ----  ---- ----  ------    ---- ---- --------
+               0   0    1     10   4     33-48    20    9   1025-1536
+               1   0    2     11   4     49-64    21    9   1537-2048
+               2   0    3     12   5     65-96    22   10   2049-3072
+               3   0    4     13   5     97-128   23   10   3073-4096
+               4   1   5,6    14   6    129-192   24   11   4097-6144
+               5   1   7,8    15   6    193-256   25   11   6145-8192
+               6   2   9-12   16   7    257-384   26   12  8193-12288
+               7   2  13-16   17   7    385-512   27   12 12289-16384
+               8   3  17-24   18   8    513-768   28   13 16385-24576
+               9   3  25-32   19   8   769-1024   29   13 24577-32768
+*/
+
+int dist_code (int dist, int *code, int *exbits, int *ebval)
+{
+	int i;
+	static const short dext[30] = {
+		0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6,
+		7, 7, 8, 8, 9, 9, 10, 10, 11, 11,
+		12, 12, 13, 13};
+	static const short dists[30] = {
+		1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
+		257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145,
+		8193, 12289, 16385, 24577};
+
+	if (!code || !exbits || dist < 0 || dist > 32768)
+		return -1;
+		
+	for (i = 0; i < 30; i++) {
+		if (dist < dists[i + 1]) {
+			*code = i;
+			break;
+		}
+	}
+	
+	if (i == 30)
+		*code = 29;
+
+	*exbits = dext[*code];
+	*ebval = dist - dists[*code];
+
+	return 0;
+}
+
+void test_dlcoder (void)
+{
+	int a, b, c, i;
+	
+	for (i = 0; i < 500; i++) {
+		dist_code(i, &a, &b, &c);
+		printf("%d: code %d bits %d = %d\n", i, a, b, c);
+	}
+	
+	for (i = 500; i < 40000; i += 500) {
+		dist_code(i, &a, &b, &c);
+		printf("%d: code %d bits %d = %d\n", i, a, b, c);
+	}
+}
+
+#ifdef DLC
+}
+#endif
+
+
+/****************************************************************************************/
 /*	lzw encoder	*/
 /****************************************************************************************/
 #ifdef LZW
@@ -716,39 +789,77 @@ void get_longest_match (uint8_t *in, int bytes, int cp, int *dist, int *len)
 		}
 	}
 }
-void lz77 (uint8_t *in, int bytes, uint8_t *out, int win_size)
+
+int lz77 (uint8_t *in, int bytes, struct bit_stream *bs, int win_size)
 {
 	int i = 0, length, pos;
+	struct huff_len_table hlt[259];
+	int num_dc = 0;
+	int code, eb = 0, ev = 0;
+
+	make_hufftable(hlt);
 
 	while (i < bytes) {
 		get_longest_match(in, bytes, i, &pos, &length);
 		
 		if (length > 0) {
+			printf("length %d = code %d, %d extra = %d\n", length, 
+				hlt[length].len_code, 
+				hlt[length].num_exbits, hlt[length].ext_val);
+				
+			write_bit_stream(bs, hlt[length].len_code, 9);
+			
+			if (hlt[length].num_exbits)
+				write_bit_stream(bs, hlt[length].ext_val, 
+						 hlt[length].num_exbits);
+			
+			dist_code(pos, &code, &eb, &ev);
+			printf("dist %d = code %d, %d extra = %d\n", pos, code, eb, ev);
+			
+			write_bit_stream(bs, code, 5);
+			
+			if (eb)
+				write_bit_stream(bs, ev, eb);
+				
 			if ((i + length + 1) > bytes) {
 				printf("<%d, %d, />, ", pos, length);
-			}else{
+			} else {
 				printf("<%d, %d, %c>, ", pos, length, 
 					*(in + i + length + 1));
 			}
 			i += length + 1;
+			
+			num_dc++;
 		} else {
 			printf("<0, %d>, ", in[i]);
+			write_bit_stream(bs, in[i], 8);
 			i++;
 		}
 	}
 	
-	printf("\n");
+	printf("\ntotal: %d LZ77\n", num_dc);
+	
+	return num_dc;
 }
 
 void test_lz77 (void)
 {
-	uint8_t out[256] = { 0 };
-	uint8_t *in = (uint8_t *)"aacaacabcabaaac";
+	struct bit_stream *bs;
+	//uint8_t out[256] = { 0 };
+	uint8_t *in = (uint8_t *)"aacaacabcabaaac";//"cabracadabrarrarrad";
+	
+	alloc_bit_stream(&bs, 256);
 	
 	printf("[%s]: testing lzw\n", __func__);
 	printf("expected, output:\n<0, 97>, <1, 1, a>, <3, 4, c>, <3, 3, a>, <12, 3, />\n");
 	
-	lz77(in, strlen((char *)in), out, 1);
+	lz77(in, strlen((char *)in), bs, 1);
+	
+	printf("\n");
+	
+	print_bit_stream(bs);
+	
+	free_bit_stream(bs);
 	
 	printf("\n");
 }
@@ -760,6 +871,7 @@ void test_lz77 (void)
 /****************************************************************************************/
 /*	gzip writer	*/
 /****************************************************************************************/
+
 #ifdef GZIP_WRITER
 {
 #endif
@@ -777,6 +889,14 @@ struct gz_trailer {
 	uint32_t crc32;
 	uint32_t isize;
 };
+
+void swap (char *a, char *b)
+{
+	char c = *a;
+	
+	*a = *b;
+	*b = c;
+}
 
 int write_gzdata_blocked (unsigned char *src, int len, int fd, int blk_size)
 {
@@ -808,7 +928,6 @@ int write_gzdata_blocked (unsigned char *src, int len, int fd, int blk_size)
 		if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
 			return -1;
 		
-		
 		//for (i = 0; i < toc; i++) 
 		//	write_bit_stream(bs, hlist[src[i]].hcode, hlist[src[i]].hc_len);
 		
@@ -817,9 +936,37 @@ int write_gzdata_blocked (unsigned char *src, int len, int fd, int blk_size)
 	
 		free_bit_stream(bs);
 		}*/
-		lval = (uint16_t)len;
+		
+	/*struct bit_stream *bs;
+	//uint8_t out[256] = { 0 };
+	///uint8_t *in = (uint8_t *)"aacaacabcabaaac";//"cabracadabrarrarrad";
+	
+	alloc_bit_stream(&bs, toc * 2);
+	
+	printf("[%s]: testing lzw\n", __func__);
+	//printf("expected, output:\n<0, 97>, <1, 1, a>, <3, 4, c>, <3, 3, a>, <12, 3, />\n");
+	
+	lz77(src + pos, toc, bs, 1);
+	
+	printf("\n");
+	
+	print_bit_stream(bs);
+	
+	free_bit_stream(bs);
+	
+	printf("\n");*/
+		
+		lval = ((toc != blk_size) ? 1 : 0);
+		if ((ret = write(fd, (uint8_t *)&lval, sizeof(uint8_t))) != sizeof(uint8_t))
+			return -1;
+		
+		lval = (uint16_t)toc;
 		if ((ret = write(fd, &lval, sizeof(uint16_t))) != sizeof(uint16_t))
-			return -1;		
+			return -1;	
+			
+		lval = ~((uint16_t)toc);
+		if ((ret = write(fd, &lval, sizeof(uint16_t))) != sizeof(uint16_t))
+			return -1;				
 			
 		if ((ret = write(fd, src + pos, toc)) != toc)
 			return -1;
@@ -848,7 +995,7 @@ int write_gzfile (const char *src, const char *dst)
 	head.id0 = 0x1f;
 	head.id1 = 0x8b;
 	
-	head.comp_method = 0;
+	head.comp_method = 8;
 	head.flags = 0;
 	head.mtime = st.st_mtime;
 	
@@ -860,14 +1007,19 @@ int write_gzfile (const char *src, const char *dst)
 	
 	gtl.isize = len;
 	gtl.crc32 = crc(buf, len);
+	
+	//char *ptr = (char *)&(gtl.isize);
+		
+	//swap(&ptr[0], &ptr[3]); 
+	//swap(&ptr[1], &ptr[2]);
 
 	if ((src_fd = open(dst, O_CREAT|O_TRUNC|O_RDWR, 0777)) < 0) {
 		free(buf);
 		return -1;
 	}
 	
-	if (write(src_fd, &head, sizeof(head)) != sizeof(head) ||
-		write_gzdata_blocked(buf, len, src_fd, 1024000) < 0 ||
+	if (write(src_fd, &head, 10) != 10 ||
+		write_gzdata_blocked(buf, len, src_fd, 65534) < 0 ||
 		write(src_fd, &gtl, sizeof(gtl)) != sizeof(gtl)) {
 		close(src_fd);
 		free(buf);
@@ -879,23 +1031,54 @@ int write_gzfile (const char *src, const char *dst)
 	close(src_fd);
 	
 	free(buf); 
-	
+	 
 	return 0;
 }
 #ifdef TEST 
 }
 #endif
 
+void print_bits (uint64_t in, int num)
+{
+	int j;
+	
+	printf("%llu: ", in);
+	
+	for (j = 0; j < num; j++)
+		putchar((in & (1 << j)) ? '1' : '0');
+
+	printf("\n");
+}
+
+uint64_t reverse_bits (uint64_t in, int num)
+{
+	uint64_t out = 0;
+	int i;
+	
+	for (i = 0; i < num; i++)
+		out = (out << 1) | ((in & (1 << i)) ? 1 : 0);
+	
+	return out;
+}
+
 int main (void)
 {
 	encode_hlist (NULL, 0);
 
-	test_hcoder();
+	//test_hcoder();
  
 	test_bit_stream();
 	
 	test_lz77();
-
+	
+	uint64_t test = 3243242;
+	uint64_t out = reverse_bits(test, 32);
+	
+	print_bits(test, 32);
+	print_bits(out, 32);
+	
+	//test_dlcoder();
+	//return 0;
 	//make_tar_file("/Users/nobody1/Desktop/work", 
 	//			"/Users/nobody1/Desktop/test.tar");
 				
