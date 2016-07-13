@@ -6,7 +6,7 @@ gcc jsonData.c FastaTo2Bit.c -o FastaTo2Bit
 gcc -g jsonData.c jsonSystemStats.c -o jsonSystemStats
 gcc -g timingJsonToCSV.c -o timingJsonToCSV
 
-if [ $1 != NULL ]
+if [ "$1" != "" ]
 then
 	today=$1
 else
@@ -18,100 +18,97 @@ mkdir ./tests/fastaTests/$today
 numInputFiles=0
 runs=100
 k=3
-#Remove old timeStats.txt files
-#rm timeStats.json
-#rm ft2bTimeStats.json
-#rm mt4bTimeStats.json
+folder="./tests/fastaTests/$today"
 
 #Run Fasta To 2 Bit Tests and Store in timeStats.txt
-./FastaTo2Bit tests/fastaTests/fasta100.fasta tests/fastaTests/$today/100Out.txt $runs $k
+./FastaTo2Bit tests/fastaTests/fasta100.fasta $folder/100Out.txt $runs $k
 ./jsonTitle timing.json "100 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
-numInputFiles=numInputFiles+1
+cat timing.json >> $folder/ft2bTimeStats.json
+((numInputFiles++))
  # Add new line character inbetween files when appending
 
 ./FastaTo2Bit tests/fastaTests/fasta500.fasta tests/fastaTests/$today/500Out.txt $runs $k
 ./jsonTitle timing.json "500 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
-numInputFiles=numInputFiles+1
+cat timing.json >> $folder/ft2bTimeStats.json
+((numInputFiles++))
 
 ./FastaTo2Bit tests/fastaTests/fasta1k.fasta tests/fastaTests/$today/1kOut.txt $runs $k
-./jsonTitle timing.json "1k bases" "-c"
+./jsonTitle timing.json "1000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
-numInputFiles=numInputFiles+1
+cat timing.json >> $folder/ft2bTimeStats.json
+((numInputFiles++))
 
 ./FastaTo2Bit tests/fastaTests/fasta5k.fasta tests/fastaTests/$today/5kOut.txt $runs $k
-./jsonTitle timing.json "5k bases" "-c"
+./jsonTitle timing.json "5000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
-numInputFiles=numInputFiles+1
+cat timing.json >> $folder/ft2bTimeStats.json
+((numInputFiles++))
 
 ./FastaTo2Bit tests/fastaTests/fasta10k.fasta tests/fastaTests/$today/10kOut.txt $runs $k
-./jsonTitle timing.json "10k bases" "-c"
+./jsonTitle timing.json "10000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
-numInputFiles=numInputFiles+1
+cat timing.json >> $folder/ft2bTimeStats.json
+((numInputFiles++))
 
 ./FastaTo2Bit tests/fastaTests/fasta50k.fasta tests/fastaTests/$today/50kOut.txt $runs $k
-./jsonTitle timing.json "50k bases" "-c"
+./jsonTitle timing.json "50000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
-numInputFiles=numInputFiles+1
+cat timing.json >> $folder/ft2bTimeStats.json
+((numInputFiles++))
 
 ./FastaTo2Bit tests/fastaTests/fasta100k.fasta tests/fastaTests/$today/100kOut.txt $runs $k
-./jsonTitle timing.json "100k bases" "-c"
+./jsonTitle timing.json "100000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
-numInputFiles=numInputFiles+1
+cat timing.json >> $folder/ft2bTimeStats.json
+((numInputFiles++))
 
 ./FastaTo2Bit tests/fastaTests/fasta300k.fasta tests/fastaTests/$today/300kOut.txt $runs $k
-./jsonTitle timing.json "300k bases" "-c"
+./jsonTitle timing.json "300000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
-numInputFiles=numInputFiles+1
+cat timing.json >> $folder/ft2bTimeStats.json
+((numInputFiles++))
 
 ./FastaTo2Bit tests/fastaTests/fasta500k.fasta tests/fastaTests/$today/500kOut.txt $runs $k
-./jsonTitle timing.json "500k bases" "-c"
+./jsonTitle timing.json "500000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
-numInputFiles=numInputFiles+1
+cat timing.json >> $folder/ft2bTimeStats.json
+((numInputFiles++))
 
 ./FastaTo2Bit tests/fastaTests/fasta700k.fasta tests/fastaTests/$today/700kOut.txt $runs $k
-./jsonTitle timing.json "700k bases" "-c"
+./jsonTitle timing.json "700000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
-numInputFiles=numInputFiles+1
+cat timing.json >> $folder/ft2bTimeStats.json
+((numInputFiles++))
 
 ./FastaTo2Bit tests/fastaTests/fasta1mil.fasta tests/fastaTests/$today/1milOut.txt $runs $k
-./jsonTitle timing.json "1mil bases"
-cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
-numInputFiles=numInputFiles+1
+./jsonTitle timing.json "1000000 bases"
+cat timing.json >> $folder/ft2bTimeStats.json
+((numInputFiles++))
 
 #./FastaTo2Bit tests/fastaTests/fasta5mil.fasta tests/fastaTests/$today/5milOut.txt $runs $k
 #./jsonTitle timing.json "5mil bases"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+#cat timing.json >> $folder/ft2bTimeStats.json
 
 #./FastaTo2Bit tests/fastaTests/fasta10mil.fasta tests/fastaTests/$today/10milOut.txt $runs $k
 #./jsonTitle timing.json "10mil bases"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+#cat timing.json >> $folder/ft2bTimeStats.json
 
 #./FastaTo2Bit tests/fastaTests/fasta15mil.fasta tests/fastaTests/$today/15milOut.txt $runs $k
 #./jsonTitle timing.json "15mil bases"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+#cat timing.json >> $folder/ft2bTimeStats.json
 
 #./FastaTo2Bit tests/fastaTests/fasta20mil.fasta tests/fastaTests/$today/20milOut.txt $runs $k
 #./jsonTitle timing.json "20mil bases"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/fastaTests/$today/ft2bTimeStats.json
+#cat timing.json >> $folder/ft2bTimeStats.json
 
 #Add Title to ft2bTimeStats.txt file
-./jsonTitle ./tests/fastaTests/$today/ft2bTimeStats.json "FastaTo2Bit" 
+./jsonTitle $folder/ft2bTimeStats.json "FastaTo2Bit" 
 
 #Run MultiFasta to 4Bit
 #./MultiFastaTo4Bit multiFasta 4Bit.txt $runs $k
@@ -129,17 +126,20 @@ numInputFiles=numInputFiles+1
 
 #./jsonTitle timeStats.json "Final" "-f"
 
-./timingJsonToCSV ./tests/fastaTests/$today/ft2bTimeStats.json ./tests/fastaTests/$today/ft2bTimeStats.csv numInputFiles $runs $k
+./timingJsonToCSV $folder/ft2bTimeStats.json $folder/ft2bTimeStats.csv $numInputFiles $runs $k
 
 plotfile="ft2bTimeStats.csv"
 output="fastaTo2Bit.png"
-folder="./tests/fastaTests/$today"
+
 graph="$folder/$plotfile"
-#touch $folder/$output
+touch $folder/$output
 outpath="$folder/$output"
 graphTitle="Fasta To 2Bit"
+xlabel="Number of Bases"
+xvals=1
+yvals=2
 
-#gnuplot -c plotLineScript.sh $graph "$graphTitle" $outpath
+gnuplot -c plotLineScript.sh $graph "$graphTitle" $outpath "$xlabel" $xvals $yvals
 
 
 

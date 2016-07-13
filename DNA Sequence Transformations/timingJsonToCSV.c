@@ -40,7 +40,6 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int m, int k){
 		return -1;
 	}
 	
-	
 	for(i=0; i<maxNumInputs; ++i){
 		status = regexec(&re, input+end, 1, &inputMatch, 0); // Find Num Inputs
 		if(status != 0){
@@ -203,9 +202,7 @@ int main (int argc, char * argv[]){ //[input json file] [output csv] [maxNumInpu
 			return -1;
 		}
 		
-		
 		timingJsonToCSV(input, ofp, maxNumInputs, m, k);
-
 		free(input);
 		fclose(ofp);
 		
