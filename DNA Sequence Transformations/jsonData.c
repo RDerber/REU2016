@@ -330,7 +330,7 @@ input set 1:{ write_super_file output is formated as show below:
 		}
 		--nest_level; 
 		//Print the closing bracket one nest level lower than data
-		fprintf(dfp, "%c\n", ','); 
+		fprintf(dfp, "%c", '\n'); 
 		for(j=0; j<nest_level*4; ++j)
 			fprintf(dfp, "%c", ' '); 
 			

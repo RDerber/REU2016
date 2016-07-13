@@ -36,7 +36,7 @@ unsigned char assignFunc(unsigned char a, unsigned int b){
 
 unsigned char (*functionPtrs[])(unsigned char,unsigned int) = {&addFunc,&andFunc,&xorFunc,&shiftLeftFunc,&shiftRightFunc,&assignFunc};
 
-int findmin(char* input, int numDistInputs){
+int findmin(unsigned char* input, int numDistInputs){
 	int min = input[0];
 	int i;
 	for(i = 1; i<numDistInputs; ++i){
@@ -45,12 +45,12 @@ int findmin(char* input, int numDistInputs){
 	return min;
 }
 
-char operator(char input, enum operationID opID, int val){
+unsigned char operator(unsigned char input, enum operationID opID, int val){
 	input = functionPtrs[opID](input,val);
 	return input;
 }
 
-int compare (char* input, int numDistInputs, char * startingInput){
+int compare (unsigned char* input, int numDistInputs, unsigned char * startingInput){
 	int i;
 	int j;
 	int matches = 0;
@@ -71,9 +71,9 @@ int compare (char* input, int numDistInputs, char * startingInput){
 	}
 }
 
-int superOptimizer (char * startingInput, char * input, int numDistInputs, int totOps, int numOps, char* opsSeq, int* numSeq){
+int superOptimizer (unsigned char * startingInput,unsigned char * input, int numDistInputs, int totOps, int numOps, char* opsSeq, int* numSeq){
 	int i,j,k;
-	char newinput[numDistInputs];
+	unsigned char newinput[numDistInputs];
 	int opsSize = sizeof(operations)/sizeof(char);
 	int minInput = findmin(input,numDistInputs);
 	//printf("%s%d\n", "minInput: ", minInput);
@@ -105,9 +105,9 @@ int superOptimizer (char * startingInput, char * input, int numDistInputs, int t
 
 char evaluate(int input, char * opsSeq, int * numSeq, int maxNumOps){
 	int i,j;
-	char output;
+	unsigned char output = input; 
 	for(i=0;i<maxNumOps;++i)
-		output = operator(input, opsSeq[i], numSeq[i]);
+		output = operator(output, opsSeq[i], numSeq[i]);
 	return output;
 }
 
@@ -118,19 +118,19 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 	int maxNumDistInputs = 200;	//input size exceeding 200 causes our naive unique number generator to be extremely slow, exceeding 256
 				//breaks the number generator
 
-	int runs = 10;
+	int runs = atoi(argv[4]);
 	int numDataForms = 2; //RunTime, EvalTime, OpArray, numArray,input, output
 	
-	char * input;
-	char * output;
+	unsigned char * input;
+	unsigned char * output;
 	int numDistInputs;
 	double runTimes[runs];
 	double evalTimes[runs];
 	int maxNumOps = 6;
 	long fileSize = atoi(argv[2]);
 	
-	if(argc != 4){
-		printf("Please provide a numDistInputs and a fileSize");
+	if(argc != 5){
+		printf("Bad arguments");
 		return -1;
 	}
 	if(atoi(argv[1]) >= maxNumDistInputs){
@@ -154,7 +154,7 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 	char opRep [maxNumOps];
 	int numSeq [maxNumOps] ;
 	for(i = 0; i < maxNumOps; ++i){
-		opsSeq[i] = ' ';
+		opsSeq[i] = add;
 		numSeq[i] = 0;
 	}
 	char * testBuf = malloc(fileSize*sizeof(char));
@@ -192,7 +192,7 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 	free(testBuf);	
 
 	for(i=0; i < numDistInputs; ++i){
-			output[i] = evaluate(input[i], opsSeq, numSeq,maxNumOps);
+		output[i] = evaluate(input[i], opsSeq, numSeq,maxNumOps);
 	}
 
 	
