@@ -4,211 +4,137 @@
 #include <stdlib.h>
 #include <math.h>
 
+#define INPUT_FILEPATH "Porto_taxi_data_test_partial_trajectories.csv"
+#define OUTPUT_FILEPATH "Porto_taxi_data_test_partial_trajectories_transformed.csv"
 #define LINE_OFFSET 1
-#define MAX_LINE_SIZE 20000
+#define MAX_INPUT_LINE_SIZE 20000
+#define MAX_OUTPUT_LINE_SIZE 64
+#define NUM_COORDINATES 14438
 #define NUM_FIELDS 9
 
+// Loads input file at the provided filepath into the provided buffer
+// Returns the size of the input file
 size_t load_csv_to_buffer(char *filepath, char **buffer) {
-	//open file
 	FILE *file = fopen(filepath, "r");
 	if (file == NULL) {
 		printf("Cannot open file \n");
 	} 
 
-	//find the length of the file
+	// find the length of the file
 	fseek(file, 0, SEEK_END);
-	size_t fileLength = ftell(file);
+	size_t fileSize = ftell(file);
 	rewind(file);
 
-	//allocate the correct amount of memory  
-	*buffer = (char *)malloc(sizeof(char) * fileLength + 1);
+	*buffer = (char *)malloc(sizeof(char) * fileSize + 1);
 	
-	//read the file into the buffer
-	fread(*buffer, fileLength, 1, file);
+	fread(*buffer, fileSize, 1, file);
 	fclose(file);
 	printf("File successfully read \n");
 
-	return fileLength;
+	return fileSize;
 }
 
-// int count_GPS_coordinates(char *fileBuffer) {
-//     char *fileDelimiters = "\n";
-//     char *token;
-
-//     token = strtok(fileBuffer, fileDelimiters);
-    
-//     int i;
-//     for (i = 0; i < LINE_OFFSET; ++i) {
-//         fileBuffer += strlen(token) + 1;
-//         token = strtok(fileBuffer, fileDelimiters);
-//     }
-    
-//     int fileSize = 0;
-//     i = 0;
-//     while (token != NULL) {
-//         fileBuffer += strlen(token) + 1;
-//         // printf("%s\n", token);
-//         fileSize += helper_count_coordinates(token);
-//         // printf("%f\n", csvCoordinates[i][0]);
-//         // printf("%f\n", csvCoordinates[i][1]);
-//         i++;
-//         token = strtok(fileBuffer, fileDelimiters);
-//     }
-//     return fileSize;
-// }
-
-// int helper_count_coordinates(char *token) {
-//     char *tokenDelimiters = ",[]";
-//     char *lattitude;
-//     char *longitude;
-//     char *id;
-//     char *comma = ",";
-//     char *newline = "\n";
-    
-//     id = strtok(token, tokenDelimiters);
-//     int i;
-//     for (i = 0; i < NUM_FIELDS - 2; ++i) {
-//         strtok(NULL, tokenDelimiters);   
-//     }
-//     lattitude = strtok(NULL, tokenDelimiters);
-//     longitude = strtok(NULL, tokenDelimiters);
-    
-//     int length = 0;
-//     while(lattitude != NULL && longitude != NULL) {
-//         // printf("lattitude: %s\n", lattitude);
-//         // printf("longitude: %s\n", longitude);
-        
-//         length += (strlen(id) + strlen(lattitude) + strlen(longitude) + 3) * 
-//             sizeof(char);
-        
-//         lattitude = strtok(NULL, tokenDelimiters);
-//         longitude = strtok(NULL, tokenDelimiters);
-//     }
-//     return length;
-// }
-
-long input_coordinates(char *token, int numCoordinates, 
-        int currIndex, char **marker) {
+// Appends the id and coordinates within a provided token to the output bufffer
+// Returns the size of the appended line.
+size_t input_coordinates(char *token, char **marker) {
     char *tokenDelimiters = ",[]\" ";
     char *lattitude;
     char *longitude;
     char *id;
-    char *comma = ",";
-    char *newline = "\n";
     
+    // Read in useful data 
     id = strtok(token, tokenDelimiters);
-    // printf("%s\n", id);
+
     int i;
     for (i = 0; i < NUM_FIELDS - 2; ++i) {
         strtok(NULL, tokenDelimiters);   
     }
     lattitude = strtok(NULL, tokenDelimiters);
     longitude = strtok(NULL, tokenDelimiters);
-    // printf("reached4\n");
-    long length = 0;
+
+    size_t size = 0;
     while(lattitude != NULL && longitude != NULL) {
-        // printf("reached5\n");
-        // printf("lattitude: %s\n", lattitude);
-        // printf("longitude: %s\n", longitude);
         
-        // fprintf(marker,"%s,%s\n", lattitude, longitude);
         memcpy(*marker, id, strlen(id) * sizeof(char));
         *marker += strlen(id) * sizeof(char);
-        memcpy(*marker, comma, sizeof(char));
+        memcpy(*marker, ",", sizeof(char));
         *marker += sizeof(char);
         memcpy(*marker, lattitude, strlen(lattitude) * sizeof(char));
         *marker += strlen(lattitude) * sizeof(char);
-        memcpy(*marker, comma, sizeof(char));
+        memcpy(*marker, ",", sizeof(char));
         *marker += sizeof(char);
         memcpy(*marker, longitude, strlen(longitude) * sizeof(char));
         *marker += strlen(longitude) * sizeof(char);
-        memcpy(*marker, newline, sizeof(char));
-        *marker += sizeof(char);
+        memcpy(*marker, "\n", sizeof(char));
+        *marker+= sizeof(char);
         
-        length += (strlen(id) + strlen(lattitude) + strlen(longitude) + 3) * 
+        size += (strlen(id) + strlen(lattitude) + strlen(longitude) + 3) * 
             sizeof(char);
         
         lattitude = strtok(NULL, tokenDelimiters);
         if (lattitude != NULL) {
             longitude = strtok(NULL, tokenDelimiters);
         }
-        // printf("reached6\n");
+
     }
     
-    // double lattitude, longitude;
-    // lattitude = atof(strtok(token, tokenDelimiters));
-    // longitude = atof(strtok(NULL, tokenDelimiters));
-    // csvCoordinates[currIndex][0] = lattitude;
-    // csvCoordinates[currIndex][1] = longitude;
-    // printf("%f\n", lattitude);
-    // printf("%f\n", longitude);
-    
-    return length;
+    return size;
 }
 
 
 
-long convert_to_csv(char *fileBuffer, int numCoordinates, char **csvBuffer) {
-    //double csvCoordinates[numCoordinates][2];
+// Converts the provided input file buffer into a generalized csv format and 
+// writes it into the provided output buffer
+// Returns the size of the output buffer
+size_t convert_to_csv(char *inputBuffer, char **outputBuffer) {
     char *fileDelimiters = "\n";
-    char *token = malloc(MAX_LINE_SIZE * sizeof(char));
+    char *token = malloc(MAX_INPUT_LINE_SIZE * sizeof(char));
     
-    // printf("reached2\n");
-
-    token = strtok(fileBuffer, fileDelimiters);
-    char *marker = *csvBuffer;
+    token = strtok(inputBuffer, fileDelimiters);
+    char *marker = *outputBuffer;
     
+    // Ignore headers/unimportant data
     int i;
     for (i = 0; i < LINE_OFFSET; ++i) {
-        fileBuffer += strlen(token) + 1;
-        token = strtok(fileBuffer, fileDelimiters);
+        inputBuffer += strlen(token) + 1;
+        token = strtok(inputBuffer, fileDelimiters);
     }
     
-    long fileSize = 0;
-    i = 0;
+    size_t fileSize = 0;
     while (token != NULL) {
-        
-        // printf("reached3\n");
-        fileBuffer += strlen(token) + 1;
-        // printf("%s\n", token);
-        fileSize += input_coordinates(token, numCoordinates, i, 
-                &marker);
-        // printf("%f\n", csvCoordinates[i][0]);
-        // printf("%f\n", csvCoordinates[i][1]);
-        i++;
-        token = strtok(fileBuffer, fileDelimiters);
+        inputBuffer += strlen(token) + 1;
+        fileSize += input_coordinates(token, &marker);
+        token = strtok(inputBuffer, fileDelimiters);
     }
     free(token);
     return fileSize;
 }
 
-void write_csv_file(char *csvBuffer, long fileSize) {
-    FILE *file = fopen("test.csv", "w");
-    fwrite(csvBuffer, fileSize, sizeof(char), file);
+// Writes file of provided file size with contents of provided buffer
+void write_csv_file(char * filepath, char *buffer, size_t fileSize) {
+    FILE *file = fopen(filepath, "w");
+    fwrite(buffer, fileSize, sizeof(char), file);
     fclose(file);
 }
 
-int main() {
-    char *fileBuffer;
-    char *csvBuffer;
+void main() {
+    char *inputBuffer;
+    char *outputBuffer;
     
-    size_t fileLength = load_csv_to_buffer(
-            "Porto_taxi_data_test_partial_trajectories.csv", &fileBuffer);
-    // printf("%s", fileBuffer);
-    // int numCoordinates = count_GPS_coordinates(fileBuffer);
-    // printf("Coordinates: %d\n", numCoordinates);
-    int numCoordinates = 50;
-    csvBuffer = malloc(14438 * 64 * sizeof(char));
+    size_t inputSize = load_csv_to_buffer(INPUT_FILEPATH, 
+            &inputBuffer);
     
-    printf("reached1\n");
+    outputBuffer = malloc(NUM_COORDINATES * MAX_OUTPUT_LINE_SIZE *
+            sizeof(char));
     
-    long fileSize = convert_to_csv(fileBuffer, numCoordinates, &csvBuffer);
-    printf("%ld", fileSize);
+    size_t outputSize = convert_to_csv(inputBuffer, &outputBuffer);
     
+    write_csv_file(OUTPUT_FILEPATH, outputBuffer, 
+            outputSize);
     
-    write_csv_file(csvBuffer, fileSize);
+    printf("%s", outputBuffer);
     
-    printf("%s", csvBuffer);
-    
-    return 0;
+    free(inputBuffer);
+    free(outputBuffer);
 }
+
