@@ -5,7 +5,8 @@
  *
  * Includes an optional timing report exported in JSON format
  *  
- * Parameters: [Input FASTA File Name] [Output 2Bit File Name] [int number of runs]
+ * Parameters: 
+ * [Input FASTA File Name] [Output 2Bit File Name] [int number of runs]
  *
  * Number of runs is optional
  *		 Number of runs must be provided as the 3rd argument to recieve a timing report

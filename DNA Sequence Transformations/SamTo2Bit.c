@@ -1,3 +1,45 @@
+/*
+ * samTo2Bit.c 
+ *
+ * Functional for SAM files
+ *
+ * Includes an optional timing report exported in JSON format
+ 
+ * Parameters:
+ * [FASTA input file] [Output 2Bit File Name] [Header Output File Name][Position Output File Name] Optional: [int number of runs]
+ *															^													^													^
+ *															-----------------------------------------------------
+ *																												|
+ *														Names for the output files. *These do not need to be created before hand* 
+ * 
+ * Output file (2bit encoded characters)
+ * Header file (null delimited header lines)
+ * Position file (positions, in bytes, of each sequence in the 2bit file, delimited with -1)
+ *
+ * Number of runs is optional
+ *		 Number of runs must be provided as the 3rd argument to recieve a timing report
+ *
+ * The current version has the following settings:
+ *		-omits heading tag information
+ *		-reads in the QNAME field of the SAM file and saves it to a null delimited headerfile
+ *		-omits all other field information
+ *		-writes out each sequence in a multi-fasta 2 bit format: 
+ *				>writes sequences to output 2bit file
+ *				>writes starting position of each sequence to the position output file 
+ *
+ * Each nucleotide base will be converted to a two bit character:
+ *		A = 00
+ *		C = 01
+ *		G = 11
+ *		T = 10
+ *
+ * The bases are then stored in bytes, retaining the left-to-right order in which they were read
+ *  Ex: ACGT will convert to 0001 1110 
+ *	
+ * If the number of bases is not a multiple of 4, the last byte in the translation will end with (num bases % 4) pairs of zeros
+ * 	These pairs of zeros will then translate back into FASTA as extra A's appended on the end of the sequence 
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "jsonData.h"
@@ -5,7 +47,7 @@
 long samTo2Bit(const char* input, char * output, char * headers, int* positions,  long inputsize, long * outputsize, long * headersize, long * positionsize){
 
 	int i = 0;
-	while(input[i] == '@'){				//Skip over heading tag information
+	while(input[i] == '@'){				// Skip over heading tag information //
 		while(input[i] != '\n')
 			++i;
 		++i;
@@ -20,7 +62,7 @@ long samTo2Bit(const char* input, char * output, char * headers, int* positions,
 
 		numtabs = 0;
 
-		while(input[i] != '\t'){ 		// Put headers into null separated header array
+		while(input[i] != '\t'){ 		// Put headers (QNAME fields) into null separated header array //
 			headers[h++] = input[i++];
 		}
 		headers[h++] = '\x00';
@@ -30,7 +72,7 @@ long samTo2Bit(const char* input, char * output, char * headers, int* positions,
 			if(input[i++] == '\t')
 				++numtabs;
 
-		while(input[i] != '\t'){		//Convert sequence and write it
+		while(input[i] != '\t'){		//Convert sequences to 2Bit and store in output buffer //
 			char byt = input[i++];
 			numBases++;
 			byt &= '\x06';
@@ -52,10 +94,13 @@ long samTo2Bit(const char* input, char * output, char * headers, int* positions,
 			}
 			output[k++] = byt ;
 		}
-
+		
+		// remove quality (FASTQ) information at end of line //
 		while(input[i++] != '\n');
 		
 	}
+	
+//set sizes of each ouputFile buffer before returning //
 	*outputsize = k;
 	*headersize = h;
 	*positionsize = p; 
@@ -74,40 +119,40 @@ int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][headerFil
 	long inputsize = 0;
 	if(ifp != NULL){
 	 // Go to the end of the file //
-	if(fseek(ifp, 0L, SEEK_END)== 0){
-		// Get the size of the file. //
+		if(fseek(ifp, 0L, SEEK_END)== 0){
+			// Get the size of the file. //
+			inputsize = ftell(ifp);
+			if (inputsize == -1) {
+				fputs("Error finding size of file", stderr);
+			}
+			//Allocate our buffer of that size +1 for null termination. //
+			input = malloc (sizeof(char) * (inputsize+1));
 
-		inputsize = ftell(ifp);
-		if (inputsize == -1) {
-			fputs("Error finding size of file", stderr);
-		 }
+			// Return to start of file //
+			if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
+				fputs("Error returning to start of file", stderr);
+			}
 
-	
-		//Allocate our buffer of that size +1 for null termination. //
-		input = malloc (sizeof(char) * (inputsize+1));
-		
-
-		// Return to start of file //
-		if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
-			fputs("Error returning to start of file", stderr);
-		}
-
-		//Read the entire file into memory//
-		size_t newLen = fread(input, sizeof(char), inputsize, ifp);
-		if(newLen == 0){
-			fputs("Error reading file", stderr);
-		} else {
-			input[newLen++] = '\0'; // Null termination character at the end of the input buffer 
+			//Read the entire file into memory//
+			size_t newLen = fread(input, sizeof(char), inputsize, ifp);
+			if(newLen == 0){
+				fputs("Error reading file", stderr);
+			} else {
+				// Null termination character at the end of the input buffer //
+				input[newLen++] = '\0'; 
 			}
 		}			
 		fclose(ifp);
 	}else{
 		printf("%s\n", "the input file given does not exist");
-		return 1;
+		return -1;
 	}
 
-		// Create Output Buffer;
-	char * output = malloc(sizeof(char)* (inputsize));
+	//Create outputFile Buffers:
+	//output buffer (2bit encoded characters),
+	//header buffer (null delimited header lines)
+	//position buffer (positions of start of each sequence, delimited with -1) //
+		char * output = malloc(sizeof(char)* (inputsize));
 	char * headers = malloc(sizeof(char)* (inputsize));
 	int * positions = malloc(sizeof(int) * inputsize);
 	long outputsize = 0;
@@ -119,22 +164,21 @@ int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][headerFil
 	if(argc == 5){
 		numBases = samTo2Bit(input,output,headers,positions,inputsize,&outputsize,&headersize,&positionsize);
 	}
-	if(argc == 6){	//if a number of runs is given but no number of minimum times, default number of min times is 3
+	// activate timing if the [runs] argument is included // 
+	if(argc == 6){	
 		runs = atoi(argv[5]);
 		times = calloc(runs, sizeof(double)); 
 		struct timeval time0, time1; 
 		int i;
-		for(i=0;i<runs;i++){ // Record time of each run
+		 // Record time of each run //
+		for(i=0;i<runs;i++){
 			gettimeofday(&time0,NULL);
 			numBases = samTo2Bit(input,output,headers,positions,inputsize,&outputsize,&headersize,&positionsize);
 			gettimeofday(&time1,NULL);
 			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 		}
 
-	}
-
-	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
-	if(argc > 5){ 
+	// timing.json output file output generated //
 		char *labelArr[1];
 		labelArr[0] = "Transform Times";
 		int numLabels = sizeof(labelArr)/sizeof(char*); 
@@ -143,7 +187,9 @@ int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][headerFil
 			printf("error writing time file\n");
 		free(times);
 	}
-	// Writing output buffer to specified output file//
+	
+	// Writing output buffers to specified output files//
+	
 	FILE *ofp = fopen(argv[2],"w");
 	FILE *hfp = fopen(argv[3],"w");
 	FILE *pfp = fopen(argv[4],"w");

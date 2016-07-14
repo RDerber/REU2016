@@ -5,15 +5,20 @@
  *
  * Includes an optional timing report exported in JSON format
  *  
- *Inputs:
+ * Parameters:
  * [FASTA input file] [Output 2Bit File Name] [Header Output File Name][Position Output File Name] Optional: [int number of runs]
  *															^													^													^
  *															-----------------------------------------------------
  *																												|
  *														Names for the output files. *These do not need to be created before hand* 
+ *
+ * Output file (2bit encoded characters)
+ * Header file (null delimited header lines)
+ * Position file (positions, in bytes, of each sequence in the 2bit file, delimited with -1)
  * 
  * Number of runs is optional:
  *		- Number of runs must be provided as the 3rd argument to recieve a timing report
+ *
  *
  * Each nucleotide base will be converted to a two bit character:
  *		A = 00
@@ -148,7 +153,7 @@ int main(int argc, char *argv[]){ // [input][output][headerfile][positionfile][n
 		return 1;
 	}
 
-	// Create outputFile Buffers:
+	//Create outputFile Buffers:
 	//output buffer (2bit encoded characters),
 	//header buffer (null delimited header lines)
 	//position buffer (positions of start of each sequence, delimited with -1) //
