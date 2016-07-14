@@ -254,6 +254,29 @@ struct bit_stream {
 	int bytes;
 };
 
+void print_bits (uint64_t in, int num)
+{
+	int j;
+	
+	printf("%llu: ", in);
+	
+	for (j = 0; j < num; j++)
+		putchar((in & (1 << j)) ? '1' : '0');
+
+	printf("\n");
+}
+
+uint64_t reverse_bits (uint64_t in, int num)
+{
+	uint64_t out = 0;
+	int i;
+	
+	for (i = 0; i < num; i++)
+		out = (out << 1) | ((in & (1 << i)) ? 1 : 0);
+	
+	return out;
+}
+
 int alloc_bit_stream (struct bit_stream **bs, int bytes_max)
 {
 	if (((*bs) = calloc(sizeof(struct bit_stream), 1)) == NULL)
@@ -291,8 +314,8 @@ int write_bit_stream (struct bit_stream *bs, uint64_t src, int bits)
 		bs->bit_pos++;
 	}
 	
-	printf("wrote %d bits (%llu) to stream (now at byte %d bit %d)\n", 
-		bits, src, bs->byte_pos, bs->bit_pos);
+	//printf("wrote %d bits (%llu) to stream (now at byte %d bit %d)\n", 
+	//	bits, src, bs->byte_pos, bs->bit_pos);
 
 	return 0;
 }
@@ -574,6 +597,39 @@ void huff_encode (uint8_t *src, int num, struct huff_list **hlist)
 	find_huffcode(*hlist, htree, 0, 0);
 }
 
+void make_static_hlist (struct huff_list **phlist, struct huff_list **pdlist, int **bit_count)
+{
+	(*bit_count) = calloc(sizeof(int), 288);
+	struct huff_list *hlist = (*phlist) = calloc(sizeof(struct huff_list), 288);
+	struct huff_list *dlist = (*pdlist) = calloc(sizeof(struct huff_list), 32);
+	
+	int n = 0, len;
+	while (n <= 143) hlist[n++].hc_len = 8, bit_count[8]++;
+	while (n <= 255) hlist[n++].hc_len = 9, bit_count[9]++;
+	while (n <= 279) hlist[n++].hc_len = 7, bit_count[7]++;
+	while (n <= 287) hlist[n++].hc_len = 8, bit_count[8]++;
+
+	uint16_t next_code[16]; /* next code value for each bit length */
+	uint16_t code = 0;              /* running code value */
+	int bits;                  /* bit index */
+
+	for (bits = 1; bits <= 15; bits++)
+		next_code[bits] = code = (code + (*bit_count)[bits-1]) << 1;
+
+	for (n = 0; n <= 287; n++) {
+		if ((len = hlist[n].hc_len) == 0) 
+			continue;
+
+		hlist[n].hcode = reverse_bits(next_code[len]++, len);
+		printf("hlist[%d] = %d (%d bits)\n", n, hlist[n].hcode, hlist[n].hc_len);
+	}
+
+	for (n = 0; n < 30; n++) {
+		dlist[n].hc_len = 5;
+        	dlist[n].hcode = reverse_bits(n, 5);
+	}
+}
+
 void test_hcoder (void)
 {
 	uint8_t test[17] = {1, 2, 1, 2, 3, 4, 4, 4, 5, 6, 7, 7, 7, 7, 7, 7, 10};
@@ -790,12 +846,19 @@ void get_longest_match (uint8_t *in, int bytes, int cp, int *dist, int *len)
 	}
 }
 
-int lz77 (uint8_t *in, int bytes, struct bit_stream *bs, int win_size)
+struct lz_out {
+	uint16_t len;
+	uint16_t dist;
+
+};
+
+int lz77 (uint8_t *in, int bytes, struct lz_out **out, int win_size)
 {
 	int i = 0, length, pos;
 	struct huff_len_table hlt[259];
 	int num_dc = 0;
-	int code, eb = 0, ev = 0;
+
+	*out = calloc(sizeof(struct lz_out), bytes);
 
 	make_hufftable(hlt);
 
@@ -803,38 +866,18 @@ int lz77 (uint8_t *in, int bytes, struct bit_stream *bs, int win_size)
 		get_longest_match(in, bytes, i, &pos, &length);
 		
 		if (length > 0) {
-			printf("length %d = code %d, %d extra = %d\n", length, 
-				hlt[length].len_code, 
-				hlt[length].num_exbits, hlt[length].ext_val);
-				
-			write_bit_stream(bs, hlt[length].len_code, 9);
+			(*out)[num_dc].len = length;
+			(*out)[num_dc].dist = pos;
 			
-			if (hlt[length].num_exbits)
-				write_bit_stream(bs, hlt[length].ext_val, 
-						 hlt[length].num_exbits);
-			
-			dist_code(pos, &code, &eb, &ev);
-			printf("dist %d = code %d, %d extra = %d\n", pos, code, eb, ev);
-			
-			write_bit_stream(bs, code, 5);
-			
-			if (eb)
-				write_bit_stream(bs, ev, eb);
-				
-			if ((i + length + 1) > bytes) {
-				printf("<%d, %d, />, ", pos, length);
-			} else {
-				printf("<%d, %d, %c>, ", pos, length, 
-					*(in + i + length + 1));
-			}
 			i += length + 1;
-			
-			num_dc++;
 		} else {
-			printf("<0, %d>, ", in[i]);
-			write_bit_stream(bs, in[i], 8);
+			(*out)[num_dc].len = in[i];
+			(*out)[num_dc].dist = 0;
+
 			i++;
 		}
+		
+		num_dc++;
 	}
 	
 	printf("\ntotal: %d LZ77\n", num_dc);
@@ -844,22 +887,16 @@ int lz77 (uint8_t *in, int bytes, struct bit_stream *bs, int win_size)
 
 void test_lz77 (void)
 {
-	struct bit_stream *bs;
+	struct lz_out *bs;
 	//uint8_t out[256] = { 0 };
 	uint8_t *in = (uint8_t *)"aacaacabcabaaac";//"cabracadabrarrarrad";
-	
-	alloc_bit_stream(&bs, 256);
 	
 	printf("[%s]: testing lzw\n", __func__);
 	printf("expected, output:\n<0, 97>, <1, 1, a>, <3, 4, c>, <3, 3, a>, <12, 3, />\n");
 	
-	lz77(in, strlen((char *)in), bs, 1);
+	lz77(in, strlen((char *)in), &bs, 1);
 	
-	printf("\n");
-	
-	print_bit_stream(bs);
-	
-	free_bit_stream(bs);
+	free(bs);
 	
 	printf("\n");
 }
@@ -872,23 +909,13 @@ void test_lz77 (void)
 /*	gzip writer	*/
 /****************************************************************************************/
 
+
+
+
+
 #ifdef GZIP_WRITER
 {
 #endif
-struct gz_header {
-	uint8_t id0;
-	uint8_t id1;
-	uint8_t comp_method;
-	uint8_t flags;
-	uint32_t mtime;
-	uint8_t extra_flags;
-	uint8_t os;
-};
-
-struct gz_trailer {
-	uint32_t crc32;
-	uint32_t isize;
-};
 
 void swap (char *a, char *b)
 {
@@ -897,8 +924,71 @@ void swap (char *a, char *b)
 	*a = *b;
 	*b = c;
 }
+#if 0
+int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
+{
+	int pos = 0, toc, i;
+	
+	struct huff_len_table hlt[259];
+	make_hufftable(hlt);
+	
+	while (pos < len) {
+		if ((toc = (len - pos)) > blk_size)
+			toc = blk_size;
+		
+		struct bit_stream *bs;
+		struct huff_list *hlist, *dlist;
+		struct lz_out *lz;
+		int *bit_count = NULL;
+	
+		alloc_bit_stream(&bs, toc * 2);
+		
+		int num = lz77(src + pos, toc, &lz, 1);
+		
+		make_static_hlist(&hlist, &dlist, &bit_count);
+		
+		if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
+			return -1;
+		
+		for (i = 0; i < num; i++) {
+			int code, eb, ev;
+			int length = lz[i].len;
+			int pos = lz[i].dist;
+			
+			if (pos) {
+				write_bit_stream(bs, hlt[length].len_code, 9);
+			
+				if (hlt[length].num_exbits)
+					write_bit_stream(bs, hlt[length].ext_val, 
+							 hlt[length].num_exbits);
+				
+				dist_code(pos, &code, &eb, &ev);
 
-int write_gzdata_blocked (unsigned char *src, int len, int fd, int blk_size)
+				write_bit_stream(bs, code, 5);
+			
+				if (eb)
+					write_bit_stream(bs, ev, eb);
+				
+			} else {
+				write_bit_stream(bs, length, 8);
+			}
+		}
+		
+		printf("%d bytes to %d\n", toc, bs->byte_pos);
+	
+		free_bit_stream(bs);
+		free(lz);
+		free(hlist);
+		free(dlist);
+		free(bit_count);
+		
+		pos += toc;
+	}
+	
+	return 0;
+}
+#else
+int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 {
 	int ret, pos = 0, toc;
 	uint16_t lval;
@@ -906,55 +996,6 @@ int write_gzdata_blocked (unsigned char *src, int len, int fd, int blk_size)
 	while (pos < len) {
 		if ((toc = (len - pos)) > blk_size)
 			toc = blk_size;
-			
-		/*struct huff_list *hlist;
-		huff_encode(src + pos, toc, &hlist);
-		
-		encode_hlist(hlist, 256);
-	
-		print_huffcodes(hlist, 256);
-	
-		free(hlist);*/
-		/*{struct bit_stream *bs;
-		int i;
-		
-		alloc_bit_stream(&bs, toc * 2);
-		
-		write_bit_stream(bs, (toc < blk_size) ? 0 : 1, 1);
-		write_bit_stream(bs, 0, 2);
-		
-		write_bit_stream(bs, (uint16_t)len, 16);
-		
-		if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
-			return -1;
-		
-		//for (i = 0; i < toc; i++) 
-		//	write_bit_stream(bs, hlist[src[i]].hcode, hlist[src[i]].hc_len);
-		
-		
-		printf("%d bytes to %d\n", toc, bs->byte_pos);
-	
-		free_bit_stream(bs);
-		}*/
-		
-	/*struct bit_stream *bs;
-	//uint8_t out[256] = { 0 };
-	///uint8_t *in = (uint8_t *)"aacaacabcabaaac";//"cabracadabrarrarrad";
-	
-	alloc_bit_stream(&bs, toc * 2);
-	
-	printf("[%s]: testing lzw\n", __func__);
-	//printf("expected, output:\n<0, 97>, <1, 1, a>, <3, 4, c>, <3, 3, a>, <12, 3, />\n");
-	
-	lz77(src + pos, toc, bs, 1);
-	
-	printf("\n");
-	
-	print_bit_stream(bs);
-	
-	free_bit_stream(bs);
-	
-	printf("\n");*/
 		
 		lval = ((toc != blk_size) ? 1 : 0);
 		if ((ret = write(fd, (uint8_t *)&lval, sizeof(uint8_t))) != sizeof(uint8_t))
@@ -979,27 +1020,41 @@ int write_gzdata_blocked (unsigned char *src, int len, int fd, int blk_size)
 	return 0;
 }
 
+#endif
+
 int write_gzfile (const char *src, const char *dst)
 {
-	struct gz_header head;
-	struct gz_trailer gtl;
 	struct stat st;
 	int len, src_fd;
 	unsigned char *buf;
+	
+	struct gz_header {
+		uint8_t id0;
+		uint8_t id1;
+		uint8_t comp_method;
+		uint8_t flags;
+		uint32_t mtime;
+		uint8_t extra_flags;
+		uint8_t os;
+	} head;
+
+	struct gz_trailer {
+		uint32_t crc32;
+		uint32_t isize;
+	} gtl;
 	
 	if (stat(src, &st) < 0 || S_ISDIR(st.st_mode)) {
 		fprintf(stderr, "[%s]: stat failed\n", __func__);
 		return -1;
 	}
 	
+	memset(&head, 0, sizeof(head));
+	
 	head.id0 = 0x1f;
 	head.id1 = 0x8b;
 	
 	head.comp_method = 8;
-	head.flags = 0;
 	head.mtime = st.st_mtime;
-	
-	head.extra_flags = 0;
 	head.os = 0xFF;
 	
 	if ((len = read_file(src, &buf)) < 0)
@@ -1007,11 +1062,6 @@ int write_gzfile (const char *src, const char *dst)
 	
 	gtl.isize = len;
 	gtl.crc32 = crc(buf, len);
-	
-	//char *ptr = (char *)&(gtl.isize);
-		
-	//swap(&ptr[0], &ptr[3]); 
-	//swap(&ptr[1], &ptr[2]);
 
 	if ((src_fd = open(dst, O_CREAT|O_TRUNC|O_RDWR, 0777)) < 0) {
 		free(buf);
@@ -1019,8 +1069,8 @@ int write_gzfile (const char *src, const char *dst)
 	}
 	
 	if (write(src_fd, &head, 10) != 10 ||
-		write_gzdata_blocked(buf, len, src_fd, 65534) < 0 ||
-		write(src_fd, &gtl, sizeof(gtl)) != sizeof(gtl)) {
+	    write_gzdata_unc(buf, len, src_fd, 65534) < 0 ||
+	    write(src_fd, &gtl, sizeof(gtl)) != sizeof(gtl)) {
 		close(src_fd);
 		free(buf);
 		return -1;
@@ -1029,37 +1079,14 @@ int write_gzfile (const char *src, const char *dst)
 	fprintf(stderr, "[%s]: wrote %d bytes to %s\n", __func__, len, dst);
 
 	close(src_fd);
-	
 	free(buf); 
 	 
 	return 0;
 }
+
 #ifdef TEST 
 }
 #endif
-
-void print_bits (uint64_t in, int num)
-{
-	int j;
-	
-	printf("%llu: ", in);
-	
-	for (j = 0; j < num; j++)
-		putchar((in & (1 << j)) ? '1' : '0');
-
-	printf("\n");
-}
-
-uint64_t reverse_bits (uint64_t in, int num)
-{
-	uint64_t out = 0;
-	int i;
-	
-	for (i = 0; i < num; i++)
-		out = (out << 1) | ((in & (1 << i)) ? 1 : 0);
-	
-	return out;
-}
 
 int main (void)
 {
