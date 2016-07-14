@@ -1,14 +1,14 @@
 /*
  * FastaTo2Bit.c
  *
- * Functional for regular FASTA
- *	Includes an optional timing report exported in JSON format
- *  
- * Parameters: [Input FASTA File Name] [Output 2Bit File Name] [int number of runs] [int number of minimum timing values to retain]
+ * Functional for regular FASTA Files with a single sequence
  *
- * Number of runs and min timing values are optional
- *		 Number of runs must be provided to recieve a timing report
- *		 The default number of min timing values is 3 if unsepecified.
+ * Includes an optional timing report exported in JSON format
+ *  
+ * Parameters: [Input FASTA File Name] [Output 2Bit File Name] [int number of runs]
+ *
+ * Number of runs is optional
+ *		 Number of runs must be provided as the 3rd argument to recieve a timing report
  *
  * Each nucleotide base will be converted to a two bit character:
  *		A = 00
@@ -77,11 +77,13 @@ int twoBit(char * input, char * output, long inputsize, long * numBases){
 				++i;		//skip input value if not a character
 			}
 		}
-		while(i < inputsize && !(input[i] & '\x40')){ //Checking for buffer overflow and desired character
+		
+		// Checking for buffer overflow and desired character //
+		while(i < inputsize && !(input[i] & '\x40')){ 
 			++i;
 		}
-			
-		if(i < inputsize){	// 2 Bit conversion of the last base in a grouping of 4
+		// 2 Bit conversion of the last base in a grouping of 4 //
+		if(i < inputsize){	
 			temp = input[i];
 			++i;
 			temp = temp & '\x06';
@@ -130,7 +132,8 @@ int main(int argc, char *argv[]){
 			if(newLen == 0){
 				fputs("Error reading file", stderr);
 			} else {
-				input[newLen++] = '\0'; // Null termination character at the end of the input buffer 
+				// Null termination character at the end of the input buffer //
+				input[newLen++] = '\0'; 
 				}
 		}			
 		fclose(ifp);
@@ -139,7 +142,7 @@ int main(int argc, char *argv[]){
 		return 1;
 	}
 
-		// Create Output Buffer;
+	// Create Output Buffer //
 	char * output = malloc(sizeof(char)* (inputsize+1));
 	int outputsize = 0;
 	
@@ -149,29 +152,24 @@ int main(int argc, char *argv[]){
 	if(argc == 3){
 		outputsize = twoBit(input,output,inputsize,&numBases);
 	}
-	if(argc == 4){	//if a number of runs is given but no number of minimum times, default number of min times is 3
+	//if [runs] argument is included, activate timing code //
+	if(argc == 4){	
 		runs = atoi(argv[3]);
 		times = calloc(runs, sizeof(double)); 
 		struct timeval time0, time1; 
 		int i;
-		for(i=0;i<runs;i++){ // Record time of each run
+		// Record time of each run //
+		for(i=0;i<runs;i++){ 
 			gettimeofday(&time0,NULL);
 			outputsize = twoBit(input,output,inputsize,&numBases);
 			gettimeofday(&time1,NULL);
 			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 		}
 
-	}
-	
-	// JSON timing.txt file output if [runs] is included // 
-
-	
-	if(argc > 3){
+	//timing.json file output generated //
 		char *labelArr[1];
 		labelArr[0] = "Transform Times";
 		int numLabels = sizeof(labelArr)/sizeof(char*); 
-	
-	
 		if(write_time_file(&times, labelArr, numLabels, runs) < 0)
 			printf("error writing time file\n");
 		free(times);

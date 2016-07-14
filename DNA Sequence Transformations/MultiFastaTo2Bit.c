@@ -1,11 +1,31 @@
 /*
  * MultiFastaTo2Bit.c
  *
+ * Functional for regular FASTA Files with a single sequence or multiple sequences (multiFasta)
+ *
+ * Includes an optional timing report exported in JSON format
+ *  
  *Inputs:
- * [FASTA input file] [Name of 2-bit output file]
+ * [FASTA input file] [Output 2Bit File Name] [Header Output File Name][Position Output File Name] Optional: [int number of runs]
+ *															^													^													^
+ *															-----------------------------------------------------
+ *																												|
+ *														Names for the output files. *These do not need to be created before hand* 
+ * 
+ * Number of runs is optional:
+ *		- Number of runs must be provided as the 3rd argument to recieve a timing report
  *
+ * Each nucleotide base will be converted to a two bit character:
+ *		A = 00
+ *		C = 01
+ *		G = 11
+ *		T = 10
  *
- *
+ * The bases are then stored in bytes, retaining the left-to-right order in which they were read
+ *  Ex: ACGT will convert to 0001 1110 
+ *	
+ * If the number of bases is not a multiple of 4, the last byte in the translation will end with (num bases % 4) pairs of zeros
+ * 	These pairs of zeros will then translate back into FASTA as extra A's appended on the end of the sequence
  *
  */
 
@@ -15,33 +35,45 @@
 #include "jsonData.h"
 
 int multiTo2Bit(const char * input,char * output,char * headers, int * positions, long inputsize, long * outputsize, long * headersize, long * positionsize){
-	int i = 0;
-	int k = 0;
-	int h = 0;
+	int i = 0; // input buffer index
+	int k = 0; // output buffer index
+	int h = 0; // header buffer index
+	int p = 0; // position buffer index
 	int j = 0;
-	int p = 0;
 
 	while(i < inputsize){
 		char byt;
-
+		// Move sequence header into header buffer, store its position //
 		if(input[i] == '>'){
 			positions[p++] = k; 
+			// header positions delimited with -1 //
 			positions[p++] = -1; 
 			while(input[i] != '\n')
 				headers[h++] = input[i++];
 			++i;
+			
+			// Headers delimited with Null characters // 
 			headers[h++] = '\x00';
 		}
-		if(i < inputsize && input[i] != '>' && (input[i] & '\x60')){
-			byt = input[i++]& '\x06';
+		// Check for buffer overflow and if character is not a desired letter, increase to the next character in the buffer //
+		if(i < inputsize && input[i] != '>' && (input[i] & '\x60')){ 
+			
+		//2Bit Conversion of the first base in the grouping of 4 //
+			byt = input[i++]& '\x06';						
 			byt <<= 5;
+			
 		}else{
 			++i;
 			 continue;
 		}
 
+		//2Bit Conversion of the second and third bases of a grouping of 4 //
 		for(j=2;j>0;--j){
+			
+			//Checking for desired character //
 			while(!(input[i] & '\x60')) ++i;
+			
+			//Checking for buffer overflow and sequence headers //
 			if(i < inputsize && input[i]!= '>'){
 				char temp = input[i++];
 				temp&='\x06';
@@ -49,9 +81,15 @@ int multiTo2Bit(const char * input,char * output,char * headers, int * positions
 				byt|=temp;
 			}else break;
 		}
+		
+		
+		//Checking for desired character //
 		while(!(input[i] & '\x60')) ++i;	
 
+		//Checking for buffer overflow and sequence headers //
 		if(i < inputsize && input[i] != '>'){
+			
+			//2 Bit Conversion of the final base in a group of 4
 			char temp = input[i++] & '\x06';
 			temp>>=1;
 			byt|=temp;
@@ -59,7 +97,7 @@ int multiTo2Bit(const char * input,char * output,char * headers, int * positions
 		output[k++] = byt;
 			
 	}
-
+	//set sizes of each ouputFile buffer before returning //
 	*outputsize = k;	
 	*headersize = h;
 	*positionsize = p;
@@ -110,7 +148,10 @@ int main(int argc, char *argv[]){ // [input][output][headerfile][positionfile][n
 		return 1;
 	}
 
-		// Create Output Buffer;
+	// Create outputFile Buffers:
+	//output buffer (2bit encoded characters),
+	//header buffer (null delimited header lines)
+	//position buffer (positions of start of each sequence, delimited with -1) //
 	char * output = malloc(sizeof(char)* (inputsize + 1));
 	char * headers = malloc(sizeof(char)* (inputsize + 1));
 	int * positions = malloc(sizeof(int) * inputsize);  
@@ -123,32 +164,30 @@ int main(int argc, char *argv[]){ // [input][output][headerfile][positionfile][n
 	if(argc == 5){
 		multiTo2Bit(input,output,headers,positions,inputsize,&outputsize,&headersize, &positionsize);
 	}
-	if(argc == 6){	//if a number of runs is given but no number of minimum times, default number of min times is 3
+	// if [runs] argument is included, activate timing code //
+	if(argc == 6){	
 		runs = atoi(argv[5]);
 		times = calloc(runs, sizeof(double)); 
 		struct timeval time0, time1; 
 		int i;
-		for(i=0;i<runs;i++){ // Record time of each run
+		// Record time of each run //
+		for(i=0;i<runs;i++){ 
 			gettimeofday(&time0,NULL);
 			multiTo2Bit(input,output,headers,positions,inputsize,&outputsize,&headersize,&positionsize);
 			gettimeofday(&time1,NULL);
 			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 		}
 
-	}
-	
-	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
-	if(argc > 5){
+	//timing.json file output generated //
 		long numBases = outputsize*4;
 		char *labelArr[1];
 		labelArr[0] = "Transform Times";
 		int numLabels = sizeof(labelArr)/sizeof(char*);
-		
 		if(write_time_file(&times, labelArr, numLabels,runs) < 0)
 			printf("error writing time file\n");
 		free(times);
 	}
-	// Writing output buffer to specified output file//
+	// Writing output buffers to specified output files//
 	FILE *ofp = fopen(argv[2],"w");
 	FILE *hfp = fopen(argv[3],"w");
 	FILE *pfp = fopen(argv[4],"w");
