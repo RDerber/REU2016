@@ -60,21 +60,6 @@ cat timing.json >> $folder/divAndOptTimeStats.json
 cat timing.json >> $folder/divAndOptTimeStats.json
 ((numInputFiles++))
 
-#./divideAndOptimize divAndOptAminoAcidKey.txt tests/divAndOptTests/fasta100k.txt $folder/100kOut.txt $runs
-#./jsonTitle timing.json "100k bases" "-c"
-#echo "" >> timing.json
-#cat timing.json >> ./$folder/divAndOptTimeStats.json
-
-#./divideAndOptimize divAndOptAminoAcidKey.txt tests/divAndOptTests/fasta500k.txt $folder/500kOut.txt $runs
-#./jsonTitle timing.json "500k bases" "-c"
-#echo "" >> timing.json
-#cat timing.json >> ./$folder/divAndOptTimeStats.json
-
-#./divideAndOptimize divAndOptAminoAcidKey.txt tests/divAndOptTests/fasta1mil.txt $folder/1milOut.txt $runs
-#./jsonTitle timing.json "1mil bases"
-#echo "" >> timing.json
-#cat timing.json >> ./$folder/divAndOptTimeStats.json
-
 #Add Title to divAndOptTimeStats.txt file
 ./jsonTitle $folder/divAndOptTimeStats.json "divideAndOptimize" "-f"
 

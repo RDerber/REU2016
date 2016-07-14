@@ -88,25 +88,7 @@ cat timing.json >> $folder/sam2BTimeStats.json
 cat timing.json >> $folder/sam2BTimeStats.json
 ((numInputFiles++))
 
-#./SamTo2Bit tests/samTests/sam5mil.SAM $folder/5milOut.txt $folder/headers.txt $folder/100positions.txt $runs
-#./jsonTitle timing.json "5mil bases"
-#echo "" >> timing.json
-#cat timing.json >> $folder/sam2BTimeStats.json
 
-#./SamTo2Bit tests/samTests/sam10mil.SAM $folder/10milOut.txt $folder/headers.txt $folder/100positions.txt $runs
-#./jsonTitle timing.json "10mil bases"
-#echo "" >> timing.json
-#cat timing.json >> $folder/sam2BTimeStats.json
-
-#./SamTo2Bit tests/samTests/SAM15mil.SAM $folder/15milOut.txt $folder/headers.txt $folder/100positions.txt $runs
-#./jsonTitle timing.json "15mil bases"
-#echo "" >> timing.json
-#cat timing.json >> $folder/sam2BTimeStats.json
-
-#./SamTo2Bit tests/samTests/SAM20mil.SAM $folder/20milOut.txt $folder/headers.txt $folder/100positions.txt $runs
-#./jsonTitle timing.json "20mil bases"
-#echo "" >> timing.json
-#cat timing.json >> $folder/sam2BTimeStats.json
 
 #Add Title to sam2BTimeStats.txt file
 ./jsonTitle $folder/sam2BTimeStats.json "SamTo2Bit" "-f"
