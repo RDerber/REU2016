@@ -7,10 +7,8 @@
  *  
  * Parameters:
  * [FASTA input file] [Output 2Bit File Name] [Header Output File Name][Position Output File Name] Optional: [int number of runs]
- *															^													^													^
- *															-----------------------------------------------------
- *																												|
- *														Names for the output files. *These do not need to be created before hand* 
+ *
+ *		Names for the output files. *These do not need to be created before hand* 
  *
  * Output file (2bit encoded characters)
  * Header file (null delimited header lines)
