@@ -1,4 +1,16 @@
 #/bin/bash
+#Creates a benchmark report of the following programs:
+# -FastaTo2Bit.c
+# -MultiFastaTo2Bit.c
+# -SamTo2Bit.c
+# -CodonOptimizer.c
+# -divideAndOptimize.c
+#
+# The benchmark consists of a directory titled with the current date, containing subdirectories with the following information for each function:
+#   - A .json output file with all timing information
+#   - Relative .csv files for each function 
+#   - Relative .png graphs for each function
+#
 
 today=$(date +%Y-%m-%d-%T)
 mkdir ./tests/benchmarkTests/$today
