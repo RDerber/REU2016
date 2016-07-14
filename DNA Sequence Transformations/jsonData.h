@@ -17,4 +17,6 @@ int write_super_file (double **data_arr, char **label_arr, int num_labels, int n
 
 int write_time_file (double **data_arr, char **label_arr, int num_labels, int num_runs);
 
+int write_divAndOpt_file (double **data_arr, char **label_arr, int num_labels, int num_runs, int keySize);
+
 #endif
