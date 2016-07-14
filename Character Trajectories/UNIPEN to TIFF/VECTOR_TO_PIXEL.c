@@ -16,8 +16,7 @@
 
 #define VECTOR_DIMMENSION                  500
 #define IMAGE_DIMMENSION                    28
-#define SQRT_2                          1.4142
-
+#define BLACK                            BLACK
 
 //TIFF HEADER CODES
 #define HEADER_ENDIAN_LITTLE            0x4949
@@ -41,21 +40,21 @@
 #define TIFF_END                    0x00000000
 
 size_t load_upen_to_buffer(char *filepath, char **buffer){
-	//open file
+	// open file
 	FILE *file = fopen(filepath, "r");
 	if (file == NULL) {
 		printf("Cannot open file \n");
 	} 
 
-	//find the length of the file
+	// find the length of the file
 	fseek(file, 0, SEEK_END);
 	size_t fileLength = ftell(file);
 	rewind(file);
 
-	//allocate the correct amount of memory  
+	// allocate the correct amount of memory  
 	*buffer = (char *)malloc(sizeof(char) * fileLength + 1);
 	
-	//read the file into the buffer
+	// read the file into the buffer
 	fread(*buffer, fileLength, 1, file);
 	fclose(file);
 	printf("File successfully read \n");
@@ -63,16 +62,16 @@ size_t load_upen_to_buffer(char *filepath, char **buffer){
 	return fileLength;
 }
 
+// UNUSED
+// Draws square with halfwidth of the provided brush radius, with center at the
+// provided coordinates
 void drawSquare(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
 		double x, double y, double brushRadius){
-	//take coordinate and exapnd/decrement in brush size dimmension
-	//if any pixel exceeds the bounds, dont do anything
-	// if(x < VECTOR_DIMMENSION || y < VECTOR_DIMMENSION || x >= 0 || y >= 0) {}
 	int i, j;
 	for (i = floor(x - brushRadius); i <= x + brushRadius; ++i) {
 		for (j = floor(y - brushRadius); j <= y + brushRadius; ++j) {
-			if (i >= VECTOR_DIMMENSION || j >= VECTOR_DIMMENSION || i < 0 || j < 0 || 
-				pixelArray[i][j] == 255) {
+			if (i >= VECTOR_DIMMENSION || j >= VECTOR_DIMMENSION || i < 0 || 
+					j < 0 || pixelArray[i][j] == BLACK) {
 				continue;
 			} 
 			else {
@@ -84,51 +83,27 @@ void drawSquare(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 					printf("%f %f\n", xDiff, yDiff);
 				}
 				if (xDiff < 1 && yDiff < 1) {
-					pixelArray[i][j] = (unsigned char)((yDiff * xDiff) * 255);
-					// pixelArray[i][j] = (xDiff < 1) ? 
-					// 	(unsigned char)(xDiff * 256) : (unsigned char)(yDiff * 256);
+					pixelArray[i][j] = (unsigned char)((yDiff * xDiff) * BLACK);
 				} else if (xDiff < 1 || yDiff < 1) { 
-					// pixelArray[i][j] = (unsigned char)((yDiff * xDiff) * 256);
 					pixelArray[i][j] = (xDiff < 1) ? 
-						(unsigned char)(xDiff * 256) : (unsigned char)(yDiff * 255);
+							(unsigned char)(xDiff * 256) : 
+							(unsigned char)(yDiff * BLACK);
 				} else {
 					printf("\n%s", "reached");
 					printf(" %d %d ", i, j);
-					pixelArray[i][j] = (unsigned char)255;
+					pixelArray[i][j] = (unsigned char)BLACK;
 				}
 			}
 		}
 	}	
 }
 
-// void drawCircle(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
-// 		double x, double y, double brushRadius){
-	
-// 	double prevY = brushRadius;
-// 	double nextY;
-// 	int i;
-// 	for (i = floor(x); i <= x + SQRT_2 * brushRadius; ++i) {
-		
-// 		int base = 1;
-// 		double height = sqrt(brushRadius * brushRadius)
-// 	}
-// 	// iterate through xs from the x to x + radius/sqrt(2)
-// 	// prevdistance = r; 
 
-// 	// find next distance: sqrt(rsquared - xsquared);
-// 	// find diff between that and ceil that and prevdistance and ceil that
-// 	// add and divide by two * 255 to find interpolated value
-// 	// iterate downwards and fill until hits y
-// 	// next distance = prev distance
-// 	// reflect octant to all other octants
-// }
-
-
-///Checks if the pixel at position x, y is out of bounds or is already black 
+// Checks if the pixel at position x, y is out of bounds or is already black 
 int is_bounded_filled(int x, int y, 
 		unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION]) {
 	if (x >= VECTOR_DIMMENSION || y >= VECTOR_DIMMENSION || 
-  		x < 0 || y < 0 || pixelArray[x][y] == 255) {
+  		x < 0 || y < 0 || pixelArray[x][y] == BLACK) {
 		return 0;
 	} else {
 		return 1; 
@@ -136,45 +111,47 @@ int is_bounded_filled(int x, int y,
 }
 
 
-//UNUSED
-//Recursive fill starting from the center of the circle
+// UNUSED
+// Recursive fill starting from the center of the circle
 void flood_fill(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
 		int x, int y){
 	if (pixelArray[x][y] == 0 && is_bounded_filled(x, y, pixelArray)) {
-		pixelArray[x][y] = 255;
+		pixelArray[x][y] = BLACK;
 		
 		flood_fill(pixelArray, x - 1, y);
 		flood_fill(pixelArray, x + 1, y);
 		flood_fill(pixelArray, x, y - 1);
 		flood_fill(pixelArray, x, y + 1);
 	} else if (is_bounded_filled(x, y, pixelArray)) {
-		pixelArray[x][y] = 255;
+		pixelArray[x][y] = BLACK;
 		return;
 	} else {
 		return;
 	}
 }
 
-//Fills the pixels below a given pixel until its center Y is reached
+// Fills the pixels below a given pixel until its center Y is reached
 void fill_below(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
 		double y0, double radius, int x, int y){
 	int i;
 	for (i = y0; i < y; ++i) {
-		pixelArray[x][i] = 255;	
+		pixelArray[x][i] = BLACK;	
 	}
 }
 
-//Fills the pixels above a given pixel until its center Y is reached
+// Fills the pixels above a given pixel until its center Y is reached
 void fill_above(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
 		double y0, double radius, int x, int y){
 	int i;
 	for (i = y0; i > y; --i) {
-		pixelArray[x][i] = 255;	
+		pixelArray[x][i] = BLACK;	
 	}
 }
 
 
-//Draws the outer points of a circle using the midpoint circle algorithm given its center
+// Draws the outer points of a circle with the provided radius using the 
+// midpoint circle algorithm, with its center at the given coordinates. Fills 
+// every pixel between each point and the circle's horizontal axis
 void draw_circle(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
 		double x0, double y0, double radius)
 {
@@ -185,60 +162,60 @@ void draw_circle(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 
     while (x >= y)
     {
-      
+    
       pixelX = x0 + x;
     	pixelY = y0 + y;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_below(pixelArray, y0, radius, pixelX, pixelY);
     	}
       
       pixelX = x0 + y;
     	pixelY = y0 + x;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_below(pixelArray, y0, radius, pixelX, pixelY);
     	}
       
       pixelX = x0 - y;
     	pixelY = y0 + x;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_below(pixelArray, y0, radius, pixelX, pixelY);
     	}
       
       pixelX = x0 - x;
     	pixelY = y0 + y;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_below(pixelArray, y0, radius, pixelX, pixelY);
     	}
       
       pixelX = x0 - x;
     	pixelY = y0 - y;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_above(pixelArray, y0, radius, pixelX, pixelY);
     	}
       
       pixelX = x0 - y;
     	pixelY = y0 - x;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_above(pixelArray, y0, radius, pixelX, pixelY);
     	}
       
       pixelX = x0 + y;
     	pixelY = y0 - x;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_above(pixelArray, y0, radius, pixelX, pixelY);
     	}       
 			
 			pixelX = x0 + x;
     	pixelY = y0 - y;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_above(pixelArray, y0, radius, pixelX, pixelY);
     	}
 
@@ -250,12 +227,8 @@ void draw_circle(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
             err += 1 - 2*x;
         }
     }
-    // if (is_bounded_filled(x0, y0, pixelArray)) {
-    // 	flood_fill(pixelArray, x0, y0);
-    // }
-    
-
 }
+
 
 //Helper function to calculate b of y = mx + b given a coordinate and slope
 double calculate_b(int x, int y, double slope) {
@@ -274,16 +247,16 @@ double calculate_other_coordinate(char XY, int coordinate, double slope,
 }
 
 
-//Given the coordinates of two endpoints, finds the y = mx + b equation for the 
-//line and, draws dots for every pixel in the relatively less constrained 
-//dimmension
+// Given the coordinates of two endpoints, finds the y = mx + b equation for the 
+// line and draws dots for every pixel in the relatively less constrained 
+// dimmension
 void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
 		double brushRadius, int startY, int startX, int endY, int endX) {
 	double slope = (double)(endY - startY) / (endX - startX);
 	double b = calculate_b(startX, startY, slope);
 
-	//if abs(slope) is less than 1, do operations on x, more than 1, y
-	//if start of point is less that end, increment, otherwise decrement 
+	// if abs(slope) is less than 1, do operations on x, more than 1, y
+	// if start of point is less that end, increment, otherwise decrement 
 	int i;
 	if (abs(slope) < 1) {
 		if (startX >= endX) {
@@ -329,14 +302,14 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 }
 
 
-//Structure for TIFF Header
+// Structure for TIFF Header
 struct header {
 		uint16_t endian;
 		uint16_t magicNumber;
 		uint32_t ifdOffset;
 };
 
-//Structure for TIFF Tags
+// Structure for TIFF Tags
 struct tag {
 		uint16_t tagHeader;
 		uint16_t dataType;
@@ -344,7 +317,7 @@ struct tag {
 		uint32_t value;
 };
 
-//Generates a tiff header with constants and the given pixel count
+// Generates a tiff header with constants and the given pixel count
 struct header generate_tiff_header(unsigned int pixelCount){
 	struct header tiffHeader;
 	tiffHeader.endian = HEADER_ENDIAN_LITTLE;
@@ -354,8 +327,8 @@ struct header generate_tiff_header(unsigned int pixelCount){
 }
 
 
-//Writes all image files to a directory named UNIPEN and labels them according
-//to which image they are in the UNIPEN file
+// Writes all image files to a directory named UNIPEN and labels them according
+// to which image they are in the UNIPEN file
 void write_file(unsigned char *buffer, unsigned int imageNumber, 
 		unsigned int label, size_t fileLength){
 	char fileName[50];
@@ -366,7 +339,7 @@ void write_file(unsigned char *buffer, unsigned int imageNumber,
 }
 
 
-//Generates the TIFF file at a given image number; dependent on write_file
+// Generates the TIFF file at a given image number; dependent on write_file
 void generate_tiff_file(struct header header, struct tag tags[11],
 	 	unsigned char pixelDataBuffer[500][500], unsigned int pixelCount, 
 	 	unsigned int charLabel, unsigned int imageNumber){
@@ -410,9 +383,9 @@ void generate_tiff_file(struct header header, struct tag tags[11],
 }
 
 
-//Creates the actual byte array and draws a line between every sequential pair 
-//of coordinates in the coordinates buffer. Then creates a tiff header and tags 
-//based on the dimmensions of the image, and creates the actual tiff file.
+// Creates the actual byte array and draws a line between every sequential pair 
+// of coordinates in the coordinates buffer. Then creates a tiff header and tags 
+// based on the dimmensions of the image, and creates the actual tiff file.
 void draw_pixel_array(int *coordinates, size_t numCoordinates, 
 	unsigned int charLabel, unsigned int imageNumber){
 	unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION] = {0};
@@ -451,6 +424,9 @@ void draw_pixel_array(int *coordinates, size_t numCoordinates,
 		imageNumber);
 }
 
+
+// Reads in segments of the token and interprets it as a coordinate if it is an 
+// integer. Passes the array to draw_pixel_array
 size_t load_and_plot_coordinates(char *token, unsigned int charLabel, 
 	unsigned int imageNumber) {
 	size_t arraySize = 0;
@@ -466,11 +442,6 @@ size_t load_and_plot_coordinates(char *token, unsigned int charLabel,
 
 	draw_pixel_array(coordinates, arraySize, charLabel, imageNumber);
 
-	// int i;
-	// for (i = 0; i < arraySize; ++i){
-	// 	printf("%d\n", coordinates[i]);
-	// }
-
 	return arraySize;
 }
 	
@@ -484,9 +455,7 @@ int main(){
 	int firstTime = 1;
 	int i = 0;
 	while(token != NULL){
-	// for (i = 0; i < 9; ++i) {
-		//search each token for PEN_DOWN
-		// printf("%d\n", strlen(token));
+
 		unsigned int charLabel = 0;
 
 		if (strstr(token, SEGMENT) != NULL) {
@@ -495,29 +464,19 @@ int main(){
 		}
 
 		if (strstr(token, PEN_DOWN) != NULL) {
-			// printf("%d\n", strlen(token));
 			size_t arraySize = load_and_plot_coordinates(token, charLabel, i++);
-			// printf("%d\n", arraySize);
-		// //if PEN_DOWN, parse token into array of values
 		}
-		// printf("%d\n", data);
+
 		if (firstTime == 1) {
 			data += (strlen(token) + 2) * sizeof(char);
 		} else {
 			data += (strlen(token) + 1) * sizeof(char);
 		}
 
-		// printf("%d\n", data);		
-		
-		//create new array
-		//itterate through coordinates and call draw line between every two
 		token = strtok(data, ".");
-		// printf("%s\n", token);
 
 		if(firstTime == 1){
 			firstTime = 0;
 		}
 	}
-
-
 }

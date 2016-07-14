@@ -17,14 +17,15 @@
 
 #define VECTOR_DIMMENSION                  500
 #define NUM_IMAGES                        4256
+#define BLACK                              BLACK
 
 
-//TIFF HEADER CODES
+// TIFF HEADER CODES
 #define HEADER_ENDIAN_LITTLE            0x4949
 #define HEADER_ENDIAN_BIG               0x4D4D
 #define HEADER_MAGIC_NUMBER             0x002A
 
-//TIFF TAG ID CODES                           
+// TIFF TAG ID CODES                           
 #define TAG_WIDTH                       0x0100
 #define TAG_HEIGHT                      0x0101	
 #define TAG_BITS_PER_SAMPLE             0x0102
@@ -41,21 +42,21 @@
 #define TIFF_END                    0x00000000
 
 size_t load_upen_to_buffer(char *filepath, char **buffer){
-	//open file
+	// open file
 	FILE *file = fopen(filepath, "r");
 	if (file == NULL) {
 		printf("Cannot open file \n");
 	} 
 
-	//find the length of the file
+	// find the length of the file
 	fseek(file, 0, SEEK_END);
 	size_t fileLength = ftell(file);
 	rewind(file);
 
-	//allocate the correct amount of memory  
+	// allocate the correct amount of memory  
 	*buffer = (char *)malloc(sizeof(char) * fileLength + 1);
 	
-	//read the file into the buffer
+	// read the file into the buffer
 	fread(*buffer, fileLength, 1, file);
 	fclose(file);
 	printf("File successfully read \n");
@@ -64,11 +65,11 @@ size_t load_upen_to_buffer(char *filepath, char **buffer){
 }
 
 
-///Checks if the pixel at position x, y is out of bounds or is already black 
+// /Checks if the pixel at position x, y is out of bounds or is already black 
 int is_bounded_filled(int x, int y, 
 		unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION]) {
 	if (x >= VECTOR_DIMMENSION || y >= VECTOR_DIMMENSION || 
-  		x < 0 || y < 0 || pixelArray[x][y] == 255) {
+  		x < 0 || y < 0 || pixelArray[x][y] == BLACK) {
 		return 0;
 	} else {
 		return 1; 
@@ -76,27 +77,28 @@ int is_bounded_filled(int x, int y,
 }
 
 
-//Fills the pixels below a given pixel until its center Y is reached
+// Fills the pixels below a given pixel until its center Y is reached
 void fill_below(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
 		double y0, double radius, int x, int y){
 	int i;
 	for (i = y0; i < y; ++i) {
-		pixelArray[x][i] = 255;	
+		pixelArray[x][i] = BLACK;	
 	}
 }
 
-//Fills the pixels above a given pixel until its center Y is reached
+// Fills the pixels above a given pixel until its center Y is reached
 void fill_above(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
 		double y0, double radius, int x, int y){
 	int i;
 	for (i = y0; i > y; --i) {
-		pixelArray[x][i] = 255;	
+		pixelArray[x][i] = BLACK;	
 	}
 }
 
 
-//Draws the outer points of a circle using the midpoint circle algorithm given 
-//its center
+// Draws the outer points of a circle with the provided radius using the 
+// midpoint circle algorithm, with its center at the given coordinates. Fills 
+// every pixel between each point and the circle's horizontal axis
 void draw_circle(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
 		double x0, double y0, double radius)
 {
@@ -111,56 +113,56 @@ void draw_circle(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
       pixelX = x0 + x;
     	pixelY = y0 + y;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_below(pixelArray, y0, radius, pixelX, pixelY);
     	}
       
       pixelX = x0 + y;
     	pixelY = y0 + x;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_below(pixelArray, y0, radius, pixelX, pixelY);
     	}
       
       pixelX = x0 - y;
     	pixelY = y0 + x;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_below(pixelArray, y0, radius, pixelX, pixelY);
     	}
       
       pixelX = x0 - x;
     	pixelY = y0 + y;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_below(pixelArray, y0, radius, pixelX, pixelY);
     	}
       
       pixelX = x0 - x;
     	pixelY = y0 - y;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_above(pixelArray, y0, radius, pixelX, pixelY);
     	}
       
       pixelX = x0 - y;
     	pixelY = y0 - x;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_above(pixelArray, y0, radius, pixelX, pixelY);
     	}
       
       pixelX = x0 + y;
     	pixelY = y0 - x;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_above(pixelArray, y0, radius, pixelX, pixelY);
     	}       
 			
 			pixelX = x0 + x;
     	pixelY = y0 - y;
     	if (is_bounded_filled(pixelX, pixelY, pixelArray)) {
-    		pixelArray[pixelX][pixelY] = (radius - err) / radius * 255;
+    		pixelArray[pixelX][pixelY] = (radius - err) / radius * BLACK;
     		fill_above(pixelArray, y0, radius, pixelX, pixelY);
     	}
 
@@ -174,13 +176,13 @@ void draw_circle(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
     }
 }
 
-//Helper function to calculate b of y = mx + b given a coordinate and slope
+// Helper function to calculate b of y = mx + b given a coordinate and slope
 double calculate_b(int x, int y, double slope) {
 	return y - slope * x;
 }
 
-//Helper function to calculate the other coordinate of a coordinate pair given
-//the line equation, the coordinate, and the return type ('x' or 'y'). 
+// Helper function to calculate the other coordinate of a coordinate pair given
+// the line equation, the coordinate, and the return type ('x' or 'y'). 
 double calculate_other_coordinate(char XY, int coordinate, double slope, 
 		double b) {
 	if(XY == 'x'){
@@ -191,17 +193,17 @@ double calculate_other_coordinate(char XY, int coordinate, double slope,
 }
 
 
-//Given the coordinates of two endpoints, finds the y = mx + b equation for the 
-//line and, draws dots for every pixel in the relatively less constrained 
-//dimmension
-//X and y flipped to make image appear correct orientation
+// Given the coordinates of two endpoints, finds the y = mx + b equation for the 
+// line and, draws dots for every pixel in the relatively less constrained 
+// dimmension
+// X and y flipped to make image appear correct orientation
 void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
 		double brushRadius, int startY, int startX, int endY, int endX) {
 	double slope = (double)(endY - startY) / (endX - startX);
 	double b = calculate_b(startX, startY, slope);
 
-	//if abs(slope) is less than 1, do operations on x, more than 1, y
-	//if start of point is less that end, increment, otherwise decrement 
+	// if abs(slope) is less than 1, do operations on x, more than 1, y
+	// if start of point is less that end, increment, otherwise decrement 
 	int i;
 	if (abs(slope) < 1) {
 		if (startX >= endX) {
@@ -251,14 +253,14 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 }
 
 
-//Structure for TIFF Header
+// Structure for TIFF Header
 struct header {
 		uint16_t endian;
 		uint16_t magicNumber;
 		uint32_t ifdOffset;
 };
 
-//Structure for TIFF Tags
+// Structure for TIFF Tags
 struct tag {
 		uint16_t tagHeader;
 		uint16_t dataType;
@@ -267,7 +269,7 @@ struct tag {
 };
 
 
-//Generates a tiff header with constants and the given pixel count
+// Generates a tiff header with constants and the given pixel count
 struct header generate_tiff_header(unsigned int pixelCount){
 	struct header tiffHeader;
 	tiffHeader.endian = HEADER_ENDIAN_LITTLE;
@@ -277,8 +279,8 @@ struct header generate_tiff_header(unsigned int pixelCount){
 }
 
 
-//Writes all image files to a directory named UNIPEN and labels them according
-//to which image they are in the UNIPEN file
+// Writes all image files to a directory named UNIPEN and labels them according
+// to which image they are in the UNIPEN file
 void write_file(unsigned char *buffer, unsigned int imageNumber, 
 		unsigned int label, size_t fileLength){
 	char fileName[50];
@@ -289,7 +291,7 @@ void write_file(unsigned char *buffer, unsigned int imageNumber,
 }
 
 
-//Generates the TIFF file at a given image number; dependent on write_file
+// Generates the TIFF file at a given image number; dependent on write_file
 size_t generate_tiff_file(struct header header, struct tag tags[11],
 	 	unsigned char pixelDataBuffer[500][500], unsigned int pixelCount, 
 	 	unsigned char **fileMarker){
@@ -301,43 +303,43 @@ size_t generate_tiff_file(struct header header, struct tag tags[11],
 	                    numTags * sizeof(struct tag) +
 	                    sizeof(numTags)+
 	                    sizeof(tiffEnd);
-	//allocate memory for the TIFF data
+	// allocate memory for the TIFF data
 	unsigned char *buffer = (unsigned char *)malloc(sizeof(unsigned char) * 
 			fileLength);
-	//create pointer to mark the next address to write to
+	// create pointer to mark the next address to write to
 	unsigned char *marker = buffer;
-	//copy header
+	// copy header
 	memcpy(marker, &header, sizeof(struct header));
 	marker += sizeof(struct header);
-	//copy pixel data
+	// copy pixel data
 	int i;
 	for(i = 0; i < VECTOR_DIMMENSION; ++i) {
 		memcpy(marker, pixelDataBuffer[i], VECTOR_DIMMENSION);
 		marker += VECTOR_DIMMENSION;
 	}
-	//copy TIFF footer
+	// copy TIFF footer
 	memcpy(marker, &numTags, sizeof(numTags));
 	marker += sizeof(numTags);
-	//copy all tags
+	// copy all tags
 
 	for(i = 0; i < numTags; ++i){
 		memcpy(marker, &tags[i], sizeof(struct tag));
 		marker += sizeof(struct tag);
 	}
-	//copy end bytes
+	// copy end bytes
 	memcpy(marker, &tiffEnd, sizeof(tiffEnd));
-	//copy the single TIFF file to the current marker in the buffer of TIFF 
-	//files
+	// copy the single TIFF file to the current marker in the buffer of TIFF 
+	// files
 	memcpy(*fileMarker, buffer, fileLength);
-	//free the memory
+	// free the memory
 	free(buffer);
 	return fileLength;
 }
 
 
-//Creates the actual byte array and draws a line between every sequential pair 
-//of coordinates in the coordinates buffer. Then creates a TIFF header and tags 
-//based on the dimmensions of the image, and creates the actual TIFF file.
+// Creates the actual byte array and draws a line between every sequential pair 
+// of coordinates in the coordinates buffer. Then creates a TIFF header and tags 
+// based on the dimmensions of the image, and creates the actual TIFF file.
 size_t draw_pixel_array(int *coordinates, size_t numCoordinates, 
 		unsigned char **marker, struct header tiffHeader, 
 		struct tag tiffTags[11]){
@@ -350,7 +352,7 @@ size_t draw_pixel_array(int *coordinates, size_t numCoordinates,
 		}
 	}
 
-	//create the actual file
+	// create the actual file
 	size_t fileLength = generate_tiff_file(tiffHeader, tiffTags, pixelArray, 
 			VECTOR_DIMMENSION * VECTOR_DIMMENSION, marker);
 
@@ -358,8 +360,8 @@ size_t draw_pixel_array(int *coordinates, size_t numCoordinates,
 }
 
 
-//Reads in segments of the token and interprets it as a coordinate if it is an 
-//integer. Passes the array to draw_pixel_array
+// Reads in segments of the token and interprets it as a coordinate if it is an 
+// integer. Passes the array to draw_pixel_array
 int load_and_plot_coordinates(char *token, unsigned char **marker, 
 		struct header tiffHeader, struct tag tiffTags[11]) {
 
@@ -377,15 +379,13 @@ int load_and_plot_coordinates(char *token, unsigned char **marker,
 	size_t fileLength = draw_pixel_array(coordinates, numCoordinates, marker, 
 			tiffHeader, tiffTags);
 	free(coordinates);
-	
-	// printf("%d\n", numCoordinates);
 
 	return numCoordinates;
 }
 
 
-//Writes TIFF files to the provided buffer until the number of images has been 
-//reached
+// Writes TIFF files to the provided buffer until the number of images has been 
+// reached
 int generate_tiff_buffer(char *data, int numImages, 
 		unsigned char **tiffBuffer, size_t TIFFLength, struct header tiffHeader,
 		struct tag tiffTags[11]){
@@ -417,20 +417,19 @@ int generate_tiff_buffer(char *data, int numImages,
 			firstTime = 0;
 		}
 	}
-	// printf("%d\n", numCoordinates);
 	return numCoordinates;
 	
 }
 
 
-//run a single transformation of the numImages provided 
+// Run a single transformation of the numImages provided 
 int run_transformations(char *data, int numImages) {
 		int pixelCount = VECTOR_DIMMENSION * VECTOR_DIMMENSION;
 
-	//generate header
+	// generate header
 	struct header tiffHeader = generate_tiff_header(pixelCount);
 
-	//generate tags
+	// generate tags
 	enum dataTypes {TYPE_BYTE = 1, TYPE_ASCII, TYPE_SHORT, TYPE_LONG,
 		TYPE_RATIONAL};
 	struct tag tiffTags[11] = {
@@ -477,6 +476,7 @@ double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
 }
 
 
+// Writes an array of doubles as pairs of indexes and their values to a csv file
 void write_doubles_to_csv_file(double *values, int numValues, char *name) {
 	char fileName[50];
 	sprintf(fileName, "%s.csv", name);
@@ -491,6 +491,8 @@ void write_doubles_to_csv_file(double *values, int numValues, char *name) {
 	fclose(file);
 }
 
+
+// Writes two arrays of doubles as pairs of values to a csv file
 void write_double_pairs_to_csv_file(double *x, double *y, int numValues, 
 		char *name) {
 	char fileName[50];
@@ -530,7 +532,8 @@ int main(int argc, char **argv){
 	int i, j;
 	int numRuns = 50;
 	int numCoordinates = 0;
-	//time the transofrmation of all numbers of images up to numImages 
+	
+	// time the transofrmation of all numbers of images up to numImages 
 	for (i = 0; i < numImages; ++i) {
 		int *runsArray = (int *) malloc(numRuns * sizeof(int));
 		for (j = 0; j < numRuns; ++j) {	
@@ -546,13 +549,12 @@ int main(int argc, char **argv){
 		free(runsArray);
 	}
 
-	//write timing data (character to runtime) to csv file
+	// write timing data (character to runtime) to csv file
 	write_doubles_to_csv_file(timingArray, numImages, "testCharacter");
 	
-	//write timing data (coordinates to runtime) to csv file
+	// write timing data (coordinates to runtime) to csv file
 	write_double_pairs_to_csv_file(coordinateCounts, timingArray, numImages, 
 		"testCoordinates");
-	
 
 	return 0;
 }
