@@ -2,9 +2,11 @@
 
 #Recompile all files before running timing function
 gcc jsonTitle.c -o jsonTitle
-gcc writeJson.c SamTo2Bit.c -o SamTo2Bit
+gcc jsonData.c SamTo2Bit.c -o SamTo2Bit
+gcc -g jsonData.c jsonSystemStats.c -o jsonSystemStats
+gcc -g timingJsonToCSV.c -o timingJsonToCSV
 
-if [ $1 != NULL ]
+if [ "$1" != "" ]
 then
 	today=$1
 else
@@ -13,106 +15,120 @@ fi
 
 mkdir ./tests/samTests/$today
 
-#Remove old timeStats.txt files
-#rm timeStats.json
-#rm sam2BTimeStats.json
-#rm mt4bTimeStats.json
+numInputFiles=0
+runs=100
+k=3
+folder="./tests/samTests/$today"
 
 #Run SAM To 2 Bit Tests and Store in timeStats.txt
-./SamTo2Bit tests/samTests/sam100.SAM tests/samTests/$today/100Out.txt tests/samTests/$today/100headers.txt tests/samTests/$today/100positions.txt 100 3
+./SamTo2Bit tests/samTests/sam100.SAM $folder/100Out.txt $folder/100headers.txt $folder/100positions.txt $runs
 ./jsonTitle timing.json "100 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+cat timing.json >> $folder/sam2BTimeStats.json
+((numInputFiles++))
  # Add new line character inbetween files when appending
 
-./SamTo2Bit tests/samTests/sam500.SAM tests/samTests/$today/500Out.txt tests/samTests/$today/500headers.txt tests/samTests/$today/500positions.txt 100 3
+./SamTo2Bit tests/samTests/sam500.SAM $folder/500Out.txt $folder/500headers.txt $folder/500positions.txt $runs
 ./jsonTitle timing.json "500 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+cat timing.json >> $folder/sam2BTimeStats.json
+((numInputFiles++))
 
-./SamTo2Bit tests/samTests/sam1k.SAM tests/samTests/$today/1kOut.txt tests/samTests/$today/1kheaders.txt tests/samTests/$today/1kpositions.txt 100 3
-./jsonTitle timing.json "1k bases" "-c"
+./SamTo2Bit tests/samTests/sam1k.SAM $folder/1kOut.txt $folder/1kheaders.txt $folder/1kpositions.txt $runs
+./jsonTitle timing.json "1000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+cat timing.json >> $folder/sam2BTimeStats.json
+((numInputFiles++))
 
-./SamTo2Bit tests/samTests/sam5k.SAM tests/samTests/$today/5kOut.txt tests/samTests/$today/5kheaders.txt tests/samTests/$today/5kpositions.txt 100 3
-./jsonTitle timing.json "5k bases" "-c"
+./SamTo2Bit tests/samTests/sam5k.SAM $folder/5kOut.txt $folder/5kheaders.txt $folder/5kpositions.txt $runs
+./jsonTitle timing.json "5000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+cat timing.json >> $folder/sam2BTimeStats.json
+((numInputFiles++))
 
-./SamTo2Bit tests/samTests/sam10k.SAM tests/samTests/$today/10kOut.txt tests/samTests/$today/10kheaders.txt tests/samTests/$today/10kpositions.txt 100 3
-./jsonTitle timing.json "10k bases" "-c"
+./SamTo2Bit tests/samTests/sam10k.SAM $folder/10kOut.txt $folder/10kheaders.txt $folder/10kpositions.txt $runs
+./jsonTitle timing.json "10000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+cat timing.json >> $folder/sam2BTimeStats.json
+((numInputFiles++))
 
-./SamTo2Bit tests/samTests/sam50k.SAM tests/samTests/$today/50kOut.txt tests/samTests/$today/50kheaders.txt tests/samTests/$today/50kpositions.txt 100 3
-./jsonTitle timing.json "50k bases" "-c"
+./SamTo2Bit tests/samTests/sam50k.SAM $folder/50kOut.txt $folder/50kheaders.txt $folder/50kpositions.txt $runs
+./jsonTitle timing.json "50000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+cat timing.json >> $folder/sam2BTimeStats.json
+((numInputFiles++))
 
-./SamTo2Bit tests/samTests/sam100k.SAM tests/samTests/$today/100kOut.txt tests/samTests/$today/100kheaders.txt tests/samTests/$today/100kpositions.txt 100 3
-./jsonTitle timing.json "100k bases" "-c"
+./SamTo2Bit tests/samTests/sam100k.SAM $folder/100kOut.txt $folder/100kheaders.txt $folder/100kpositions.txt $runs
+./jsonTitle timing.json "100000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+cat timing.json >> $folder/sam2BTimeStats.json
+((numInputFiles++))
 
-./SamTo2Bit tests/samTests/sam300k.SAM tests/samTests/$today/300kOut.txt tests/samTests/$today/300kheaders.txt tests/samTests/$today/300kpositions.txt 100 3
-./jsonTitle timing.json "300k bases" "-c"
+./SamTo2Bit tests/samTests/sam300k.SAM $folder/300kOut.txt $folder/300kheaders.txt $folder/300kpositions.txt $runs
+./jsonTitle timing.json "300000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+cat timing.json >> $folder/sam2BTimeStats.json
+((numInputFiles++))
 
-./SamTo2Bit tests/samTests/sam500k.SAM tests/samTests/$today/500kOut.txt tests/samTests/$today/500kheaders.txt tests/samTests/$today/500kpositions.txt 100 3
-./jsonTitle timing.json "500k bases" "-c"
+./SamTo2Bit tests/samTests/sam500k.SAM $folder/500kOut.txt $folder/500kheaders.txt $folder/500kpositions.txt $runs
+./jsonTitle timing.json "500000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+cat timing.json >> $folder/sam2BTimeStats.json
+((numInputFiles++))
 
-./SamTo2Bit tests/samTests/sam700k.SAM tests/samTests/$today/700kOut.txt tests/samTests/$today/700kheaders.txt tests/samTests/$today/700kpositions.txt 100 3
-./jsonTitle timing.json "700k bases" "-c"
+./SamTo2Bit tests/samTests/sam700k.SAM $folder/700kOut.txt $folder/700kheaders.txt $folder/700kpositions.txt $runs
+./jsonTitle timing.json "700000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+cat timing.json >> $folder/sam2BTimeStats.json
+((numInputFiles++))
 
-./SamTo2Bit tests/samTests/sam1mil.SAM tests/samTests/$today/1milOut.txt tests/samTests/$today/1milheaders.txt tests/samTests/$today/1milpositions.txt 100 3
-./jsonTitle timing.json "1mil bases"
-echo "" >> timing.json
-cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+./SamTo2Bit tests/samTests/sam1mil.SAM $folder/1milOut.txt $folder/1milheaders.txt $folder/1milpositions.txt $runs
+./jsonTitle timing.json "1000000 bases"
+#echo "" >> timing.json
+cat timing.json >> $folder/sam2BTimeStats.json
+((numInputFiles++))
 
-#./SamTo2Bit tests/samTests/sam5mil.SAM tests/samTests/$today/5milOut.txt tests/samTests/$today/headers.txt tests/samTests/$today/100positions.txt 100 3
+#./SamTo2Bit tests/samTests/sam5mil.SAM $folder/5milOut.txt $folder/headers.txt $folder/100positions.txt $runs
 #./jsonTitle timing.json "5mil bases"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+#cat timing.json >> $folder/sam2BTimeStats.json
 
-#./SamTo2Bit tests/samTests/sam10mil.SAM tests/samTests/$today/10milOut.txt tests/samTests/$today/headers.txt tests/samTests/$today/100positions.txt 100 3
+#./SamTo2Bit tests/samTests/sam10mil.SAM $folder/10milOut.txt $folder/headers.txt $folder/100positions.txt $runs
 #./jsonTitle timing.json "10mil bases"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+#cat timing.json >> $folder/sam2BTimeStats.json
 
-#./SamTo2Bit tests/samTests/SAM15mil.SAM tests/samTests/$today/15milOut.txt tests/samTests/$today/headers.txt tests/samTests/$today/100positions.txt 100 3
+#./SamTo2Bit tests/samTests/SAM15mil.SAM $folder/15milOut.txt $folder/headers.txt $folder/100positions.txt $runs
 #./jsonTitle timing.json "15mil bases"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+#cat timing.json >> $folder/sam2BTimeStats.json
 
-#./SamTo2Bit tests/samTests/SAM20mil.SAM tests/samTests/$today/20milOut.txt tests/samTests/$today/headers.txt tests/samTests/$today/100positions.txt 100 3
+#./SamTo2Bit tests/samTests/SAM20mil.SAM $folder/20milOut.txt $folder/headers.txt $folder/100positions.txt $runs
 #./jsonTitle timing.json "20mil bases"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/samTests/$today/sam2BTimeStats.json
+#cat timing.json >> $folder/sam2BTimeStats.json
 
 #Add Title to sam2BTimeStats.txt file
-./jsonTitle ./tests/samTests/$today/sam2BTimeStats.json "SamTo2Bit"  
+./jsonTitle $folder/sam2BTimeStats.json "SamTo2Bit" "-f"
 
 #Add Final Title
 
 #./jsonTitle timeStats.json "Final" "-f"
 
-./jsonToCSV ./tests/samTests/$today/sam2BTimeStats.json ./tests/samTests/$today/sam2BTimeStats.csv
+./timingJsonToCSV $folder/sam2BTimeStats.json $folder/sam2BTimeStats.csv $numInputFiles $runs $k
+
 
 plotfile="sam2BTimeStats.csv"
 output="samTo2Bit.png"
-folder="./tests/samTests/$today"
 graph="$folder/$plotfile"
 touch $folder/$output
 outpath="$folder/$output"
 graphTitle="Sam To 2Bit"
+xlabel="Number of Bases"
+xvals=1
+yvals=2
 
-gnuplot -c plotLineScript.sh $graph "$graphTitle" $outpath
+gnuplot -c plotLineScript.sh $graph "$graphTitle" $outpath "$xlabel" $xvals $yvals
 
 
 

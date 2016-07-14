@@ -13,9 +13,9 @@ else
 	today=$(date +%Y-%m-%d-%T)
 fi
 
-mkdir ./tests/superInputTests/$today
+mkdir ./tests/superTests/$today
 
-folder="./tests/superInputTests/$today"
+folder="./tests/superTests/$today"
 runs=10
 maxNumInputs=3
 fileSize=10000
@@ -57,7 +57,7 @@ do
 done
 
 #Add Title to superInputTimeStats.txt file
-./jsonTitle $folder/superInputTimeStats.json "superOptimizer"  
+./jsonTitle $folder/superInputTimeStats.json "superOptimizer" "-f"
 
 ./superJsonToCSV $folder/superInputTimeStats.json $folder/superInputTimeStats.csv $folder/superNumOpTimeStats.csv $maxNumInputs $numInputSets $runs $k
 inputPlotFile="superInputTimeStats.csv"

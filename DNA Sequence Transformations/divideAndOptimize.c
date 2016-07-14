@@ -10,8 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "writeJson.h"
-//#include "divideAndOptimize.h"
+#include "jsonData.h"
 
 enum operationID {add = 0, and = 1, xor = 2, lsl = 3, lsr = 4, assign = 5};
 char operations[] = {'+','&','^','<','>','='};
@@ -216,16 +215,6 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 		numArray[opLevel][i] = numSeq[i];
 	}
 
-// Send each group off onto separate branches with empty opsSeq and numSeq arrays to fill in
-//	printf("%s%d\n","group1Size: ",group1Size);
-//	printf("%s%d\n","group2Size: ",group2Size);
-//	for(i=0; i<group1Size; ++i){
-//		printf("%s %d\n","group1:", group1[i]);
-//	}
-//	for(i=0; i<group2Size; ++i){
-//		printf("%s %d\n","group2:", group2[i]);
-//	}
-
 	unsigned char startingGroup1[group1Size];
 	unsigned char startingGroup2[group2Size];
 	for(i=0;i<group1Size;++i){
@@ -293,7 +282,7 @@ int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int 
 	return output;
 }
 
-int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs][number of timing values to retain]
+int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	int i,j; 
 
 	int keySize = 0; 
@@ -402,9 +391,8 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		// Create Output Buffer;
 	char * writeOut = malloc(sizeof(char)* (readSize+1));
 
-	float *times;
+	double *times;
 	int runs = 0;
-	int numTimes = 0;
 	int i,j=0,k;
 	if(argc == 4){
 		for(i=0;i<readSize; ++i){
@@ -414,8 +402,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	}
 	if(argc == 5){	//if a number of runs is given but no number of minimum times, default number of min times is 3
 		runs = atoi(argv[4]);
-		numTimes = 3;
-		times = calloc(runs, sizeof(float)); 
+		times = calloc(runs, sizeof(double)); 
 		struct timeval time0, time1; 
 		for(i=0;i<runs;i++){ // Record time of each run
 			gettimeofday(&time0,NULL);
@@ -429,27 +416,14 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		}
 
 	}
-	if(argc == 6){ //if both number of runs and the number of minimum times is given
-		runs = atoi(argv[4]);
-        	numTimes = atoi(argv[5]);
-		times = calloc(runs, sizeof(float));
-		struct timeval time0, time1; 
-		for(i=0;i<runs;i++){ // Record time of each run
-	                gettimeofday(&time0,NULL);
-			j=0;
-	                for(k=0;k<readSize; ++k){
-				if(readIn[k]&'\xe0')
-					writeOut[j++] = evaluate(readIn[k],opArray,numArray,maxNumOps);
-			}
-	                gettimeofday(&time1,NULL);
-	                times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-		}
-	}
 
 	int writeSize = j;
 	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
 	if(argc > 4){
-		if(write_time_file(times, runs, numTimes,keySize) < 0) //Records number of key inputs as "fileSize"
+	char *labelArr[1];
+		labelArr[0] = "Transform Times";
+		int numLabels = sizeof(labelArr)/sizeof(char*); 
+		if(write_divAndOpt_file(&times, labelArr, numLabels, runs, keySize) < 0) 
 			printf("error writing time file\n");
 		free(times);
 	}

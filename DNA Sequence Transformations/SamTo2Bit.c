@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "writeJson.h"
+#include "jsonData.h"
 
 long samTo2Bit(const char* input, char * output, char * headers, int* positions,  long inputsize, long * outputsize, long * headersize, long * positionsize){
 
@@ -63,8 +63,8 @@ long samTo2Bit(const char* input, char * output, char * headers, int* positions,
 
 }
 
-int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][headerFile][positionFile] optional:[numberOfTestRuns][NumberOfRunsToAverage]
-	if(!(argc == 5||argc == 6||argc == 7)){
+int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][headerFile][positionFile] optional:[numberOfTestRuns]
+	if(!(argc == 5||argc == 6)){
 		printf("Incompatible number of arguments\n");
 		return -1;
 	}
@@ -113,17 +113,15 @@ int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][headerFil
 	long outputsize = 0;
 	long headersize = 0;
 	long positionsize = 0;
-	float *times ;
+	double *times ;
 	int runs = 0;
-	int numTimes = 0;
 	long numBases = 0;
 	if(argc == 5){
 		numBases = samTo2Bit(input,output,headers,positions,inputsize,&outputsize,&headersize,&positionsize);
 	}
 	if(argc == 6){	//if a number of runs is given but no number of minimum times, default number of min times is 3
 		runs = atoi(argv[5]);
-		numTimes = 3;
-		times = calloc(runs, sizeof(float)); 
+		times = calloc(runs, sizeof(double)); 
 		struct timeval time0, time1; 
 		int i;
 		for(i=0;i<runs;i++){ // Record time of each run
@@ -134,24 +132,14 @@ int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][headerFil
 		}
 
 	}
-	if(argc == 7){ //if both number of runs and the number of minimum times is given
-		runs = atoi(argv[5]);
-                numTimes = atoi(argv[6]);
-		times = calloc(runs, sizeof(float));
-                struct timeval time0, time1; 
-                int i;
-                for(i=0;i<runs;i++){ // Record time of each run
-                        gettimeofday(&time0,NULL);
-                        numBases = samTo2Bit(input,output,headers,positions,inputsize,&outputsize,&headersize,&positionsize);
-                        gettimeofday(&time1,NULL);
-                        times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-                }
-
-	}
 
 	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
 	if(argc > 5){ 
-		if(write_time_file(times, runs, numTimes, numBases) < 0)
+		char *labelArr[1];
+		labelArr[0] = "Transform Times";
+		int numLabels = sizeof(labelArr)/sizeof(char*); 
+	
+		if(write_time_file(&times, labelArr, numLabels, runs) < 0)
 			printf("error writing time file\n");
 		free(times);
 	}

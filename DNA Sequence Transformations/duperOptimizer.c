@@ -140,8 +140,8 @@ int main(int argc, char** argv){
 //	char input[] = {'\x00','\x01','\x02','\x03','\x04'};
 	//unsigned char input[] = {'\x24','\x32','\xf7','\xc3','\x10','\x89','\xfd','\x78','\x98','\x36','\x65','\xdc','\xa4','\xb9','\xb1','\x9d'};
 	//char output[] = {'0','0','0','0','0','0','0','0','1','1','1','1','1','1','1','1'};
-	unsigned char input[] = {'A','C','G','T','X','\xae'};
-	char output[] = {'0','0','1','4','2','4'};
+	unsigned char input[] = {'A','C','G','T'};
+	char output[] = {'0','0','1','4'};
 	int inputSize = sizeof(input)/sizeof(char);
 	int maxNumOps = 6;
 	char opsSeq [maxNumOps];

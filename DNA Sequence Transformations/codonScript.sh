@@ -2,9 +2,11 @@
 
 #Recompile all files before running timing function
 gcc jsonTitle.c -o jsonTitle
-gcc writeJson.c codonOptimizer.c -o codonOptimizer
+gcc jsonData.c codonOptimizer.c -o codonOptimizer
+gcc -g jsonData.c jsonSystemStats.c -o jsonSystemStats
+gcc -g timingJsonToCSV.c -o timingJsonToCSV
 
-if [ $1 != NULL ]
+if [ "$1" != ""  ]
 then
 	today=$1
 else
@@ -13,66 +15,90 @@ fi
 
 mkdir ./tests/codonTests/$today
 
+numInputFiles=0
+runs=100
+k=3
+folder="./tests/codonTests/$today"
+
+./jsonSystemStats $folder/codonTimeStats.json
+
 #Run codonOptimizer Codon Tests and Store in timeStats.txt
-./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta100.fasta tests/codonTests/$today/100Out.txt 100 3
+./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta100.fasta $folder/100Out.txt $runs
 ./jsonTitle timing.json "100 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/codonTests/$today/codonTimeStats.json
+cat timing.json >> ./$folder/codonTimeStats.json
+((numInputFiles++))
  # Add new line character inbetween files when appending
 
-./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta500.fasta tests/codonTests/$today/500Out.txt 100 3
+./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta500.fasta $folder/500Out.txt $runs
 ./jsonTitle timing.json "500 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/codonTests/$today/codonTimeStats.json
+cat timing.json >> ./$folder/codonTimeStats.json
+((numInputFiles++))
 
-./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta1k.fasta tests/codonTests/$today/1kOut.txt 100 3
-./jsonTitle timing.json "1k bases" "-c"
+./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta1k.fasta $folder/1kOut.txt $runs
+./jsonTitle timing.json "1000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/codonTests/$today/codonTimeStats.json
+cat timing.json >> ./$folder/codonTimeStats.json
+((numInputFiles++))
 
-./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta5k.fasta tests/codonTests/$today/5kOut.txt 100 3
-./jsonTitle timing.json "5k bases" "-c"
+./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta5k.fasta $folder/5kOut.txt $runs
+./jsonTitle timing.json "5000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/codonTests/$today/codonTimeStats.json
+cat timing.json >> ./$folder/codonTimeStats.json
+((numInputFiles++))
 
-./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta10k.fasta tests/codonTests/$today/10kOut.txt 100 3
-./jsonTitle timing.json "10k bases" "-c"
+./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta10k.fasta $folder/10kOut.txt $runs
+./jsonTitle timing.json "10000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/codonTests/$today/codonTimeStats.json
+cat timing.json >> ./$folder/codonTimeStats.json
+((numInputFiles++))
 
-./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta50k.fasta tests/codonTests/$today/50kOut.txt 100 3
-./jsonTitle timing.json "50k bases" "-c"
+./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta50k.fasta $folder/50kOut.txt $runs
+./jsonTitle timing.json "50000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/codonTests/$today/codonTimeStats.json
+cat timing.json >> ./$folder/codonTimeStats.json
+((numInputFiles++))
 
-./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta100k.fasta tests/codonTests/$today/100kOut.txt 100 3
-./jsonTitle timing.json "100k bases" "-c"
+./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta100k.fasta $folder/100kOut.txt $runs
+./jsonTitle timing.json "100000 bases" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/codonTests/$today/codonTimeStats.json
+cat timing.json >> ./$folder/codonTimeStats.json
+((numInputFiles++))
 
-#./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta500k.fasta tests/codonTests/$today/500kOut.txt 100 3
-#./jsonTitle timing.json "500k bases" "-c"
+./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta300k.fasta $folder/300kOut.txt $runs
+./jsonTitle timing.json "300000 bases" 
 #echo "" >> timing.json
-#cat timing.json >> ./tests/codonTests/$today/codonTimeStats.json
+cat timing.json >> ./$folder/codonTimeStats.json
+((numInputFiles++))
 
-#./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta1mil.fasta tests/codonTests/$today/1milOut.txt 100 3
+#./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta500k.fasta $folder/500kOut.txt $runs
+#./jsonTitle timing.json "500000 bases" "-c"
+#echo "" >> timing.json
+#cat timing.json >> ./$folder/codonTimeStats.json 
+#((numInputFiles++))
+
+#./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta1mil.fasta $folder/1milOut.txt $runs 3
 #./jsonTitle timing.json "1mil bases"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/codonTests/$today/codonTimeStats.json
+#cat timing.json >> ./$folder/codonTimeStats.json
 
 #Add Title to codonTimeStats.txt file
-./jsonTitle ./tests/codonTests/$today/codonTimeStats.json "codonOptimizer codonAminoAcidKey.txt"  
+./jsonTitle ./$folder/codonTimeStats.json "codonOptimizer" "-f"
 
-./jsonToCSV ./tests/codonTests/$today/codonTimeStats.json ./tests/codonTests/$today/codonTimeStats.csv
+./timingJsonToCSV ./$folder/codonTimeStats.json ./$folder/codonTimeStats.csv $numInputFiles $runs $k
+
 plotfile="codonTimeStats.csv"
 output="codon.png"
-folder="./tests/codonTests/$today"
 graph="$folder/$plotfile"
 touch $folder/$output
 outpath="$folder/$output"
 xlabel="Number of Codons"
 graphTitle="Codon To Amino Acid Transformation"
-gnuplot -c plotLineScript.sh $graph "$graphTitle" $outpath "$xlabel"
+xvals=1
+yvals=2
+
+gnuplot -c plotLineScript.sh $graph "$graphTitle" $outpath "$xlabel" $xvals $yvals
 
 
 

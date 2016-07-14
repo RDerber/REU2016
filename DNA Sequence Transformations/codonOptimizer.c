@@ -10,8 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "writeJson.h"
-//#include "divideAndOptimize.h"
+#include "jsonData.h"
+
 
 enum operationID {add = 0, and = 1, xor = 2, lsl = 3, lsr = 4, assign = 5};
 char operations[] = {'+','&','^','<','>','='};
@@ -334,7 +334,7 @@ int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int 
 	return output;
 }
 
-int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs][number of timing values to retain]
+int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	int i,j; 
 
 	int inputSize = 0; 
@@ -365,6 +365,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	
 	inputSize = keyIdentifier(ifp, input, output);
 	fclose(ifp);
+/*Random Input Generator */ 
 //	int inputSize = 128;
 //	unsigned char *input = malloc(sizeof(char)*inputSize);
 //	unsigned char *output = malloc(sizeof(char)*inputSize);
@@ -382,12 +383,12 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 
 
 
-	int maxNumOps = 5;			//must be at least 4 to store comparisions
+	int maxNumOps = 4;			//must be at least 4 to store comparisions
 
-	int success = -1;								// NEED TO IMPLEMENT divideAndOptimize in main
+	int success = -1;
 	size_t numBranches = 2 * highestBit(inputSize);						//number of operation sequences that divide
-	char **opArray = malloc(numBranches*sizeof(char*));							//out the inputs, similar to number of 
-	unsigned int ** numArray = malloc(numBranches*sizeof(unsigned int *));							//edges on a tree structure
+	char **opArray = malloc(numBranches*sizeof(char*));					//out the inputs, similar to number of 
+	unsigned int ** numArray = malloc(numBranches*sizeof(unsigned int *));				//edges on a tree structure
 	for(i=0;i < (numBranches); ++i){
 		opArray[i] = calloc(maxNumOps, sizeof(char));
 		numArray[i] = calloc(maxNumOps, sizeof(int));
@@ -455,9 +456,8 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		char * writeOut = malloc(sizeof(char)* (readSize+1));
 		int writeSize = readSize;
 		
-		float *times;
+		double *times;
 		int runs = 0;
-		int numTimes = 0;
 		int i, k;
 		if(argc == 4){
 			for(i=0;i<readSize; ++i){
@@ -467,8 +467,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		}
 		if(argc == 5){	//if a number of runs is given but no number of minimum times, default number of min times is 3
 			runs = atoi(argv[4]);
-			numTimes = 3;
-			times = calloc(runs, sizeof(float)); 
+			times = calloc(runs, sizeof(double)); 
 			struct timeval time0, time1; 
 			for(i=0;i<runs;i++){ // Record time of each run
 				gettimeofday(&time0,NULL);
@@ -480,24 +479,14 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 			}
 	
 		}
-		if(argc == 6){ //if both number of runs and the number of minimum times is given
-			runs = atoi(argv[4]);
-        		numTimes = atoi(argv[5]);
-			times = calloc(runs, sizeof(float));
-			struct timeval time0, time1; 
-			for(i=0;i<runs;i++){ // Record time of each run
-		                gettimeofday(&time0,NULL);
-		                for(k=0;k<readSize; ++k){
-						writeOut[k] = evaluate(readIn[k],opArray,numArray,maxNumOps);
-				}
-		                gettimeofday(&time1,NULL);
-		                times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-			}
-		}
-	
+
 		// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
 		if(argc > 4){
-			if(write_time_file(times, runs, numTimes,readSize) < 0)
+			char *labelArr[1];
+			labelArr[0] = "Transform Times";
+			int numLabels = sizeof(labelArr)/sizeof(char*); 
+			
+			if(write_time_file(&times, labelArr, numLabels, runs) < 0)
 				printf("error writing time file\n");
 			free(times);
 		}

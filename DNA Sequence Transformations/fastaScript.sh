@@ -110,7 +110,7 @@ cat timing.json >> $folder/ft2bTimeStats.json
 #cat timing.json >> $folder/ft2bTimeStats.json
 
 #Add Title to ft2bTimeStats.txt file
-./jsonTitle $folder/ft2bTimeStats.json "FastaTo2Bit" 
+./jsonTitle $folder/ft2bTimeStats.json "FastaTo2Bit" "-f"
 
 #Run MultiFasta to 4Bit
 #./MultiFastaTo4Bit multiFasta 4Bit.txt $runs
