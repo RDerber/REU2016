@@ -68,20 +68,10 @@ cat timing.json >> ./$folder/codonTimeStats.json
 
 ./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta300k.fasta $folder/300kOut.txt $runs
 ./jsonTitle timing.json "300000 bases" 
-#echo "" >> timing.json
 cat timing.json >> ./$folder/codonTimeStats.json
 ((numInputFiles++))
 
-#./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta500k.fasta $folder/500kOut.txt $runs
-#./jsonTitle timing.json "500000 bases" "-c"
-#echo "" >> timing.json
-#cat timing.json >> ./$folder/codonTimeStats.json 
-#((numInputFiles++))
 
-#./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta1mil.fasta $folder/1milOut.txt $runs 3
-#./jsonTitle timing.json "1mil bases"
-#echo "" >> timing.json
-#cat timing.json >> ./$folder/codonTimeStats.json
 
 #Add Title to codonTimeStats.txt file
 ./jsonTitle ./$folder/codonTimeStats.json "codonOptimizer" "-f"

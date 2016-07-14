@@ -89,44 +89,8 @@ cat timing.json >> $folder/ft2bTimeStats.json
 cat timing.json >> $folder/ft2bTimeStats.json
 ((numInputFiles++))
 
-#./FastaTo2Bit tests/fastaTests/fasta5mil.fasta tests/fastaTests/$today/5milOut.txt $runs
-#./jsonTitle timing.json "5mil bases"
-#echo "" >> timing.json
-#cat timing.json >> $folder/ft2bTimeStats.json
-
-#./FastaTo2Bit tests/fastaTests/fasta10mil.fasta tests/fastaTests/$today/10milOut.txt $runs
-#./jsonTitle timing.json "10mil bases"
-#echo "" >> timing.json
-#cat timing.json >> $folder/ft2bTimeStats.json
-
-#./FastaTo2Bit tests/fastaTests/fasta15mil.fasta tests/fastaTests/$today/15milOut.txt $runs
-#./jsonTitle timing.json "15mil bases"
-#echo "" >> timing.json
-#cat timing.json >> $folder/ft2bTimeStats.json
-
-#./FastaTo2Bit tests/fastaTests/fasta20mil.fasta tests/fastaTests/$today/20milOut.txt $runs
-#./jsonTitle timing.json "20mil bases"
-#echo "" >> timing.json
-#cat timing.json >> $folder/ft2bTimeStats.json
-
 #Add Title to ft2bTimeStats.txt file
 ./jsonTitle $folder/ft2bTimeStats.json "FastaTo2Bit" "-f"
-
-#Run MultiFasta to 4Bit
-#./MultiFastaTo4Bit multiFasta 4Bit.txt $runs
-#./jsonTitle timing.json "multiFasta" 
-#cat timing.json >> mt4bTimeStats.json
-
-#Add Title to mt4bTimeStats
-#./jsonTitle mt4bTimeStats.json "MultiFastaTo4Bit" "-t"
-
-#echo "" >> ft2bTimeStats.json
-#cat ft2bTimeStats.json >> timeStats.json
-#cat mt4bTimeStats.json >> timeStats.json
-
-#Add Final Title
-
-#./jsonTitle timeStats.json "Final" "-f"
 
 ./timingJsonToCSV $folder/ft2bTimeStats.json $folder/ft2bTimeStats.csv $numInputFiles $runs $k
 
