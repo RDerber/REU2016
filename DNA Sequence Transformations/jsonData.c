@@ -260,7 +260,7 @@ input set 1:{ write_super_file output is formated as show below:
 	FILE * dfp;
 	int numOps = 0;
 	for(i=0; i<maxNumOps; ++i){
-		if(numSeq[i] != 0) ++numOps;
+		if(numSeq[i] != 0 && opsSeq[i]!= 0) ++numOps;
 	}
 	
 	if((dfp = fopen(TEMP_FILE,"w+")) == NULL){

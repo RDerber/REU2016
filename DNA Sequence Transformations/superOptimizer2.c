@@ -5,15 +5,16 @@
 #include <limits.h>
 #include "jsonData.h"
 
-enum operationID {add = 0, sub = 1, and = 2, xor = 3, lsl = 4, lsr = 5};
-char operations[] = {'+','-','&','^','<','>'};
+enum operationID {add = 0, and = 1, xor = 2, lsl = 3, lsr = 4};
+char operations[] = {'+','&','^','<','>'};
 
+/*These functions allow us to use an array of function pointers pointing to these functions in order to identify and perform the operation in constant time and without the use of a switch case statement. */
 unsigned char addFunc(unsigned char a, unsigned int b){
 	return a+b;
 }
 
 unsigned char andFunc(unsigned char a, unsigned int b){
-	return a&(~b);
+	return a&b;
 }
 
 unsigned char xorFunc(unsigned char a, unsigned int b){
@@ -36,20 +37,13 @@ unsigned char assignFunc(unsigned char a, unsigned int b){
 
 unsigned char (*functionPtrs[])(unsigned char,unsigned int) = {&addFunc,&andFunc,&xorFunc,&shiftLeftFunc,&shiftRightFunc,&assignFunc};
 
-int findmin(unsigned char* input, int numDistInputs){
-	int min = input[0];
-	int i;
-	for(i = 1; i<numDistInputs; ++i){
-		if(input[i] < min) min = input[i];
-	}
-	return min;
-}
-
+//uses opID to call the funtion in functionPtrs on the input values.
 unsigned char operator(unsigned char input, enum operationID opID, int val){
 	input = functionPtrs[opID](input,val);
 	return input;
 }
 
+/*checks to see if the inputs are minimal perfect hashed*/
 int compare (unsigned char* input, int numDistInputs, unsigned char * startingInput){
 	int i;
 	int j;
@@ -71,16 +65,19 @@ int compare (unsigned char* input, int numDistInputs, unsigned char * startingIn
 	}
 }
 
+//an exhaustive search of all sequences of operations, returning when the specifications set by compare are met.
 int superOptimizer (unsigned char * startingInput,unsigned char * input, int numDistInputs, int totOps, int numOps, char* opsSeq, int* numSeq){
-	int i,j,k;
+	unsigned int i,j,k;
 	unsigned char newinput[numDistInputs];
 	int opsSize = sizeof(operations)/sizeof(char);
-	int minInput = findmin(input,numDistInputs);
-	//printf("%s%d\n", "minInput: ", minInput);
-	int opsMax[] = {128, minInput+1, 128, 128, 8, 8};
+	int opsMax[] = {128, 128, 128, 8, 8};
+	
 	for(k = 0; k < opsSize; ++k){
 		int opIt = totOps - numOps;
 		int constMax = opsMax[k];
+		
+/*Below are theorietically optimizations, preventing redundant operatios from being tested (ex: lsl then lsr is redundant with & and shift) but with the current implementation they break the program.*/
+
 //		if(opIt > 0 && (opsSeq[opIt -1] == operations[k] ||
 //			 (k==0 && opsSeq[opIt-1] == operations[1]) ||
 //				(k==1 && opsSeq[opIt-1] == operations[0]) ||
@@ -89,9 +86,14 @@ int superOptimizer (unsigned char * startingInput,unsigned char * input, int num
 //							continue;
 		for(i = 0; i < constMax; ++i){
 			for(j = 0; j < numDistInputs; ++j){
-				newinput[j] = operator(input[j],k,i);
 				opsSeq[opIt] = k;
-				numSeq[opIt] = i;
+				if(k == and){
+					newinput[j] = operator(input[j],k,255-i);
+					numSeq[opIt] = 255-i;
+				}else{
+					newinput[j] = operator(input[j],k,i);
+					numSeq[opIt] = i;
+				}
 			}
 		if(!compare(newinput, numDistInputs, startingInput)) return 0;
 		else if(numOps > 1 &&

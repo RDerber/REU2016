@@ -20,7 +20,7 @@ unsigned char addFunc(unsigned char a, unsigned int b){
 }
 
 unsigned char andFunc(unsigned char a, unsigned int b){
-	return a&(~b);
+	return a&b;
 }
 
 unsigned char xorFunc(unsigned char a, unsigned int b){
@@ -112,7 +112,7 @@ int boolify(unsigned char a,unsigned char b, unsigned char *opsSeq,unsigned int 
 		unsigned int check = '\x01'<<i;
 		if((a&check && !(b&check)) || (!(a&check) && b&check)){
 			opsSeq[maxNumOps-2] = and;
-			numSeq[maxNumOps-2] = ~check;
+			numSeq[maxNumOps-2] = check;
 			opsSeq[maxNumOps-1] = lsr;
 			numSeq[maxNumOps-1] = i;
 //			printf("%s %d","boolify:",(a&check)>>i);
@@ -124,7 +124,7 @@ int boolify(unsigned char a,unsigned char b, unsigned char *opsSeq,unsigned int 
 }
 
 int superOptimizer (unsigned char * startingInput, unsigned char * input, int inputSize, int totOps, int numOps, char* opsSeq,unsigned int* numSeq){
-	int i,j,k;
+	unsigned int i,j,k;
 	char constInput[inputSize];
 	for(i=0;i<inputSize;++i) constInput[i] = input[i];
 	int opsSize = sizeof(operations)/sizeof(char);
@@ -139,11 +139,14 @@ int superOptimizer (unsigned char * startingInput, unsigned char * input, int in
 	//						continue;
 		for(i = 0; i < constMax; ++i){
 			for(j = 0; j < inputSize; ++j){				
-				input[j] = operate(constInput[j],k,i);
 				opsSeq[opIt] = k;
-//				if(k == and) numSeq[opIt] = ~i;
-//				else
-				 numSeq[opIt] = i;
+				if(k == and){
+					input[j] = operate(constInput[j],k,255-i);
+					numSeq[opIt] = 255-i;
+				}else{
+					input[j] = operate(constInput[j],k,i);
+					numSeq[opIt] = i;
+				}
 			}
 			if((group1Size=compare(input, inputSize,  startingInput))!= 0){
 				return group1Size; 	// If successful sequence of 	

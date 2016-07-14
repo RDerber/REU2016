@@ -16,7 +16,7 @@ fi
 mkdir ./tests/superTests/$today
 
 folder="./tests/superTests/$today"
-runs=10
+runs=100
 maxNumInputs=3
 fileSize=10000
 numInputSets=10

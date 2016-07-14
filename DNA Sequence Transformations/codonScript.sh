@@ -1,8 +1,8 @@
 #/bin/bash
 
 #Recompile all files before running timing function
-gcc jsonTitle.c -o jsonTitle
-gcc jsonData.c codonOptimizer.c -o codonOptimizer
+gcc -g jsonTitle.c -o jsonTitle
+gcc -g jsonData.c codonOptimizer.c -o codonOptimizer
 gcc -g jsonData.c jsonSystemStats.c -o jsonSystemStats
 gcc -g timingJsonToCSV.c -o timingJsonToCSV
 
@@ -23,7 +23,7 @@ folder="./tests/codonTests/$today"
 ./jsonSystemStats $folder/codonTimeStats.json
 
 #Run codonOptimizer Codon Tests and Store in timeStats.txt
-./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta100.fasta $folder/100Out.txt $runs
+valgrind ./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta100.fasta $folder/100Out.txt $runs
 ./jsonTitle timing.json "100 bases" "-c"
 echo "" >> timing.json
 cat timing.json >> ./$folder/codonTimeStats.json

@@ -25,10 +25,10 @@ folder="./tests/divAndOptTests/$today"
 #Run divideAndOptimize divAndOpt Tests and Store in timeStats.txt
 ./divideAndOptimize tests/divAndOptTests/key1.txt tests/divAndOptTests/key1In.txt $folder/key1Out.txt $runs
 ./jsonTitle timing.json "key 1" "-c"
+# Add new line character inbetween files when appending
 echo "" >> timing.json
 cat timing.json >> $folder/divAndOptTimeStats.json
 ((numInputFiles++))
- # Add new line character inbetween files when appending
 
 ./divideAndOptimize tests/divAndOptTests/key2.txt tests/divAndOptTests/key2In.txt $folder/key2Out.txt $runs
 ./jsonTitle timing.json "key 2" "-c"

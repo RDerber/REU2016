@@ -1,9 +1,6 @@
 /*
 *jsonToCSV.c
 
-*FIX REGEX PATTERN 
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,6 +20,7 @@ int findHigh(double * arr, size_t arrSize){
 	return highPos;
 }
 
+/*function applies specifically to json files made by superOptimizer, creates csv with data, averages the fastest runs to find a reasonable estimate for the cpu time spent*/
 int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int numInputSets, int m, int k, long inputSize){
 	int i,j,h,g;
 	int end = 0;
@@ -40,7 +38,7 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 		return -1;
 	}
 	
-	
+	//populates inArr with the number of inputs in each input set
 	for(i=0; i<maxNumInputs; ++i){
 		status = regexec(&re, input+end, 1, &inputMatch, 0); // Find Num Inputs
 		if(status != 0){
@@ -51,20 +49,14 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 		char c;
 		int a=0;
 		char numBuf[20];
-//		printf("%s %d\n","loc:",loc);
+		
 		while((c = input[(loc++)+end]) != ' '){
-//			printf("%c",c);
 			numBuf[a++] = c;
 		}
-		numBuf[a] = '\x00';
-		inArr[i] = atoi(numBuf);
-		end += inputMatch.rm_eo;
 		
-		//printf("%s %d\n","i:",i);
-		//printf("%s %s\n","numBuff:", numBuf);
-//		printf("%s %d\n","inArr[i]:",atoi(numBuf));
-//		printf("%s %d\n","begin:",inputMatch.rm_so);
-//		printf("%s %d\n","end:",end);
+		numBuf[a] = '\x00'; //makes array have string format so atoi works
+		inArr[i] = atoi(numBuf);
+		end += inputMatch.rm_eo;//increments end so that we begin our regexec at the end of the last match found
 	}
 	
 	regfree(&re);
@@ -81,6 +73,7 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	}	
 	
 	end=0; //reset end
+	//populates timeArr with timing data found in the json file
 	for(i=0; i<numTimeMatches; ++i){
 		status = regexec(&re, input+end, 1, &timingMatch, 0); 
 	
@@ -93,27 +86,23 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 		char numBuf [20];
 		char c;
 		int a=0;
+		
 		while((c=input[(loc++)+end]) != ',' && c!='\n' && c!='\r'){
 			numBuf[a++] = c;
 		}
 		numBuf[a] = '\x00';
 		timeArr[i] = atoi(numBuf); 
 		end += timingMatch.rm_eo;
-//		printf("%s %d\n","i:",i);
-//		printf("%s %s\n","numBuff:", numBuf);
-//		printf("%s %d\n","timeArr[i]:",atoi(numBuf));
-		
-//		printf("%s %d\n","begin:",timingMatch.rm_so+end);
-//		printf("%s %d\n","end:",end);
 	}
 	
 	regfree(&re);
 	
 	/*NumOps*/
-	int metaNumOps = maxNumInputs *numInputSets;
+	int metaNumOps = maxNumInputs*numInputSets;
 	regmatch_t numOpMatch;
 	char *numOpPattern = "numOps";
 	int numOpArr[metaNumOps];
+	
 	for(i=0;i<metaNumOps;++i){
 		numOpArr[i] = 0;
 	}
@@ -121,9 +110,10 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	if(regcomp(&re, numOpPattern, REG_EXTENDED) != 0){
 		printf("Regex Comparison Error");
 		return -1;
-	}	
-	
+	}
 	end=0;
+	
+	//populates numOpArr with the number of operations that were found for each input set
 	for(i=0; i<metaNumOps; ++i){
 		status = regexec(&re, input+end, 1, &numOpMatch, 0); 
 	
@@ -141,11 +131,6 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 		numBuf[a] = '\x00'; 
 		numOpArr[i] = atoi(numBuf); 
 		end += numOpMatch.rm_eo;
-//		printf("%s %d\n","i:",i);
-//		printf("%s %s\n","numBuff:", numBuf);
-//		printf("%s %d\n","OpArr[i]:",atoi(numBuf));
-//		printf("%s %d\n","begin:",numOpMatch.rm_so+end);
-//		printf("%s %d\n","end:",end);
 	}
 	
 	regfree(&re);
@@ -167,6 +152,8 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	}
 	double avgTime = 0;
 	double lowTime[k];
+	
+	//finds the fastest k runs for each input set and finds their average, does the same for number of inputs and time.
 	for(h=0;h<maxNumInputs;h++){
 		for(i=0;i<numInputSets; ++i){
 			for(g=0; g<2; ++g){
@@ -175,9 +162,7 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 				int hiloPos = 0;
 				double time;
 				for(j=0; j<m; ++j){
-					//printf("%s %f\n", "hiloTime:", hiloTime);
 					if((time = timeArr[h*numInputSets*m*2 + i*m*2 +j+g*m]) < hiloTime){
-						//printf("%s %f %s %d\n","time:",time, "j:",j);
 						if(numStored < k){
 							lowTime[numStored++] = time;
 						}else {
@@ -200,30 +185,23 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 					int numOps = numOpArr[h*numInputSets+i];
 					numOpAvgRunTime[numOps-1] += avgLowTime;
 					numOpCount[numOps-1]++;
-					//printf("%s %d %s %f\n","numOps:",numOps,"numOpAvgRunTime[numOps]:",numOpAvgRunTime[numOps]);
 					inputAvgRunTime[h] += avgLowTime;
-					//printf("%s %d %s %f\n","numInputs:",h,"InputAvgRunTime[h]:",inputAvgRunTime[h]);
-					//printf("%s %d %s %f\n","g:",g,"avgLowTime",avgLowTime);
 				}else{ // EvalTimes Avg - running sum
 					int numOps = numOpArr[h*numInputSets+i];
 					numOpAvgEvalTime[numOps-1] += avgLowTime;			
 					inputAvgEvalTime[h] += avgLowTime;
-					//printf("%s %d %s %f\n","g:",g,"avgLowTime",avgLowTime);
-					//printf("%s %d %s %f\n","numOps:",numOps,"numOpAvgEvalTime[numOps]:",numOpAvgEvalTime[numOps]);
+
 				}
 			}
 		}
 		
 	}
 	
-	//Find averages
+	//Find averages across input sets for each number of inputs
 	
 	for(h=0;h<maxNumInputs;++h){
 		inputAvgRunTime[h] /= (double)numInputSets;
 		inputAvgEvalTime[h] /= (double)numInputSets;
-		//printf("%s %f\n", "numInputSets", (double)numInputSets);
-		//printf("%s %d %s %f\n","h:",h,"inputAvgRunTime[h]", inputAvgRunTime[h]);
-		//printf("%s %d %s %f\n","h:",h,"EvalAvgRunTime[h]", inputAvgEvalTime[h]);
 	}
 	
 	int maxNumOps = 0;
@@ -231,13 +209,12 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	while(numOpCount[i++]!=0)
 		maxNumOps=i;
 	printf("%s %d\n","MaxNumOps:",maxNumOps);
-		
+	
+	//averages timing data with respect to number of operations to solve
 	for(i=0;i<maxNumOps;++i){			
 		if(numOpCount[i] != 0){
 			numOpAvgRunTime[i] /= numOpCount[i];
 			numOpAvgEvalTime[i] /= numOpCount[i];
-			//printf("%s %f\n","numOpCount[i]", numOpCount[i]);
-			//printf("%s %d %s %f\n","numOps:",i,"numOpAvgRunTime[i]", numOpAvgRunTime[i]);
 		}
 		else{
 			printf("Dividing by 0\n");
@@ -248,20 +225,12 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	//Print out CSV Files
 	for(i=0;i<maxNumInputs; ++i){ 
 		fprintf(ofp1,"%d,%f,%f\n", inArr[i],inputAvgRunTime[i],inputAvgEvalTime[i]);
-	//	printf("%s %d\n", "i:", i);
-	//	printf("%s %d, %p\n", "inArr[i]:", inArr[i], inArr);
-	//	printf("%s %f, %p\n", "inputAvgRunTime[i]:", inputAvgRunTime[i], inputAvgRunTime);
-	//	printf("%s %f, %p\n", "inputAvgEvalTime[i]:", inputAvgEvalTime[i], inputAvgEvalTime);
 	}
 	
 	for(i=0;i<maxNumOps; ++i){ 
 		fprintf(ofp2,"%d,%f,%f\n", i+1,numOpAvgRunTime[i],numOpAvgEvalTime[i]);
-	//	printf("%s %d\n", "i:", i);
-	//	printf("%s %d, %p\n", "inArr[i]:", inArr[i], inArr);
-	//	printf("%s %f, %p\n", "inputAvgRunTime[i]:", inputAvgRunTime[i], inputAvgRunTime);
-	//	printf("%s %f, %p\n", "inputAvgEvalTime[i]:", inputAvgEvalTime[i], inputAvgEvalTime);
 	}
-	
+
 	return 0;
 	
 }
