@@ -10,6 +10,13 @@
 #include <sys/time.h>
 #include <sys/utsname.h>
 
+	
+#define PATH_INPUT "/Users/nobody1/Desktop/fits/green.fits"	/* source .fits file */
+#define PATH_TIFF "/Users/nobody1/Desktop/fits/test.tiff"	/* output .tiff file */
+#define PATH_MDATA "/Users/nobody1/Desktop/fits/test.json"	/* metadata output */
+#define PATH_TDATA "/Users/nobody1/Desktop/fits/time.json"	/* timing data output */
+
+
 struct fits_convert {
 	const char *path_input;
 	const char *path_tiff;
@@ -18,6 +25,7 @@ struct fits_convert {
 	
 	int x, y;
 	int bitpix;
+	int input_size;
 	
 	char *metadata;
 	int metadata_size;
@@ -95,7 +103,7 @@ int write_tiff_file (unsigned char **out, unsigned char *src, int x, int y)
 	
 	memcpy(dst_ptr, src, total);
 	dst_ptr += total;
-		
+	
 	memcpy(dst_ptr, &num_tags, sizeof(uint16_t));
 	dst_ptr += sizeof(uint16_t);
 		
@@ -429,10 +437,10 @@ int read_fits_tags (const char *src, struct fits_convert *fts)
 		} else if (!strncmp(title, "NAXIS", 6)) {
 			sscanf(text, "%d", &naxis);
 			
-			if (naxis != 2) {
-				printf("invalid naxis %d\n", naxis);
-				return -1;
-			}
+			//if (naxis != 2) {
+			//	printf("invalid naxis %d\n", naxis);
+			//	return -1;
+			//}
 			
 			n_naxis = calloc(sizeof(int), 2);
 		} else if (!strncmp(title, "NAXIS", 5) && n_naxis) {
@@ -556,6 +564,7 @@ int write_time_file (const char *path, float *time_array, int runs,
 		fprintf(stderr, "[%s]: error writing stop time\n", __func__);
  
 	if (write_num_json(time_fd, 0, 1, "avg. microseconds", avg_lowest, &first) < 0 ||
+		write_num_json(time_fd, 0, 1, "input bytes", (double)fts.input_size, &first) < 0 ||
 		write_num_json(time_fd, 0, 1, "width (pixels)", (double)fts.x, &first) < 0 ||
 		write_num_json(time_fd, 0, 1, "height (pixels)", (double)fts.y, &first) < 0 ||
 		write_num_json(time_fd, 0, 1, "bits/pixel", (double)fts.bitpix, &first) < 0 ||
@@ -572,13 +581,58 @@ int write_time_file (const char *path, float *time_array, int runs,
 /* research compression methods and find ease of decoding,  */
 /* find larger test images */
 
+void u16_to_u8_scaled (uint16_t *src, unsigned char *dst, int num)
+{
+	int i, x;
+	double sum2 = 0, sum3 = 0, mean = 0;
+	double variance2, ratio, tmp;
+	uint16_t min, max;
+
+	min = 0;//src[find_min_index(src, NULL, num)];
+	max = 65535;//src[find_max_index(src, num)];
+
+	for (x = 0; x < num; x++)
+		mean += (double)((double)src[x] / (double)num);	
+	
+	for (x = 0; x < num; x++) {
+		tmp = ((double)src[x] - mean);
+		sum2 += tmp * tmp;
+		sum3 += tmp;
+	}
+	
+	variance2 = (sum2 - ((sum3 * sum3) / (double)num)) / ((double)num);
+	
+	fprintf(stderr, "[%s]: range = (%d -> %d), mean = %lf, variance = %lf\n",
+		__func__, min, max, mean, variance2);
+
+	ratio = log(max) / 255.0f; 
+
+	//double error_diff = 0;
+
+	for (i = 0; i < num; i++) {
+	
+		dst[i] = (log(src[i]) / ratio);
+		
+		//double orig = exp(((double)dst[i]) * ratio);
+		
+		//printf("%lf -> %d -> %lf -> (%lf diff)\n", src[i], dst[i], orig, (double)(src[i] - orig));
+		
+		//error_diff += (double)(src[i] - orig);
+		
+		//printf("src = %lf, ratio=%lf min = %f, max = %f, dst = %d log=%lf\n", 
+			//src[i], ratio, min, max, dst[i], log(src[i]) / ratio);
+	}
+	
+	//printf("%lf error diff\n", error_diff);
+
+}
+
 void f32_to_u8_scaled (float *big_endian, unsigned char *dst, int num)
 {
 	int i, x;
 	double sum2 = 0, sum3 = 0, mean = 0;
 	double variance2, ratio, tmp;
 	float min, max;
-	
 	float *src = calloc(sizeof(float), num);
 	
 	memcpy(src, big_endian, sizeof(float) * num);
@@ -609,12 +663,23 @@ void f32_to_u8_scaled (float *big_endian, unsigned char *dst, int num)
 
 	ratio = log(max) / 255.0f; 
 
+	//double error_diff = 0;
+
 	for (i = 0; i < num; i++) {
+	
 		dst[i] = (log(src[i]) / ratio);
+		
+		//double orig = exp(((double)dst[i]) * ratio);
+		
+		//printf("%lf -> %d -> %lf -> (%lf diff)\n", src[i], dst[i], orig, (double)(src[i] - orig));
+		
+		//error_diff += (double)(src[i] - orig);
 		
 		//printf("src = %lf, ratio=%lf min = %f, max = %f, dst = %d log=%lf\n", 
 			//src[i], ratio, min, max, dst[i], log(src[i]) / ratio);
 	}
+	
+	//printf("%lf error diff\n", error_diff);
 	
 	free(src);
 }
@@ -642,7 +707,12 @@ uint64_t run_conversion (unsigned char *buf, int file_size, struct fits_convert 
 	
 	data = calloc(fts->x, fts->y);
 
-	f32_to_u8_scaled((float *)(buf + datapos), data, fts->x * fts->y);
+	if (fts->bitpix == -32)
+		f32_to_u8_scaled((float *)(buf + datapos), data, fts->x * fts->y);
+	else if (fts->bitpix == 16)
+		u16_to_u8_scaled((uint16_t *)(buf + datapos), data, fts->x * fts->y);
+	else
+		printf("unsupported bit size %d\n", fts->bitpix);
 
 	fts->img_size = write_tiff_file(&fts->img_out, data, fts->x, fts->y);
 		
@@ -653,29 +723,31 @@ uint64_t run_conversion (unsigned char *buf, int file_size, struct fits_convert 
 	return (t1.tv_sec - t0.tv_sec) * 1000000LL + t1.tv_usec - t0.tv_usec;
 }
 
+
+/* convert back to 32 bit and determine "error" or amount of data lost per type of filter */
+
 int main (void)
 {
 	struct fits_convert fts;
 	unsigned char *buf; 
-	int file_size, i;
 	uint64_t usec;
-	int k = 30, runs = 50;
+	int i, k = 30, runs = 50;
 	float *time_array = calloc(runs, sizeof(float));
 	
 	memset(&fts, 0, sizeof(struct fits_convert));
-	
-	fts.path_input = "/Users/nobody1/Desktop/green.fits";
-	fts.path_tiff = "/Users/nobody1/Desktop/test.tiff";
-	fts.path_metadata = "/Users/nobody1/Desktop/test.json";
-	fts.path_timedata = "/Users/nobody1/Desktop/time.json";
 
-	if ((file_size = (int)read_file(fts.path_input, &buf)) < 0)
+	fts.path_input = PATH_INPUT;
+	fts.path_tiff = PATH_TIFF;
+	fts.path_metadata = PATH_MDATA;
+	fts.path_timedata = PATH_TDATA;
+
+	if ((fts.input_size = (int)read_file(fts.path_input, &buf)) < 0)
 		return -1;
 
 	for (i = 0; i < runs; i++) {
 		free(fts.img_out);
 		free(fts.metadata);
-		usec = run_conversion(buf, file_size, &fts);
+		usec = run_conversion(buf, fts.input_size, &fts);
 		time_array[i] = (float)usec;
 	}
 	
@@ -697,3 +769,26 @@ int main (void)
 	
 	return 0;
 }
+
+/* 
+32 bit floats				
+Input bytes	Avg microseconds	x	y	pixels
+63360	681.333334	100	100	10000
+161280	1202.699978	192	192	36864
+10301760	20460.33337	800	800	640000
+4219200	34946.60034	1024	1024	1048576
+4521600	38399.90027	1055	1061	1119355
+7951680	69234.73364	1411	1406	1983866
+7957440	69188.80029	1409	1409	1985281
+10296000	82810.96704	1600	1600	2560000
+10293120	82947.20044	1600	1600	2560000
+10298880	81920.69971	1600	1600	2560000
+16804800	143117.4009	2048	2048	4194304
+				
+16 bit ints				
+Input bytes	Avg microseconds	x	y	pixels
+538560	7006.233337	512	512	262144
+5158080	19408.06708	800	800	640000
+2125440	30701.33325	1024	1024	1048576
+11327040	176269.4336	2376	2381	5657256
+*/
