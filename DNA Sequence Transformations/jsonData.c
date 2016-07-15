@@ -503,4 +503,71 @@ int write_divAndOpt_file (double **data_arr, char **label_arr, int num_labels, i
 }
 
 
+int write_laGrange_file (double **data_arr, char **label_arr, int num_labels, int num_runs, int* xValues, int* yValues, int num_points){
+
+	int first = 1; // First line has not been printed 
+	int nest_level = 0; 
+	int i, j;
+	FILE * dfp;
+	int numOps = 0;
+	
+	if((dfp = fopen(TEMP_FILE,"w+")) == NULL){
+			printf("Data file could not be written\n"); 
+			return -1;
+		}
+		
+	//print xValues values passed into laGrange.c //
+	for(i=0; i<num_points; ++i){
+		char xValLabel[12];
+		snprintf(xValLabel,12,"xValue %d", i);
+		write_num_json (dfp, nest_level, xValLabel, xValues[i], &first);
+	
+	}
+	
+	//print yValues values to which the xValues were mapped //
+	for(i=0; i<num_points; ++i){
+		char yValLabel[12];
+		snprintf(yValLabel,12 ,"yValue %d", i);
+		write_num_json (dfp, nest_level, yValLabel, yValues[i], &first);
+	}
+	
+	//print timing data //
+	
+	//write label before printing data values //
+	for(i = 0; i < num_labels; ++i){
+		if(write_json_title(dfp, nest_level, label_arr[i], &first)<0){
+			printf("Error writing label");
+			return -1;
+		}
+		++nest_level;
+
+		// print data values for each run //
+		first = 1; // Start of a new json list
+		for(j = 0; j < num_runs; ++j){ 						
+			char run_title [10];
+			sprintf(run_title, "Run %d", j);
+			if(write_num_json(dfp, nest_level, run_title, data_arr[i][j], &first) < 0){ 
+				printf("%s %d\n%s %s\n %s %d\n","error writing element: ", i, "label: ", 
+					label_arr[i], "data: ", data_arr[i]);
+				return -1;
+			}
+		}
+		--nest_level; 
+		// print the closing bracket one nest level lower than data //
+		fprintf(dfp, "%c", '\n'); 
+		for(j=0; j<nest_level*4; ++j)
+			fprintf(dfp, "%c", ' '); 
+			
+		fprintf(dfp, "%c", '}'); 
+		
+	}
+
+	fclose(dfp);
+	
+	fprintf(stderr, "[%s]: wrote timing data\n", __func__); // confirmation message
+	
+	return 0;
+}
+
+
 

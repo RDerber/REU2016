@@ -285,6 +285,36 @@ int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int 
 	return output;
 }
 
+int readInputToBuffer(FILE * ifp, char ** input, long * inputsize){
+ 	// Go to the end of the file //
+	if(fseek(ifp, 0L, SEEK_END)== 0){
+		// Get the size of the file. //
+		*inputsize = ftell(ifp);
+		if (*inputsize == -1) {
+			fputs("Error finding size of file", stderr);
+		return -1;
+		 }
+		//Allocate our buffer of that size +1 for null termination. //
+		*input = malloc (sizeof(char) * ((*inputsize)+1));
+		
+		// Return to start of file //
+		if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
+			fputs("Error returning to start of file", stderr);
+			return -1;
+		}
+		//Read the entire file into memory//
+		size_t newLen = fread(*input, sizeof(char), *inputsize, ifp);
+		if(newLen == 0){
+			fputs("Error reading file", stderr);
+			return -1;
+		} else {
+			// Null termination character at the end of the input buffer //
+			(*input)[newLen++] = '\0'; 
+		}
+		return 0;
+	} else return -1;
+}
+
 int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	int i,j; 
 
@@ -360,30 +390,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	FILE *ifp = fopen(argv[2],"r");
 	long readSize = 0;
 	if(ifp != NULL){
-		 // Go to the end of the file //
-		if(fseek(ifp, 0L, SEEK_END)== 0){
-			// Get the size of the file. //
-	
-			readSize = ftell(ifp);
-			if (readSize == -1) {
-					fputs("Error finding size of file", stderr);
-			}
-		
-		
-			readIn = malloc (sizeof(char) * (readSize+1));
-	
-			// Return to start of file //
-			if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
-				fputs("Error returning to start of file", stderr);
-			}
-			//Read the entire file into memory//
-			size_t newLen = fread(readIn, sizeof(char), readSize, ifp);
-			if(newLen == 0){
-				fputs("Error reading file", stderr);
-			} else {
-				readIn[newLen++] = '\0'; // Null termination character at the end of the input buffer 
-			}
-		}			
+		readInputToBuffer(ifp,&readIn,&readSize);		
 		fclose(ifp);
 	}else{
 		printf("%s\n", "the input file given does not exist");
@@ -391,7 +398,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	}
 
 
-		// Create Output Buffer;
+	// Create Output Buffer;
 	char * writeOut = malloc(sizeof(char)* (readSize+1));
 
 	double *times;

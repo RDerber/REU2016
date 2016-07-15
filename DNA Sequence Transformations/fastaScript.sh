@@ -2,7 +2,7 @@
 
 #Recompile all files before running timing function
 gcc jsonTitle.c -o jsonTitle
-gcc jsonData.c FastaTo2Bit.c -o FastaTo2Bit
+gcc -g jsonData.c FastaTo2Bit.c -o FastaTo2Bit
 gcc -g jsonData.c jsonSystemStats.c -o jsonSystemStats
 gcc -g timingJsonToCSV.c -o timingJsonToCSV
 
@@ -23,7 +23,7 @@ folder="./tests/fastaTests/$today"
 ./jsonSystemStats $folder/ft2bTimeStats.json
 
 #Run Fasta To 2 Bit Tests and Store in timeStats.txt
-./FastaTo2Bit tests/fastaTests/fasta100.fasta $folder/100Out.txt $runs
+valgrind ./FastaTo2Bit tests/fastaTests/fasta100.fasta $folder/100Out.txt $runs
 ./jsonTitle timing.json "100 bases" "-c"
 echo "" >> timing.json
 cat timing.json >> $folder/ft2bTimeStats.json

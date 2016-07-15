@@ -113,15 +113,15 @@ char evaluate(int input, char * opsSeq, int * numSeq, int maxNumOps){
 	return output;
 }
 
-int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random seed](for random inputs and file size) or specify inputs and files to transform [input 1]...[input n][evaluateFile][outputFile]
+int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random seed] [number of runs]
 //	char input[] = {'\x00','\x01','\x02','\x03','\x04'};
 //	char input[] = {'A','C','G','T','N'};
 	int i,j,k;
-	int maxNumDistInputs = 200;	//input size exceeding 200 causes our naive unique number generator to be extremely slow, exceeding 256
+	int maxNumDistInputs = 200;//input size exceeding 200 causes our naive unique number generator to be extremely slow, exceeding 256
 				//breaks the number generator
 
 	int runs = atoi(argv[4]);
-	int numDataForms = 2; //RunTime, EvalTime, OpArray, numArray,input, output
+	int numDataForms = 2; //runTime, evalTime
 	
 	unsigned char * input;
 	unsigned char * output;

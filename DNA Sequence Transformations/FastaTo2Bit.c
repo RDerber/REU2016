@@ -99,6 +99,36 @@ int twoBit(char * input, char * output, long inputsize, long * numBases){
 	return k+1; // returns the size of the output array 
 }
 
+int readInputToBuffer(FILE * ifp, char ** input, long * inputsize){
+ 	// Go to the end of the file //
+	if(fseek(ifp, 0L, SEEK_END)== 0){
+		// Get the size of the file. //
+		*inputsize = ftell(ifp);
+		if (*inputsize == -1) {
+			fputs("Error finding size of file", stderr);
+		return -1;
+		 }
+		//Allocate our buffer of that size +1 for null termination. //
+		*input = malloc (sizeof(char) * ((*inputsize)+1));
+		
+		// Return to start of file //
+		if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
+			fputs("Error returning to start of file", stderr);
+			return -1;
+		}
+		//Read the entire file into memory//
+		size_t newLen = fread(*input, sizeof(char), *inputsize, ifp);
+		if(newLen == 0){
+			fputs("Error reading file", stderr);
+			return -1;
+		} else {
+			// Null termination character at the end of the input buffer //
+			(*input)[newLen++] = '\0'; 
+		}
+		return 0;
+	} else return -1;
+}
+
 int main(int argc, char *argv[]){
 	if(!(argc == 3||argc == 4)){
 		printf("Incompatible number of arguments\n");
@@ -110,33 +140,7 @@ int main(int argc, char *argv[]){
 	FILE *ifp = fopen(argv[1],"r");
 	long inputsize = 0;
 	if(ifp != NULL){
-		 // Go to the end of the file //
-		if(fseek(ifp, 0L, SEEK_END)== 0){
-		// Get the size of the file. //
-	
-			inputsize = ftell(ifp);
-			if (inputsize == -1) {
-				fputs("Error finding size of file", stderr);
-			 }
-		
-			//Allocate our buffer of that size +1 for null termination. //
-			input = malloc (sizeof(char) * (inputsize+1));
-			
-	
-			// Return to start of file //
-			if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
-				fputs("Error returning to start of file", stderr);
-			}
-	
-			//Read the entire file into memory//
-			size_t newLen = fread(input, sizeof(char), inputsize, ifp);
-			if(newLen == 0){
-				fputs("Error reading file", stderr);
-			} else {
-				// Null termination character at the end of the input buffer //
-				input[newLen++] = '\0'; 
-				}
-		}			
+		readInputToBuffer(ifp,&input,&inputsize);		
 		fclose(ifp);
 	}else{
 		printf("%s\n", "the input file given does not exist");

@@ -37,7 +37,7 @@
 #include <sys/time.h>
 #include "jsonData.h"
 
-int multiTo2Bit(const char * input,char * output,char * headers, int * positions, char* quality, long inputsize, long * outputsize, long * headersize, long * positionsize, long * qualitysize){
+int fastqTo2Bit(const char * input,char * output,char * headers, int * positions, char* quality, long inputsize, long * outputsize, long * headersize, long * positionsize, long * qualitysize){
 	int i = 0; // input buffer index
 	int k = 0; // output buffer index
 	int h = 0; // header buffer index
@@ -47,18 +47,6 @@ int multiTo2Bit(const char * input,char * output,char * headers, int * positions
 
 	while(i < inputsize){
 		char byt;
-		// Move sequence header into header buffer, store its position //
-		if(input[i] == '@'){
-			positions[p++] = k; 
-			// header positions delimited with -1 //
-			positions[p++] = -1; 
-			while(input[i] != '\n')
-				headers[h++] = input[i++];
-			++i;
-			
-			// Headers delimited with Null characters // 
-			headers[h++] = '\x00';
-		}
 		
 		// Move quality lines into quality buffer //
 		if(input[i] == '+'){
@@ -72,9 +60,24 @@ int multiTo2Bit(const char * input,char * output,char * headers, int * positions
 			quality[q++] = '\n';		
 		
 		
+		}	
+		
+		// Move sequence header into header buffer, store its position //
+		if(input[i] == '@'){
+			positions[p++] = k; 
+			// header positions delimited with -1 //
+			positions[p++] = -1; 
+			while(input[i] != '\n')
+				headers[h++] = input[i++];
+			++i;
+			
+			// Headers delimited with Null characters // 
+			headers[h++] = '\x00';
 		}
+		
+		
 		// Check for buffer overflow and if character is not a desired letter, increase to the next character in the buffer //
-		if(i < inputsize && input[i] != '@' && input[i] != '+' && (input[i] & '\x60')){ 
+		if(i < inputsize && input[i] != '@' && input[i] != '+' && (input[i] & '\x40')){ 
 			
 		//2Bit Conversion of the first base in the grouping of 4 //
 			byt = input[i++]& '\x06';						
@@ -89,20 +92,20 @@ int multiTo2Bit(const char * input,char * output,char * headers, int * positions
 		for(j=2;j>0;--j){
 			
 			//Checking for desired character //
-			while(!(input[i] & '\x60')) ++i;
+			while(!(input[i] & '\x40')) ++i;
 			
 			//Checking for buffer overflow and sequence headers //
 			if(i < inputsize && input[i] != '@' && input[i] != '+'){
 				char temp = input[i++];
 				temp&='\x06';
 				temp<<=j*2-1;
-				byt|=temp;
+				byt = byt|temp;
 			}else break;
 		}
 		
 		
 		//Checking for desired character //
-		while(!(input[i] & '\x60')) ++i;	
+		while(!(input[i] & '\x40')) ++i;	
 
 		//Checking for buffer overflow and sequence headers //
 		if(i < inputsize && input[i] != '@' && input[i] != '+'){
@@ -110,7 +113,7 @@ int multiTo2Bit(const char * input,char * output,char * headers, int * positions
 			//2 Bit Conversion of the final base in a group of 4
 			char temp = input[i++] & '\x06';
 			temp>>=1;
-			byt|=temp;
+			byt= byt|temp;
 		}
 		output[k++] = byt;
 			
@@ -124,7 +127,7 @@ int multiTo2Bit(const char * input,char * output,char * headers, int * positions
 	return 0;
 }
 
-int main(int argc, char *argv[]){ // [input][output][headerfile][positionfile][qualityfile][num runs]
+int main(int argc, char *argv[]){ // [input][output][headerfile][positionfile][qualityfile][numruns]
 	if(!(argc == 6||argc == 7)){
 		printf("Incompatible number of arguments\n");
                 return -1;
@@ -184,7 +187,7 @@ int main(int argc, char *argv[]){ // [input][output][headerfile][positionfile][q
 	double *times;
 	int runs = 0;
 	if(argc == 6){
-		multiTo2Bit(input,output,headers,positions,quality,inputsize,&outputsize,&headersize,&positionsize,&qualitysize);
+		fastqTo2Bit(input,output,headers,positions,quality,inputsize,&outputsize,&headersize,&positionsize,&qualitysize);
 	}
 	// if [runs] argument is included, activate timing code //
 	if(argc == 7){	
@@ -195,7 +198,7 @@ int main(int argc, char *argv[]){ // [input][output][headerfile][positionfile][q
 		// Record time of each run //
 		for(i=0;i<runs;i++){ 
 			gettimeofday(&time0,NULL);
-			multiTo2Bit(input,output,headers,positions,quality,inputsize,&outputsize,&headersize,&positionsize,&qualitysize);
+			fastqTo2Bit(input,output,headers,positions,quality,inputsize,&outputsize,&headersize,&positionsize,&qualitysize);
 			gettimeofday(&time1,NULL);
 			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 		}
