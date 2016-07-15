@@ -19,4 +19,6 @@ int write_time_file (double **data_arr, char **label_arr, int num_labels, int nu
 
 int write_divAndOpt_file (double **data_arr, char **label_arr, int num_labels, int num_runs, int keySize);
 
+int write_laGrange_file (double **data_arr, char **label_arr, int num_labels, int num_runs, int* input, int* output, int inputSize);
+
 #endif
