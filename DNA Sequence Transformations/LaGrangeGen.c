@@ -24,7 +24,7 @@
 
 
 
-int* polyMult(int points[], long long prod[], int numPoints, long long mod){ 	//Takes in an array of points (with one 
+int polyMult(int points[], long long prod[], int numPoints, long long mod){ 	//Takes in an array of points (with one 
 										//already removed) and the size of this array
 										//and modifies prod[] so it contains the 
 										//coefficients of the numerators of each line
@@ -224,7 +224,6 @@ int keyIdentifier(FILE * ifp,int *input,int *output){
 					 byt=getc(ifp);
 				}
 				numBuf[i++] = '\x00';
-				
 				output[outputCount++] = atoi(numBuf);
 				continue; 
 				
@@ -326,6 +325,8 @@ int main (int argc, char **argv){//  [key][input file][output file name] optiona
 	int *points = malloc(keySize * sizeof(int));
 	int *yValues = malloc(keySize * sizeof(int));
 	keySize = keyIdentifier(kfp, points, yValues);
+	printf("%d", keySize);
+	fclose(kfp);
 	
 	ifp = fopen(argv[2], "r");
 	char *input = NULL; 
@@ -337,7 +338,6 @@ int main (int argc, char **argv){//  [key][input file][output file name] optiona
 		printf("%s\n", "the input file given does not exist");
 		return -1;
 	}
-	
 
 	for(i = 0; i < keySize; ++i){
 		printf("%s %d %s %d %c","Point: ", points[i], "yValue: ", yValues[i],'\n');
@@ -352,8 +352,9 @@ int main (int argc, char **argv){//  [key][input file][output file name] optiona
 		gettimeofday(&time1,NULL);
 		polyTimes[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 	}
-	
-
+	for(i=0; i<keySize; ++i){
+		printf("%s%d%s %d\n","Poly[",i,"]:",poly[i]);
+	}
 		// Create Output Buffer //
 	char * output = malloc(sizeof(char)* (inputsize+1));
 	int outputsize = inputsize;
@@ -362,6 +363,7 @@ int main (int argc, char **argv){//  [key][input file][output file name] optiona
 		gettimeofday(&time0,NULL);
 		for(j=0;j<inputsize;++j){
 			output[j] = evaluate(input[j],poly,keySize,mod); 
+			//printf("%s %d %s %d %c","Input[j] ", input[j], "Output: ", output[j],'\n');
 		}
 		gettimeofday(&time1,NULL);
 		evalTimes[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
@@ -369,7 +371,7 @@ int main (int argc, char **argv){//  [key][input file][output file name] optiona
 		
 	
 	for(i=0;i<keySize;++i){
-		printf("%s %d %s %d %c","Point: ", -points[i], "yValue: ", evaluate(-points[i],poly, keySize, mod),'\n');
+		printf("%s %d %s %d %c","Point: ", points[i], "yValue: ", evaluate(-points[i],poly, keySize, mod),'\n');
 	}
 	
 	ofp = fopen(argv[3], "w");	
