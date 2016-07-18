@@ -22,7 +22,7 @@
 
 
 
-int polyMult(int points[], int prod[], int numPoints, int mod){ 	//Takes in an array of points (with one 
+int polyMult(int points[], long long prod[], int numPoints, long long mod){ 	//Takes in an array of points (with one 
 										//already removed) and the size of this array
 										//and modifies prod[] so it contains the 
 										//coefficients of the numerators of each line
@@ -37,14 +37,14 @@ int polyMult(int points[], int prod[], int numPoints, int mod){ 	//Takes in an a
 	for(i = 2; i< numPoints; ++i){
 
 		int j;
-		int prodTemp[numPoints+1];
+		long long prodTemp[numPoints+1];
 		memset(prodTemp,0,sizeof(prodTemp));
 
 		for(k=0;k<numPoints+1;++k){
 			prodTemp[k]=prod[k];
 		}
 		for(j = 1;j <= i;++j){
-			int last = prod[i];
+			long long last = prod[i];
 			if(j==1){
 				prod[j] = (prod[j] + points[i]) % mod;
                         }else {
@@ -59,12 +59,12 @@ int polyMult(int points[], int prod[], int numPoints, int mod){ 	//Takes in an a
 	return 0;
 }
 
-int denom(int x, int tempPoints[], int numPoints, int mod){ // Takes in the removed point, the array of points without
+long long denom(int x, int tempPoints[], int numPoints, long long mod){ // Takes in the removed point, the array of points without
 									// the removed point, and the size of that array,
 									//  returns the denominator of that line 
 	int i;
-	int den = 1;
-	int temp;
+	long long den = 1;
+	long long temp;
 	for(i = 0; i < numPoints; ++i){
 		temp = -x+tempPoints[i];
 		den = (den * temp) % mod ;	//modded by the product of mersenne primes to maintain information but avoid overflow
@@ -75,7 +75,7 @@ int denom(int x, int tempPoints[], int numPoints, int mod){ // Takes in the remo
 
 
 
-int findMod(int denoms [], int size, int maxY){ 	// Takes in all denominators and finds a mersenne prime that is
+int findMod(long long denoms [], int size, int maxY){ 	// Takes in all denominators and finds a mersenne prime that is
 							// not a factor of any of them
 	int mersenne[] = {7,31,127,8191};
 	int i;
@@ -109,7 +109,7 @@ int findMod(int denoms [], int size, int maxY){ 	// Takes in all denominators an
 	return 1;
 }
 
-int modInverse(int num, int mod){ // Takes in a number A  and a modulus number B; returns the inverse mod of AmodB 
+int modInverse(long long num, int mod){ // Takes in a number A  and a modulus number B; returns the inverse mod of AmodB 
 				 	 // So that (inversMod * A) mod B =1
 				 	 // As B is prime, we use Fermat's little theorem (Flt) to find this inverse 
 	int inverse = 1;
@@ -164,11 +164,11 @@ int evaluate(int x, int polys[], int polysize, int mod){ // evaluates the polyno
 int polyGenerator(int points[], int yValues[], int size, int poly[]){ 	// Takes in all points, their correspoding y-values, the size
 									// of the points array, and the poly array to store the coeffs in
 	int i=0;
-	int polyTemp[size][size];
-	int denoms[size]; 		// keeps track of denomInator of each row
+	long long polyTemp[size][size];
+	long long denoms[size]; 		// keeps track of denomInator of each row
 	memset(denoms, 0, sizeof(denoms)); 	// Initializes arrays to all 0s in memory 
 	memset(poly, 0, sizeof(poly));
-	int mod = 225735769; 	// Works as long as y-values do not exceed 8190 
+	long long mod = 225735769; 	// Works as long as y-values do not exceed 8190 
 					// we mod by the least common multiple of all possible primes that
 					// we could later mod by to retain information but avoid an overflow.
 					// in the default case this is 7*31*127*8191
