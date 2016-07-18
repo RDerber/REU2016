@@ -241,7 +241,7 @@ int make_tar_file (const char *src, const char *dst)
 #endif
 
 /****************************************************************************************/
-/*	bit stream	*/
+/*	bit stream (Explain)	*/
 /****************************************************************************************/
 #ifdef BIT_STREAM
 {
@@ -398,6 +398,75 @@ unsigned long crc (unsigned char *buf, int len)
 	return c ^ 0xffffffffL;
 }
 
+
+/****************************************************************************************/
+/*	repetition coder	*/
+/****************************************************************************************/
+#ifdef HUFF_RCODER
+{
+#endif
+
+/*
+   0 - 15: Represent code lengths of 0 - 15
+       16: Copy the previous code length 3 - 6 times.
+           The next 2 bits indicate repeat length
+                 (0 = 3, ... , 3 = 6)
+              Example:  Codes 8, 16 (+2 bits 11),
+                        16 (+2 bits 10) will expand to
+                        12 code lengths of 8 (1 + 6 + 5)
+       17: Repeat a code length of 0 for 3 - 10 times.
+           (3 bits of length)
+       18: Repeat a code length of 0 for 11 - 138 times
+           (7 bits of length)
+*/
+
+int code_rep (int code_len, int num, struct bit_stream *bs)
+{
+	int n;
+	
+	if (code_len < 0 || code_len > 15 || num < 0)
+		return -1;
+		
+	printf("encoding %d reps of code len %d\n", num, code_len);
+		
+	write_bit_stream(bs, code_len, 4);
+		
+	if (code_len > 0) {
+		for (n = 6; n >= 3; n--) {
+			while (num >= n) {
+				write_bit_stream(bs, 16, 5);
+				write_bit_stream(bs, n - 3, 2);
+				num -= n;
+			}
+		}
+	} else {
+		for (n = 138; n >= 11; n--) {
+			while (num >= n) {
+				write_bit_stream(bs, 18, 5);
+				write_bit_stream(bs, n - 11, 7);
+				num -= n;
+			}
+		}
+		
+		for (n = 10; n >= 3; n--) {
+			while (num >= n) {
+				write_bit_stream(bs, 17, 5);
+				write_bit_stream(bs, n - 3, 3);
+				num -= n;
+			}
+		}
+	}
+	
+	while (num--) {
+		write_bit_stream(bs, code_len, 4);
+	}
+
+		
+	return 0;
+}
+
+
+
 /****************************************************************************************/
 /*	huffman coder	*/
 /****************************************************************************************/
@@ -514,6 +583,7 @@ void make_huffman_tree (struct mh_node **tree, struct huff_list *hlist, int num,
 	*tree = extract_min(&mh);
 
 	free(mh.array);
+	mh.array = NULL;
 }
 
 void find_huffcode (struct huff_list hl[256], struct mh_node *base, int buf, int pos)
@@ -552,6 +622,7 @@ void find_huffcode (struct huff_list hl[256], struct mh_node *base, int buf, int
 	
 	//fprintf(stderr, "[%s]: node %p freed\n", __func__, base);
 	free(base);
+	base = NULL;
 }
 
 void print_huffcodes (struct huff_list *hlist, int num)
@@ -575,16 +646,16 @@ void print_huffcodes (struct huff_list *hlist, int num)
 
 void huff_encode (uint8_t *src, int num, struct huff_list **hlist)
 {
-	int count[256] = { 0 };
+	int count[288] = { 0 };
 	struct mh_node *htree = NULL;
 	int unique = 0, i;
 	
-	*hlist = calloc(256, sizeof(struct huff_list));
+	*hlist = calloc(288, sizeof(struct huff_list));
 	
 	for (i = 0; i < num; i++)
 		count[src[i]]++;
-		
-	for (i = 0; i < 256; i++) {
+
+	for (i = 0; i < 288; i++) {
 		(*hlist)[i].val = i;
 		(*hlist)[i].count = count[i];
 		
@@ -855,32 +926,28 @@ struct lz_out {
 int lz77 (uint8_t *in, int bytes, struct lz_out **out, int win_size)
 {
 	int i = 0, length, pos;
-	struct huff_len_table hlt[259];
-	int num_dc = 0;
+	int num_dc = 0, num = 0;
 
 	*out = calloc(sizeof(struct lz_out), bytes);
-
-	make_hufftable(hlt);
 
 	while (i < bytes) {
 		get_longest_match(in, bytes, i, &pos, &length);
 		
-		if (length > 0) {
-			(*out)[num_dc].len = length;
-			(*out)[num_dc].dist = pos;
-			
-			i += length + 1;
-		} else {
-			(*out)[num_dc].len = in[i];
-			(*out)[num_dc].dist = 0;
+		if (length > 2) {
+			(*out)[num].len = length;
+			(*out)[num].dist = pos;
 
-			i++;
+			i += length + 1;
+			num++, num_dc++;
+		} else {
+			(*out)[num].len = in[i];
+			(*out)[num].dist = 0;
+
+			num++, i++;
 		}
-		
-		num_dc++;
 	}
 	
-	printf("\ntotal: %d LZ77\n", num_dc);
+	fprintf(stderr, "[%s] total chars: %d, num LZ77: %d\n", __func__, num, num_dc);
 	
 	return num_dc;
 }
@@ -909,10 +976,6 @@ void test_lz77 (void)
 /*	gzip writer	*/
 /****************************************************************************************/
 
-
-
-
-
 #ifdef GZIP_WRITER
 {
 #endif
@@ -928,30 +991,76 @@ void swap (char *a, char *b)
 int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 {
 	int pos = 0, toc, i;
-	
 	struct huff_len_table hlt[259];
 	make_hufftable(hlt);
+	struct bit_stream *bs;
+	struct huff_list *hlist, *dlist;
+	struct lz_out *lz;
+	int bl_count[288], code, eb, ev;
 	
 	while (pos < len) {
 		if ((toc = (len - pos)) > blk_size)
 			toc = blk_size;
 		
-		struct bit_stream *bs;
-		struct huff_list *hlist, *dlist;
-		struct lz_out *lz;
-		int *bit_count = NULL;
+		memset(bl_count, 0, sizeof(bl_count));
 	
 		alloc_bit_stream(&bs, toc * 2);
 		
-		int num = lz77(src + pos, toc, &lz, 1);
+		int num = lz77(src + pos, toc, &lz, 512);
+	
+		printf("[%s]: testing huffman coder\n", __func__);
 		
-		make_static_hlist(&hlist, &dlist, &bit_count);
+
+	
+		huff_encode(src + pos, toc, &hlist);
+		
+		uint16_t tmp[32] = { 0 };
+		
+		for (i = 0; i < num; i++) {
+			dist_code(lz[i].dist, &code, &eb, &ev);
+			tmp[code]++;
+		}
+		
+		for (i = 0; i < 32; i++) 
+			printf("%d distance codes of length %d\n", tmp[i], i);
+		
+		huff_encode (tmp, 31, &dlist);
+		
+/*		int n, code = 0, bits, next_code[288];
+	///int max_code = hlist[287].hcode;
+    bl_count[0] = 0;
+
+    for (bits = 1; bits <= 15; bits++) {
+
+        code = (code + bl_count[bits-1]) << 1;
+
+        next_code[bits] = code;
+    }
+    
+        for (n = 0;  n < 288; n++) {
+
+        len = hlist[n].hc_len;
+
+        if (len != 0) {
+
+            hlist[n].hcode = next_code[len];
+
+            next_code[len]++;
+
+        }
+
+    }
+*/
+		print_huffcodes(hlist, 288);
+		
+		print_huffcodes(dlist, 31);
+		//make_static_hlist(&hlist, &dlist, &bit_count);
 		
 		if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
 			return -1;
 		
 		for (i = 0; i < num; i++) {
-			int code, eb, ev;
+	
 			int length = lz[i].len;
 			int pos = lz[i].dist;
 			
@@ -980,7 +1089,6 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 		free(lz);
 		free(hlist);
 		free(dlist);
-		free(bit_count);
 		
 		pos += toc;
 	}
@@ -1088,11 +1196,30 @@ int write_gzfile (const char *src, const char *dst)
 }
 #endif
 
+
+#ifdef HUFF_LCODER
+}
+#endif
+
 int main (void)
 {
+
+	struct bit_stream *bs;
+	alloc_bit_stream(&bs, 256);
+	
+	code_rep(1, 2, bs);
+	code_rep(4, 19, bs);
+	code_rep(0, 835, bs);
+	
+	print_bit_stream(bs);
+	
+	free_bit_stream(bs);
+	
+	//return 0;
+	
 	encode_hlist (NULL, 0);
 
-	//test_hcoder();
+	test_hcoder();
  
 	test_bit_stream();
 	
@@ -1106,8 +1233,8 @@ int main (void)
 	
 	//test_dlcoder();
 	//return 0;
-	//make_tar_file("/Users/nobody1/Desktop/work", 
-	//			"/Users/nobody1/Desktop/test.tar");
+	make_tar_file("/Users/nobody1/Desktop/work", 
+				"/Users/nobody1/Desktop/test.tar");
 				
 	return write_gzfile("/Users/nobody1/Desktop/test.tar",
 				"/Users/nobody1/Desktop/test1.gz");
