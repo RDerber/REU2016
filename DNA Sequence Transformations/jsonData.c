@@ -503,7 +503,7 @@ int write_divAndOpt_file (double **data_arr, char **label_arr, int num_labels, i
 }
 
 
-int write_laGrange_file (double **data_arr, char **label_arr, int num_labels, int num_runs, int* xValues, int* yValues, int num_points){
+int write_laGrange_file (double **data_arr, char **label_arr, int num_labels, int num_runs, int* xValues, int* yValues, int keySize){
 
 	int first = 1; // First line has not been printed 
 	int nest_level = 0; 
@@ -515,9 +515,14 @@ int write_laGrange_file (double **data_arr, char **label_arr, int num_labels, in
 			printf("Data file could not be written\n"); 
 			return -1;
 		}
+	
+	if(write_num_json(dfp, nest_level, "Key Size", keySize, &first) < 0){ 
+		printf("%s %d","error writing key size: ", keySize);
+		return -1;
+	}
 		
 	//print xValues values passed into laGrange.c //
-	for(i=0; i<num_points; ++i){
+	for(i=0; i<keySize; ++i){
 		char xValLabel[12];
 		snprintf(xValLabel,12,"xValue %d", i);
 		write_num_json (dfp, nest_level, xValLabel, xValues[i], &first);
@@ -525,7 +530,7 @@ int write_laGrange_file (double **data_arr, char **label_arr, int num_labels, in
 	}
 	
 	//print yValues values to which the xValues were mapped //
-	for(i=0; i<num_points; ++i){
+	for(i=0; i<keySize; ++i){
 		char yValLabel[12];
 		snprintf(yValLabel,12 ,"yValue %d", i);
 		write_num_json (dfp, nest_level, yValLabel, yValues[i], &first);
