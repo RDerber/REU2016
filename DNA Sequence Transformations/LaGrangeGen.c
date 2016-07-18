@@ -1,7 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "jsonData.h"
+
 /*
  *LaGrangeGen.c
  *
@@ -16,13 +18,13 @@
  *Possible Issues: doesn't ignore new line characters, undefined behavior for all non specified characters
  */
 
-//change back to long long
 
 
 
 
 
-int polyMult(int points[], long long prod[], int numPoints, long long mod){ 	//Takes in an array of points (with one 
+
+int* polyMult(int points[], long long prod[], int numPoints, long long mod){ 	//Takes in an array of points (with one 
 										//already removed) and the size of this array
 										//and modifies prod[] so it contains the 
 										//coefficients of the numerators of each line
@@ -172,7 +174,6 @@ int polyGenerator(int points[], int yValues[], int size, int poly[]){ 	// Takes 
 					// we mod by the least common multiple of all possible primes that
 					// we could later mod by to retain information but avoid an overflow.
 					// in the default case this is 7*31*127*8191
-	printf("%d\n",mod);
 	for(i=0; i<size; ++i){
 		int j;
 		int pointsTemp[size-1];// size of pointsTemp is one less than number of Points as we remove one point during each iteration
@@ -204,6 +205,48 @@ int polyGenerator(int points[], int yValues[], int size, int poly[]){ 	// Takes 
 	return mod;
 }
 
+int keyIdentifier(FILE * ifp,int *input,int *output){
+	char byt; 
+	int inputCount = 0; 
+	int outputCount = 0;
+	int i = 0, j;
+	char numBuf[20];
+	while((byt=getc(ifp))!= EOF){
+	
+		if(byt != ' ' && byt != '\n' && byt != '\r' && byt!= ','){
+			if(byt != '>'){
+				input[inputCount++] = -byt;
+			}else{
+				while((byt = getc(ifp)) == ' ' || byt == '\n' || byt == '\r' || byt == ','){}
+				i=0;
+				while(byt != '\n'){
+					 numBuf[i++] = byt;
+					 byt=getc(ifp);
+				}
+				numBuf[i++] = '\x00';
+				
+				output[outputCount++] = atoi(numBuf);
+				continue; 
+				
+			//	for(j=0; j < i-1; ++j){
+			//		if(atoi(numBuf) == 0 && numBuf[j] != '0'){ // If it's a character, cast and put into output
+			//			output[outputCount++] = (int)numBuf[j];
+			//			printf("%s %c %d", "Yes",numBuf[j],(int)numBuf[j]); 
+			//			break;
+			//		}
+			//		else{
+			//			output[outputCount++] = atoi(numBuf); //If it's a number, convert to int and put into output
+			//			printf("%s %s %d", "No", numBuf,atoi(numBuf)); 
+			//			break;
+			//		}
+			//	}
+				
+			}
+		}
+	}
+	return inputCount;
+} 
+
 int readInputToBuffer(FILE * ifp, char ** input, long * inputsize){
  	// Go to the end of the file //
 	if(fseek(ifp, 0L, SEEK_END)== 0){
@@ -234,135 +277,128 @@ int readInputToBuffer(FILE * ifp, char ** input, long * inputsize){
 	} else return -1;
 }
 
-int main (int argc, char **argv){// [input file] [output file name] **[number of runs] [x values] [y values] 
-					//***Number of runs is optional - see below for more detail
-					//>>> number of x values must = number of y values
+int getFileSize(FILE *ifp){
+ // Go to the end of the file //
+ 	int keySize;
+	if(fseek(ifp, 0L, SEEK_END)== 0){
+	// Get the size of the file. //
+		keySize = ftell(ifp);
+		if (keySize == -1) {
+			fputs("Error finding size of file", stderr);
+		}
+		// Return to start of file //
+		if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
+			fputs("Error returning to start of file", stderr);
+		}
+	}
+	return keySize;
+}
+
+int main (int argc, char **argv){//  [key][input file][output file name] optional: [number of runs] 
 					//allows user to specify input characters and the names of an input file and an output file.
 					//The input file's contents are transformed using the polynomial formed from polyGenerator
 					//and the evaluate method and then written to a file with the name specified by them
 					
-	int timing = 1; // *** Set equal to 0 or comment out to turn of timing feature *** //
-	FILE * ifp = fopen(argv[1], "r");
-	int i, r;
-	char *input = NULL;
-	long inputsize = 0;
-	int runs = 0;
-	struct timeval time0, time1;
-	int polysize = 0;
-	int mod = 0;
-	int *poly;
-	int *points;
-	int *yValues;
+	if(argc!= 4 && argc != 5){
+		printf("Bad Arguments");
+		return -1;
+	}
+	int i,j;
+	FILE * ifp;
+	FILE * ofp;
+	FILE * kfp;
+	struct timeval time0,time1;
+	int runs = 1; 
+	if(argc == 5){
+		runs = atoi(argv[4]); 
+	}
 	double polyTimes[runs];
 	double evalTimes[runs];
+	int keySize;
+	kfp = fopen(argv[1], "r");
+	if(kfp != NULL){
+		keySize = getFileSize(kfp);
+	} else{ 
+		printf("key file not accessible.");	
+		return -1; 
+	}	
 	
+	int *points = malloc(keySize * sizeof(int));
+	int *yValues = malloc(keySize * sizeof(int));
+	keySize = keyIdentifier(kfp, points, yValues);
+	
+	ifp = fopen(argv[2], "r");
+	char *input = NULL; 
+	long inputsize = 0;
 	if(ifp != NULL){
 		readInputToBuffer(ifp,&input,&inputsize);		
 		fclose(ifp);
-		printf(input);
 	}else{
 		printf("%s\n", "the input file given does not exist");
-		return 1;
-	}
-		
-	if(timing){	
-		runs = atoi(argv[3]);
-		polysize = (argc - 4)/2;
-		points = malloc(polysize * sizeof(int));
-		yValues = malloc(polysize * sizeof(int));
-		memset(yValues,0,sizeof(yValues));
-	
-		for(i = 0; i < polysize; ++i){
-			points[i] = - *argv[i+4];
-			yValues[i] = atoi(argv[i + 4 + polysize]);
-			printf("%s %d %s %d %c","Point: ", points[i], "yValue: ", yValues[i],'\n');
-		}
-		poly = malloc(polysize * sizeof(int));
-		memset(poly,0,sizeof(poly));
-		
-		for(i=0;i<runs;i++){
-			gettimeofday(&time0,NULL);
-			mod = polyGenerator(points, yValues, polysize, poly);
-			gettimeofday(&time1,NULL);
-			double polyTime = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-			polyTimes[i] = polyTime;
-		}
-	
-	}
-	else{
-					
-		polysize = (argc - 3)/2;
-		points = malloc(polysize * sizeof(int));
-		yValues = malloc(polysize * sizeof(int));
-		memset(yValues,0,sizeof(yValues));
-		for(i = 0; i < polysize; ++i){
-			points[i] = - *argv[i+3];
-			yValues[i] = atoi(argv[i + 3 + polysize]);
-			printf("%s %d %s %d %c","Point: ", points[i], "yValue: ", yValues[i],'\n');
-		}
-		poly = malloc(polysize * sizeof(int));
-		memset(poly,0,sizeof(poly));		
-		mod = polyGenerator(points, yValues, polysize, poly);
-		
-	
-	}
-	
-	// Create Output Buffer //
-	char * output = malloc(sizeof(char)* (inputsize+1));
-	int outputsize = inputsize;
-	
-	if (timing){
-		for(r=0;r<runs;r++){
-			for(i=0; i<inputsize; ++i){
-				gettimeofday(&time1,NULL);			
-				output[i] = evaluate(input[i], poly, polysize, mod);
-				gettimeofday(&time1,NULL);
-				double evalTime = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-				evalTimes[i] = evalTime;
-			}
-		}
-	
-		int numDataForms = 2; //polyTimes, evalTime
-		double *timeArray[numDataForms];
-		char *labelArray[numDataForms];	
-		timeArray[0] = polyTimes;
-		timeArray[1] = evalTimes;
-		
-		labelArray[0] = "PolyGenTimes";
-		labelArray[1] = "EvalTimes";
-		
-		int numLabels= sizeof(labelArray)/sizeof(char*); 
-		
-		if(write_laGrange_file(timeArray, labelArray, numLabels, runs, points, yValues, polysize) < 0)
-			printf("error writing data file\n"); 
-		
-		
-	}else{
-		for(i=0; i<inputsize; ++i){
-			output[i] = evaluate(input[i], poly, polysize, mod);	
-		}
-	}
-	
-	for(i=0;i<polysize;++i){
-		printf("%s %d %d\n","output: ",points[i], evaluate(points[i], poly, polysize, mod));
-	}
-	
-	// Write to output file //
-	FILE * ofp;
-	if((ofp = fopen(argv[2], "w")) == NULL){
-		printf("error opening output file");
 		return -1;
 	}
 	
-	for(i=0; i<outputsize; ++i){
-		fprintf(ofp,"%d",output[i]);
+
+	for(i = 0; i < keySize; ++i){
+		printf("%s %d %s %d %c","Point: ", points[i], "yValue: ", yValues[i],'\n');
 	}
-	fclose(ofp);
-	free(poly);
-	free(points);
-	free(yValues);
+
+	int poly[keySize];
+	memset(poly,0,sizeof(poly));
+	int mod = 0;
+	for(i=0; i<runs; ++i){
+		gettimeofday(&time0,NULL);
+		mod = polyGenerator(points, yValues, keySize, poly);
+		gettimeofday(&time1,NULL);
+		polyTimes[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+	}
+	
+
+		// Create Output Buffer //
+	char * output = malloc(sizeof(char)* (inputsize+1));
+	int outputsize = inputsize;
+	
+	for(i=0;i<runs;i++){
+		gettimeofday(&time0,NULL);
+		for(j=0;j<inputsize;++j){
+			output[j] = evaluate(input[j],poly,keySize,mod); 
+		}
+		gettimeofday(&time1,NULL);
+		evalTimes[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+	}
+		
+	
+	for(i=0;i<keySize;++i){
+		printf("%s %d %s %d %c","Point: ", -points[i], "yValue: ", evaluate(-points[i],poly, keySize, mod),'\n');
+	}
+	
+	ofp = fopen(argv[3], "w");	
+	
+	if(ofp == NULL){
+		printf("Error creating output file\n");
+		return -1;
+        }else{
+		for(i=0;i<outputsize; ++i){
+			fprintf(ofp,"%d",output[i]);
+		}
+		fclose(ofp);
+	}
+	
+	int numDataForms = 2;
+	double *timeArray[numDataForms];
+	char *labelArray[numDataForms];	
+	timeArray[0] = polyTimes;
+	timeArray[1] = evalTimes;
+	
+	labelArray[0] = "PolyTimes";
+	labelArray[1] = "EvalTimes";
+	
+	write_laGrange_file(timeArray, labelArray, numDataForms, runs, points, yValues, keySize);
+	
 	free(input);
 	free(output);
+	free(points);
+	free(yValues); 
 	
 	return 0;
 }

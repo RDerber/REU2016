@@ -315,6 +315,23 @@ int readInputToBuffer(FILE * ifp, char ** input, long * inputsize){
 	} else return -1;
 }
 
+int getFileSize(FILE *ifp){
+ // Go to the end of the file //
+ 	int keySize;
+	if(fseek(ifp, 0L, SEEK_END)== 0){
+	// Get the size of the file. //
+		keySize = ftell(ifp);
+		if (keySize == -1) {
+			fputs("Error finding size of file", stderr);
+		}
+		// Return to start of file //
+		if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
+			fputs("Error returning to start of file", stderr);
+		}
+	}
+	return keySize;
+}
+
 int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	int i,j; 
 
@@ -322,25 +339,11 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	FILE * ifp;
 	ifp = fopen(argv[1],"r");
 	if(ifp != NULL){
-	 // Go to the end of the file //
-		if(fseek(ifp, 0L, SEEK_END)== 0){
-		// Get the size of the file. //
-
-			keySize = ftell(ifp);
-			if (keySize == -1) {
-				fputs("Error finding size of file", stderr);
-			}
-
-			// Return to start of file //
-			if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
-				fputs("Error returning to start of file", stderr);
-			}
-		}
+		keySize = getFileSize(ifp);
 	} else{ 
 		printf("File not accessible.");	
 		return -1; 
-		}
-		
+	}
 	unsigned char * input = malloc(keySize * sizeof(char));
 	unsigned char * output = malloc(keySize * sizeof(char));
 	

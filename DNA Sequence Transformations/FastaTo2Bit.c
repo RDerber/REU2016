@@ -185,7 +185,7 @@ int main(int argc, char *argv[]){
 		printf("Error creating output file\n");
 		return -1;
         }else{
-		 fwrite(output, 1, outputsize, ofp);
+		fwrite(output, 1, outputsize, ofp);
 		fclose(ofp);
 	}
 	free(input);
