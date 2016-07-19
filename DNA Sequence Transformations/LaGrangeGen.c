@@ -241,11 +241,11 @@ int keyIdentifier(FILE * ifp,int *input,int *output){
 	char numBuf[20];
 	while((byt=getc(ifp))!= EOF){
 	
-		if(byt != ' ' && byt != '\n' && byt != '\r' && byt!= ','){
+		if(byt != ' ' && byt != '\n' && byt != '\r'){
 			if(byt != '>'){
 				input[inputCount++] = -byt;
 			}else{
-				while((byt = getc(ifp)) == ' ' || byt == '\n' || byt == '\r' || byt == ','){}
+				while((byt = getc(ifp)) == ' ' || byt == '\n' || byt == '\r'){}
 				i=0;
 				while(byt != '\n'){
 					 numBuf[i++] = byt;
