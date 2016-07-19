@@ -22,17 +22,10 @@ set term png
 set datafile separator ","
 set output outputPath
 set title graphTitle
-
-print graph
-print xvals
-print yvals
-
 set xlabel myXLabel
 set ylabel "Transform Time (µsec)"
 set key center bottom right title box 3
-a=100
-b=50
-f(x)=a**x+b
-fit f(x) graph using xvals:yvals via a,b
-title_f(a,b)=sprintf('f(x)=%.2f^{x}+%.2f',a,b)
-plot graph u xvals:yvals notitle with linespoints,f(x) t title_f(a,b)
+f(x)=a*x+b*x*log(x)/log(2)+c
+fit f(x) graph u xvals:yvals via a,b,c
+title_f(a,b,c)=sprintf('f(x)=%.2fx+%.2fxlog(x)/log(2)+%.2f',a,b,c)
+plot graph u xvals:yvals notitle with linespoints,f(x) t title_f(a,b,c)

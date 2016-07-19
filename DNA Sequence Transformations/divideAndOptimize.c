@@ -47,11 +47,11 @@ size_t highestBit(int num){
 	int i;
 	size_t check = 1;
 	for(i=0;i < sizeof(int)*8;++i){
-		check*=2;
+		check<<=1;
 	}
 	for(i = sizeof(int) * 8;i > 0;--i){
 		if(num&check) return check;
-		else check/=2;
+		else check>>=1;
 	}
 }
 
@@ -82,7 +82,6 @@ int compare (unsigned char* input, int inputSize, unsigned char * startingInput)
 	
 	int i,j;
 	char group1 = input[0];
-	
 	char firstDiffIndex = findFirstDiff(group1, input, inputSize);
 	if(firstDiffIndex == 0){
 		return 0;
@@ -127,7 +126,7 @@ int superOptimizer (unsigned char * startingInput, unsigned char * input, int in
 	unsigned int i,j,k;
 	char constInput[inputSize];
 	for(i=0;i<inputSize;++i) constInput[i] = input[i];
-	int opsSize = sizeof(operations)/sizeof(char);
+	int opsSize = sizeof(operations)/sizeof(char)-1;
 	int opsMax[] = {256, 256, 256, 8, 8};
 	int group1Size = 0;
 	for(k = 0; k < opsSize; ++k){
@@ -183,15 +182,23 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 	}
 
 
-	int group1Size = superOptimizer(startingInput, input, inputSize, maxNumOps-2, maxNumOps-2, opsSeq, numSeq);
+	int group1Size;
+	group1Size = superOptimizer(startingInput, input, inputSize, maxNumOps-2, maxNumOps-2, opsSeq, numSeq);
 	if(group1Size == -1) return -1;
 	int group2Size = inputSize-group1Size;
 
 //Separate inputs into groups based on the last superOptimizer run	
-	unsigned char group1[group1Size];
-	unsigned char group2[group2Size];
-	unsigned char group1out[group1Size];
-	unsigned char group2out[group2Size];
+	int newGroupSize = 0;
+	if(group1Size >= group2Size){
+		newGroupSize = group1Size;
+	}else{
+		newGroupSize = group2Size; 
+	}
+	unsigned char *group1 = malloc(newGroupSize * sizeof(unsigned char)); 
+	unsigned char *group2 = malloc(newGroupSize * sizeof(unsigned char)); 
+	unsigned char *group1out = malloc(newGroupSize * sizeof(unsigned char)); 
+	unsigned char *group2out = malloc(newGroupSize * sizeof(unsigned char)); 
+	
 	int g1counter = 0;
 	int g2counter = 0;
 	int group1Check = input[0];
@@ -211,6 +218,9 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 			group2out[g2counter++] = output[i];
 		}
 	}
+	
+	group1Size = g1counter;
+	group2Size = g2counter;
 
 //Recover opsSeq and numSeq from the last superOptimizer run
 	for(i=0;i<maxNumOps;++i){
@@ -227,7 +237,13 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 		startingGroup2[i] = group2[i];
 	}
 	divideAndOptimize(startingGroup1, group1, group1out, group1Size, opArray, numArray, maxNumOps, opLevel*2);
-	return divideAndOptimize(startingGroup2, group2, group2out, group2Size, opArray, numArray, maxNumOps, ((opLevel*2) + 1));	
+	int success = divideAndOptimize(startingGroup2, group2, group2out, group2Size, opArray, numArray, maxNumOps, ((opLevel*2) + 1));
+	
+	free(group1);
+	free(group2);
+	free(group1out);
+	free(group2out);
+	return success;	
 }
 
 
@@ -253,30 +269,31 @@ int keyIdentifier(FILE * ifp,unsigned char *input,unsigned char *output){
 	int outputCount = 0;
 	while((byt=getc(ifp))!= EOF){
 	
-		if(byt != ' ' && byt != '\n' && byt != '\r' && byt!= ','){
+		if(byt != ' ' && byt != '\n' && byt != '\r'){
 			if(byt != '>'){
 				input[inputCount++] = byt;
 			}else{
-				while((byt = getc(ifp)) == ' ' || byt == '\n' || byt == '\r' || byt == ','){}
+				while((byt = getc(ifp)) == ' ' || byt == '\n' || byt == '\r'){}
 				for(outputCount; outputCount < inputCount; ++outputCount)
 					output[outputCount] = byt;
 				continue;
 			}
 		}
 	}
+	input[inputCount] = '\x00';
 	return inputCount;
 } 
 
 
 int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int maxNumOps){
 	int i = 1,j;
-	unsigned char direction;
+	int direction;
 	while(opArray[i][maxNumOps-1] != assign){
 		direction = input;
 		for(j=0;j < maxNumOps;++j){
 			direction = operate(direction,((opArray[i])[j]),((numArray[i])[j]));
 		}
-	//	printf("%s%d %s%d\n","i: ",i, "direction: ",direction);
+
 		fflush(stdout);
 		i = i*2 + direction;
 	}
@@ -350,10 +367,10 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	keySize = keyIdentifier(ifp, input, output);			// keySize now equals the number of inputs in the key	
 	fclose(ifp);
 
-	int maxNumOps = 5;			//Always should be 5
+	int maxNumOps = 4;			//Always should be 5
 
 	int success = -1;							
-	size_t numBranches = 4 * highestBit(keySize);
+	long numBranches = 4 * highestBit(keySize);
 	char **opArray = malloc(numBranches*sizeof(char*));		 
 	unsigned int ** numArray = malloc(numBranches*sizeof(unsigned int *));			
 	for(i=0;i < (numBranches); ++i){
@@ -361,12 +378,13 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		numArray[i] = calloc(maxNumOps, sizeof(int));
 	}
 
-	unsigned char startingInput[keySize];
+	unsigned char *startingInput = malloc(keySize * sizeof(unsigned char));
 	for(i=0;i<keySize;++i){
 		startingInput[i] = input[i];
 	}
 	success = divideAndOptimize(startingInput, input, output, keySize, opArray, numArray, maxNumOps,1);
-
+	
+	free(startingInput);
 	free(input);
 	free(output);
 
@@ -403,7 +421,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 
 	// Create Output Buffer;
 	char * writeOut = malloc(sizeof(char)* (readSize+1));
-
+	
 	double *times;
 	int runs = 0;
 	int i,j=0,k;
@@ -411,6 +429,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		for(i=0;i<readSize; ++i){
 			if(readIn[i]&'\xe0')
 				writeOut[j++] = evaluate(readIn[i],opArray,numArray,maxNumOps);
+			
 		}
 	}
 	if(argc == 5){	//if a number of runs is given but no number of minimum times, default number of min times is 3
@@ -421,8 +440,9 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 			gettimeofday(&time0,NULL);
 			j=0;
 			for(k=0;k<readSize; ++k){
-				if(readIn[k]&'\xe0')
+				if(readIn[k]&'\xe0'){
 					writeOut[j++] = evaluate(readIn[k],opArray,numArray,maxNumOps);	
+				}
 			}
 			gettimeofday(&time1,NULL);
 			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;

@@ -67,7 +67,7 @@ echo "" >> timing.json
 cat timing.json >> $folder/mt2bTimeStats.json
 ((numInputFiles++))
 
-./MultiFastaTo2Bit ./tests/multiTests/multi300k.fasta $folder/300kOut.txt $folder/300kHead.txt $folder/100kPosition.txt $runs
+./MultiFastaTo2Bit ./tests/multiTests/multi300k.fasta $folder/300kOut.txt $folder/300kHead.txt $folder/300kPosition.txt $runs
 ./jsonTitle timing.json "300000 bases" "-c"
 echo "" >> timing.json
 cat timing.json >> $folder/mt2bTimeStats.json
@@ -79,7 +79,7 @@ echo "" >> timing.json
 cat timing.json >> $folder/mt2bTimeStats.json
 ((numInputFiles++))
 
-./MultiFastaTo2Bit ./tests/multiTests/multi700k.fasta $folder/700kOut.txt $folder/700kHead.txt $folder/100kPosition.txt $runs
+./MultiFastaTo2Bit ./tests/multiTests/multi700k.fasta $folder/700kOut.txt $folder/700kHead.txt $folder/700kPosition.txt $runs
 ./jsonTitle timing.json "700000 bases" "-c"
 echo "" >> timing.json
 cat timing.json >> $folder/mt2bTimeStats.json

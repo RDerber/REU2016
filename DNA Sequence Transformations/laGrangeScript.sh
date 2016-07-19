@@ -4,6 +4,7 @@
 gcc -g jsonTitle.c -o jsonTitle
 gcc -g jsonData.c LaGrangeGen.c -o LaGrangeGen
 gcc -g jsonData.c jsonSystemStats.c -o jsonSystemStats
+gcc -g laGrangeJsonToCSV.c -o laGrangeJsonToCSV 
 
 if [ "$1" != "" ]
 then
@@ -59,23 +60,39 @@ cat temp1.json >> $folder/laGrangeTimeStats.json
 cat temp1.json >> $folder/laGrangeTimeStats.json
 ((numInputFiles++))
 
+./LaGrangeGen tests/laGrangeTests/key7.txt tests/laGrangeTests/key7In.txt $folder/key7Out.txt $runs
+./jsonTitle temp1.json "key 7" 
+#echo "" >> temp1.json
+cat temp1.json >> $folder/laGrangeTimeStats.json
+((numInputFiles++))
+
 #Add Title to laGrangeTimeStats.txt file
 ./jsonTitle $folder/laGrangeTimeStats.json "LaGrangeGen" "-f"
 
-#./laGrangeJsonToCSV $folder/laGrangeTimeStats.json $folder/laGrangeTimeStats.csv $numInputFiles $runs $k
+./laGrangeJsonToCSV $folder/laGrangeTimeStats.json $folder/laGrangeTimeStats.csv $numInputFiles $runs $k
 
-#plotfile="laGrangeTimeStats.csv"
-#output="laGrange.png"
-#graph="$folder/$plotfile"
-#touch $folder/$output
-#outpath="$folder/$output"
-#xlabel="Number of Key Inputs"
-#graphTitle="Divide And Optimize Key Mapping"
-#xvals=1
-#yvals=2
+inputPlotFile="laGrangeTimeStats.csv"
 
-#gnuplot -c plotLogScript.sh $graph "$graphTitle" $outpath "$xlabel" $xvals $yvals
+output1="laGrangePolyGen.png"
+output2="laGrangeEval.png"
 
+
+inputDataFile="$folder/$inputPlotFile"
+
+touch $folder/$output1
+touch $folder/$output2
+
+outpath1="$folder/$output1"
+outpath2="$folder/$output2"
+
+inputXlabel="Size of Key"
+
+graphTitle1="Polynomial Generation Time"
+graphTitle2="Evaluation Time"
+
+
+gnuplot -c plotPolyScript.sh $inputDataFile "$graphTitle1" $outpath1 "$inputXlabel" "1" "2"
+gnuplot -c laGrangeEvalPlotScript.sh $inputDataFile "$graphTitle2" $outpath2 "$inputXlabel" "1" "3"
 
 
 

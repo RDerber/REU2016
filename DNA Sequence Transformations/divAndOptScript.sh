@@ -2,7 +2,7 @@
 
 #Recompile all files before running timing function
 gcc jsonTitle.c -o jsonTitle
-gcc jsonData.c divideAndOptimize.c -o divideAndOptimize
+gcc -g jsonData.c divideAndOptimize.c -o divideAndOptimize
 gcc -g jsonData.c jsonSystemStats.c -o jsonSystemStats
 gcc -g divAndOptJsonToCSV.c -o divAndOptJsonToCSV
 
@@ -16,7 +16,7 @@ fi
 mkdir ./tests/divAndOptTests/$today
 
 numInputFiles=0
-runs=100
+runs=500
 k=3
 folder="./tests/divAndOptTests/$today"
 
@@ -55,10 +55,16 @@ cat timing.json >> $folder/divAndOptTimeStats.json
 ((numInputFiles++))
 
 ./divideAndOptimize tests/divAndOptTests/key6.txt tests/divAndOptTests/key6In.txt $folder/key6Out.txt $runs
-./jsonTitle timing.json "key 6" 
+./jsonTitle timing.json "key 6"
 #echo "" >> timing.json
 cat timing.json >> $folder/divAndOptTimeStats.json
 ((numInputFiles++))
+
+#./divideAndOptimize tests/divAndOptTests/key7.txt tests/divAndOptTests/key7In.txt $folder/key7Out.txt $runs
+#./jsonTitle timing.json "key 7" 
+#echo "" >> timing.json
+#cat timing.json >> $folder/divAndOptTimeStats.json
+#((numInputFiles++))
 
 #Add Title to divAndOptTimeStats.txt file
 ./jsonTitle $folder/divAndOptTimeStats.json "divideAndOptimize" "-f"

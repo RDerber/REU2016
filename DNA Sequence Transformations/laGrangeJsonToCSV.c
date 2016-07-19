@@ -23,11 +23,11 @@ int findHigh(double * arr, size_t arrSize){
 	return highPos;
 }
 
-int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int m, int k){
+int timingJsonToCSV(char * input, FILE * ofp, int numKeys, int m, int k){
 	int i,j,h,g;
 	int end = 0;
-	int inArr[maxNumInputs];
-	int numTimeMatches = maxNumInputs * m;
+	int inArr[numKeys];
+	int numTimeMatches = numKeys * m * 2;
 	int status;
 	regex_t re;
 	regmatch_t inputMatch;
@@ -40,7 +40,7 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int m, int k){
 		return -1;
 	}
 	
-	for(i=0; i<maxNumInputs; ++i){
+	for(i=0; i<numKeys; ++i){
 		status = regexec(&re, input+end, 1, &inputMatch, 0); // Find Num Inputs
 		if(status != 0){
 			printf("%s %s","The following expression was not found:", inputPattern);
@@ -102,48 +102,62 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int m, int k){
 	
 	regfree(&re);
 	
-	double inputAvgEvalTime [maxNumInputs];
+	double inputAvgEvalTime [numKeys];
+	double inputAvgRunTime [numKeys];
 
-	for(i=0;i<maxNumInputs;++i){
+	for(i=0;i<numKeys;++i){
 		inputAvgEvalTime[i] = 0;
+		inputAvgRunTime [i] = 0;
 	}
 	
 	double avgTime = 0;
 	double lowTime[k];
-	for(h=0;h<maxNumInputs;h++){
-		double hiloTime = DBL_MAX;
-		int numStored = 0;
-		int hiloPos = 0;
-		double time;
-		for(j=0; j<m; ++j){
-			//printf("%s %f\n", "hiloTime:", hiloTime);
-			if((time = timeArr[h*m+j]) < hiloTime){
-				//printf("%s %f %s %d\n","time:",time, "j:",j);
-				if(numStored < k){
-					lowTime[numStored++] = time;
-				}else {
-					if((hiloPos = findHigh(lowTime,k)) < 0){
-						fprintf(stderr, "%s","This really shouldn't happen");
-						return -1;
+	for(h=0;h<numKeys;h++){
+		for(g=0; g < 2; ++g){
+			double hiloTime = DBL_MAX;
+			int numStored = 0;
+			int hiloPos = 0;
+			double time;
+			for(j=0; j<m; ++j){
+				//printf("%s %f\n", "hiloTime:", hiloTime);
+				if((time = timeArr[h*m*2+g*m+j]) < hiloTime){
+					//printf("%s %f %s %d\n","time:",time, "j:",j);
+					if(numStored < k){
+						lowTime[numStored++] = time;
+					}else {
+						if((hiloPos = findHigh(lowTime,k)) < 0){
+							fprintf(stderr, "%s","This really shouldn't happen");
+							return -1;
+						}
+						lowTime[hiloPos] = time;
+						hiloTime = lowTime[findHigh(lowTime,k)];
 					}
-					lowTime[hiloPos] = time;
-					hiloTime = lowTime[findHigh(lowTime,k)];
+					
 				}
-				
+			}
+			
+			double lowSum = 0;
+			for(j=0; j<k; ++j){
+				lowSum += lowTime[j];
+			}
+			double avgLowTime= lowSum/(double)k;
+			
+			if(g==0){ //runTimes Avg - running sum
+				inputAvgRunTime[h] += avgLowTime;
+			}else{ // EvalTimes Avg - running sum		
+				inputAvgEvalTime[h] += avgLowTime;
 			}
 		}
-		double lowSum = 0;
-		for(j=0; j<k; ++j){
-			lowSum += lowTime[j];
-		}
-		inputAvgEvalTime[h]= lowSum/(double)k;
+			
+			
 	}
 	
 	
 			
 	//Print out CSV Files
-	for(i=0;i<maxNumInputs; ++i){
-		fprintf(ofp,"%d,%f\n", inArr[i],inputAvgEvalTime[i]);
+	for(i=0;i<numKeys; ++i){
+		fprintf(ofp,"%d,%f,%f\n", inArr[i],inputAvgRunTime[i],inputAvgEvalTime[i]);
+	//	fprintf(ofp2,"%d,%f\n", inArr[i],inputAvgEvalTime[i]);
 	//	printf("%s %d\n", "i:", i);
 	//	printf("%s %d, %p\n", "inArr[i]:", inArr[i], inArr);
 	//	printf("%s %f, %p\n", "inputAvgRunTime[i]:", inputAvgRunTime[i], inputAvgRunTime);
@@ -156,12 +170,12 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int m, int k){
 	
 	
 	
-int main (int argc, char * argv[]){ //[input json file] [output csv] [maxNumInputs] [m number of runs] [lowest k values to be averaged] 
+int main (int argc, char * argv[]){ //[input json file] [output csv] [numKeys] [m number of runs] [lowest k values to be averaged] 
 
 	if(argc == 6){
 
 		FILE * ofp = fopen(argv[2], "w");
-		int maxNumInputs = atoi(argv[3]);
+		int numKeys = atoi(argv[3]);
 		int m = atoi(argv[4]);
 		int k = atoi(argv[5]);
 		
@@ -202,7 +216,7 @@ int main (int argc, char * argv[]){ //[input json file] [output csv] [maxNumInpu
 			return -1;
 		}
 		
-		timingJsonToCSV(input, ofp, maxNumInputs, m, k);
+		timingJsonToCSV(input, ofp, numKeys, m, k);
 		free(input);
 		fclose(ofp);
 		

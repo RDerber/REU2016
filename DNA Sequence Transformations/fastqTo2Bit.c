@@ -1,7 +1,7 @@
 /*
  * FastqTo2Bit.c
  *
- * NOT YET FUNCTIONAL; for regular FASTQ Files with a single sequence or multiple sequences (multiFasta)
+ * For regular FASTQ Files with a single sequence or multiple sequences (multiFasta)
  *
  * Includes an optional timing report exported in JSON format
  *  
@@ -52,7 +52,7 @@ int fastqTo2Bit(const char * input,char * output,char * headers, int * positions
 		if(input[i] == '+'){
 			while(input[i++] != '\n'); //Remove secondary header line
 			
-			while(input[i] != '\n'){
+			while(i<inputsize && input[i] != '\n' ){
 				quality[q++] = input[i++];
 			}
 			++i;
@@ -63,28 +63,29 @@ int fastqTo2Bit(const char * input,char * output,char * headers, int * positions
 		}	
 		
 		// Move sequence header into header buffer, store its position //
-		if(input[i] == '@'){
-			positions[p++] = k; 
-			// header positions delimited with -1 //
-			positions[p++] = -1; 
-			while(input[i] != '\n')
-				headers[h++] = input[i++];
-			++i;
-			
-			// Headers delimited with Null characters // 
-			headers[h++] = '\x00';
-		}
+		if(i < inputsize){
+			if (input[i] == '@'){
+				positions[p++] = k; 
+				// header positions delimited with -1 //
+				positions[p++] = -1; 
+				while(input[i] != '\n' && i < inputsize)
+					headers[h++] = input[i++];
+				++i;
+				// Headers delimited with Null characters // 
+				headers[h++] = '\x00';
+			}
+		}else break;
 		
+		while(!(input[i] & '\x60'))++i;
 		
 		// Check for buffer overflow and if character is not a desired letter, increase to the next character in the buffer //
-		if(i < inputsize && input[i] != '@' && input[i] != '+' && (input[i] & '\x40')){ 
+		if(input[i] != '@' && input[i] != '+'){
 			
 		//2Bit Conversion of the first base in the grouping of 4 //
 			byt = input[i++]& '\x06';						
 			byt <<= 5;
 			
 		}else{
-			++i;
 			 continue;
 		}
 
@@ -92,7 +93,7 @@ int fastqTo2Bit(const char * input,char * output,char * headers, int * positions
 		for(j=2;j>0;--j){
 			
 			//Checking for desired character //
-			while(!(input[i] & '\x40')) ++i;
+			while(!(input[i] & '\x60')) ++i;
 			
 			//Checking for buffer overflow and sequence headers //
 			if(i < inputsize && input[i] != '@' && input[i] != '+'){
@@ -105,7 +106,7 @@ int fastqTo2Bit(const char * input,char * output,char * headers, int * positions
 		
 		
 		//Checking for desired character //
-		while(!(input[i] & '\x40')) ++i;	
+		while(!(input[i] & '\x60')) ++i;	
 
 		//Checking for buffer overflow and sequence headers //
 		if(i < inputsize && input[i] != '@' && input[i] != '+'){

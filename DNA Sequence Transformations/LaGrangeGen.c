@@ -152,10 +152,9 @@ int evaluate(int x, int polys[], int polysize, int mod){ // evaluates the polyno
 		}
 		for(j = 0; j < log; ++j){
 			if(((poly) >> j) & '\x01'){
-
 				product = (product * polyTable[j]) % mod;
 			}
-		} 
+		}
 		sum = (sum + (product * (polys[polysize - i - 1] % mod)) % mod) % mod;
 	}
 	sum = (sum + mod) % mod;
@@ -167,7 +166,7 @@ int polyGenerator(int points[], int yValues[], int size, int poly[]){ 	// Takes 
 	int i=0, j;
 	long long polyTemp[size][size];
 	long long denoms[size]; 		// keeps track of denomInator of each row
-	memset(denoms, 0, sizeof(denoms)); 	// Initializes arrays to all 0s in memory 
+	memset(denoms, 0, sizeof(denoms[0])*size); 	// Initializes arrays to all 0s in memory 
 	memset(poly, 0, sizeof(poly[0])*size);
 	
 	long long mod = 225735769; 	// Works as long as y-values do not exceed 8190 
@@ -321,7 +320,7 @@ int main (int argc, char **argv){	//allows user to specify input characters and 
 	keySize = keyIdentifier(kfp,points,yValues);
 	fclose(kfp);
 	int poly[keySize];
-	memset(poly,0,sizeof(poly));
+	memset(poly,0,sizeof(poly[0])*keySize);
 	int mod;
 	for(i=0;i<runs;++i){
 		gettimeofday(&time0,NULL);
