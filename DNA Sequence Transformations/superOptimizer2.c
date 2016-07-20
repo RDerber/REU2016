@@ -5,8 +5,8 @@
 #include <limits.h>
 #include "jsonData.h"
 
-enum operationID {add = 0, and = 1, xor = 2, lsl = 3, lsr = 4};
-char operations[] = {'+','&','^','<','>'};
+enum operationID {add = 0, and = 1, xor = 2, or = 3, lsl = 4, lsr = 5};
+char operations[] = {'+','&','^','|','<','>'};
 
 /*These functions allow us to use an array of function pointers pointing to these functions in order to identify and perform the operation in constant time and without the use of a switch case statement. */
 unsigned char addFunc(unsigned char a, unsigned int b){
@@ -20,7 +20,9 @@ unsigned char andFunc(unsigned char a, unsigned int b){
 unsigned char xorFunc(unsigned char a, unsigned int b){
 	return a^b;
 }
-
+unsigned char orFunc(unsigned char a, unsigned int b){
+	return a|b;
+}
 unsigned char shiftLeftFunc(unsigned char a, unsigned int b){
 	unsigned char ans = a << b;
 	return ans;
@@ -31,11 +33,7 @@ unsigned char shiftRightFunc(unsigned char a, unsigned int b){
 	return ans; 
 }
 
-unsigned char assignFunc(unsigned char a, unsigned int b){
-	return b;
-}
-
-unsigned char (*functionPtrs[])(unsigned char,unsigned int) = {&addFunc,&andFunc,&xorFunc,&shiftLeftFunc,&shiftRightFunc,&assignFunc};
+unsigned char (*functionPtrs[])(unsigned char,unsigned int) = {&addFunc,&andFunc, &xorFunc, &orFunc, &shiftLeftFunc, &shiftRightFunc};
 
 //uses opID to call the funtion in functionPtrs on the input values.
 unsigned char operator(unsigned char input, enum operationID opID, int val){
@@ -70,7 +68,7 @@ int superOptimizer (unsigned char * startingInput,unsigned char * input, int num
 	unsigned int i,j,k;
 	unsigned char newinput[numDistInputs];
 	int opsSize = sizeof(operations)/sizeof(char);
-	int opsMax[] = {256, 256, 256, 8, 8};
+	int opsMax[] = {256, 256, 256, 256, 8, 8};
 	
 	for(k = 0; k < opsSize; ++k){
 		int opIt = totOps - numOps;
@@ -105,10 +103,10 @@ int superOptimizer (unsigned char * startingInput,unsigned char * input, int num
 }
 
 
-char evaluate(int input, char * opsSeq, int * numSeq, int maxNumOps){
+char evaluate(int input, char * opsSeq, int * numSeq, int maxNumOps, int numOps){
 	int i,j;
 	unsigned char output = input; 
-	for(i=0;i<maxNumOps;++i)
+	for(i = maxNumOps-numOps;i<maxNumOps;++i)
 		output = operator(output, opsSeq[i], numSeq[i]);
 	return output;
 }
@@ -174,10 +172,11 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 		double runTime = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 		runTimes[i] = runTime;
 	}
-	
+	int numOps = 0;
 	for(i=0;i<maxNumOps;++i){
 		if(numSeq[i] != 0){
 			opRep[i] = operations[opsSeq[i]];
+			++numOps;
 		}else{
 			opRep[i] = ' ';
 		}
@@ -186,7 +185,7 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 	for(i=0;i<evalRuns;i++){
 		gettimeofday(&time0,NULL);
 		for(j = 0; j < fileSize; ++j){
-			evaluate(testBuf[j], opsSeq, numSeq, maxNumOps);
+			evaluate(testBuf[j], opsSeq, numSeq, maxNumOps, numOps);
 		}
 		gettimeofday(&time1,NULL);
 		double evalTime = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
@@ -195,7 +194,7 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 	free(testBuf);	
 
 	for(i=0; i < numDistInputs; ++i){
-		output[i] = evaluate(input[i], opsSeq, numSeq,maxNumOps);
+		output[i] = evaluate(input[i], opsSeq, numSeq,maxNumOps, numOps);
 	}
 
 	

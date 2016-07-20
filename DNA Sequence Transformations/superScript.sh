@@ -32,6 +32,9 @@ do
 	for((inputSet=1; inputSet< (numInputSets+1); ++inputSet))
 		do
 			echo "input set number $inputSet is being printed"
+			echo $(date +%Y-%m-%d-%T)
+			echo "Current Number of Inputs: $i"
+			echo ""
 			./superOptimizer2 $i $fileSize $(( RANDOM )) $runs $evals
 			if [ $inputSet -eq $runs ]
 			then
