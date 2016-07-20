@@ -313,9 +313,10 @@ int write_bit_stream (struct bit_stream *bs, uint64_t src, int bits)
 		
 		bs->bit_pos++;
 	}
-	
-	//printf("wrote %d bits (%llu) to stream (now at byte %d bit %d)\n", 
-	//	bits, src, bs->byte_pos, bs->bit_pos);
+#ifdef PRINT_BITS
+	printf("wrote %d bits (%llu) to stream (now at byte %d bit %d)\n", 
+		bits, src, bs->byte_pos, bs->bit_pos);
+#endif
 
 	return 0;
 }
@@ -465,6 +466,47 @@ int code_rep (int code_len, int num, struct bit_stream *bs)
 	return 0;
 }
 
+int write_rle_codes (uint16_t *code_lens, int num, struct bit_stream *bs)
+{
+	int i, j, rl = 0;
+	
+	for (i = 0; i < num; ) {
+		for (rl = 0, j = i; j < num; j++) {
+			if (code_lens[i] != code_lens[j])
+				break;
+			rl++;
+		}
+		printf("run length = %d of %d\n", rl, code_lens[i]);
+		
+		code_rep(code_lens[i], rl, bs);
+		
+		i = j;
+	}
+	
+	return 0;
+}
+
+void test_repcode (void)
+{
+	struct bit_stream *bs;
+	alloc_bit_stream(&bs, 256);
+	
+	uint16_t code_lens[40] = {1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 
+			     0, 0, 0, 0, 0, 6, 3, 1, 6, 4, 
+			     5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 
+			     5, 5, 5, 5, 5, 5, 5, 2, 2, 2};
+			     
+	write_rle_codes(code_lens, 40, bs);
+	
+	code_rep(1, 2, bs);
+	code_rep(4, 19, bs);
+	code_rep(0, 835, bs);
+	
+	print_bit_stream(bs);
+	
+	free_bit_stream(bs);
+}
+
 
 
 /****************************************************************************************/
@@ -553,7 +595,8 @@ void mh_insert (struct min_heap *min_heap, struct mh_node *mh_node)
 	min_heap->array[i] = mh_node;
 }
 
-void make_huffman_tree (struct mh_node **tree, struct huff_list *hlist, int num, int unique)
+void make_huffman_tree (struct mh_node **tree, struct huff_list *hlist, int num, 
+			int chars, int unique)
 {
 	struct mh_node *left, *right, *top;
 	int i;
@@ -562,7 +605,7 @@ void make_huffman_tree (struct mh_node **tree, struct huff_list *hlist, int num,
 	memset(&mh, 0, sizeof(struct min_heap));
    
 	mh.size = unique;
-	mh.array = calloc(num, sizeof(struct mh_node *));
+	mh.array = calloc(num + chars, sizeof(struct mh_node *));
 	
 	for (i = 0; i < num; ++i)
 		mh.array[i] = new_node(hlist[i].val, hlist[i].count);
@@ -574,7 +617,7 @@ void make_huffman_tree (struct mh_node **tree, struct huff_list *hlist, int num,
 		left = extract_min(&mh);
 		right = extract_min(&mh);
 
-		top = new_node(257, left->freq + right->freq);
+		top = new_node(256, left->freq + right->freq);
 		top->left = left;
 		top->right = right;
 		mh_insert(&mh, top);
@@ -586,19 +629,19 @@ void make_huffman_tree (struct mh_node **tree, struct huff_list *hlist, int num,
 	mh.array = NULL;
 }
 
-void find_huffcode (struct huff_list hl[256], struct mh_node *base, int buf, int pos)
+void find_huffcode (struct huff_list *hl, int chars, struct mh_node *base, int buf, int pos)
 {
 	if (base->left) {
 		buf &= ~(1 << pos);
-		find_huffcode(hl, base->left, buf, pos + 1);
+		find_huffcode(hl, chars, base->left, buf, pos + 1);
 	} 
 	 
 	if (base->right) { 
 		buf |= (1 << pos);
-		find_huffcode(hl, base->right, buf, pos + 1);
+		find_huffcode(hl, chars, base->right, buf, pos + 1);
 	}
 	
-	if (base->data < 256 && (!(base->left) && !(base->right))) {
+	if (base->data != 256 && (!(base->left) && !(base->right))) {
 		printf("%d: ", base->data);	
 		
 		int j;
@@ -611,7 +654,7 @@ void find_huffcode (struct huff_list hl[256], struct mh_node *base, int buf, int
 		
 		putchar('\n');
 		
-		for (j = 0; j < 256; j++) {
+		for (j = 0; j < chars; j++) {
 			if (hl[j].val == base->data) {
 				hl[j].hcode = buf;
 				hl[j].hc_len = pos;
@@ -644,28 +687,33 @@ void print_huffcodes (struct huff_list *hlist, int num)
 	}
 }
 
-void huff_encode (uint8_t *src, int num, struct huff_list **hlist)
+int huff_encode (uint16_t *src, int num, int chars, struct huff_list **hlist)
 {
-	int count[288] = { 0 };
+	int *count = calloc(sizeof(int), chars);
 	struct mh_node *htree = NULL;
 	int unique = 0, i;
 	
-	*hlist = calloc(288, sizeof(struct huff_list));
+	*hlist = calloc(chars * 2, sizeof(struct huff_list));
 	
 	for (i = 0; i < num; i++)
 		count[src[i]]++;
 
-	for (i = 0; i < 288; i++) {
+	for (i = 0; i < chars; i++) {
 		(*hlist)[i].val = i;
 		(*hlist)[i].count = count[i];
+		
+		printf("%d entries with value %d\n", count[i], i);
 		
 		if (count[i])
 			++unique;
 	}
 	
-	make_huffman_tree(&htree, *hlist, num, unique);
+	make_huffman_tree(&htree, *hlist, num, chars, unique);
 	
-	find_huffcode(*hlist, htree, 0, 0);
+	find_huffcode(*hlist, chars, htree, 0, 0);
+	free(count);
+	
+	return unique;
 }
 
 void make_static_hlist (struct huff_list **phlist, struct huff_list **pdlist, int **bit_count)
@@ -703,12 +751,12 @@ void make_static_hlist (struct huff_list **phlist, struct huff_list **pdlist, in
 
 void test_hcoder (void)
 {
-	uint8_t test[17] = {1, 2, 1, 2, 3, 4, 4, 4, 5, 6, 7, 7, 7, 7, 7, 7, 10};
+	uint16_t test[17] = {1, 2, 1, 2, 3, 4, 4, 4, 5, 6, 7, 7, 7, 7, 7, 7, 10};
 	struct huff_list *hlist;
 	
 	printf("[%s]: testing huffman coder\n", __func__);
 	
-	huff_encode(test, 17, &hlist);
+	huff_encode(test, 17, 288, &hlist);
 	
 	print_huffcodes(hlist, 17);
 	
@@ -865,7 +913,6 @@ void test_dlcoder (void)
 }
 #endif
 
-
 /****************************************************************************************/
 /*	lzw encoder	*/
 /****************************************************************************************/
@@ -920,7 +967,6 @@ void get_longest_match (uint8_t *in, int bytes, int cp, int *dist, int *len)
 struct lz_out {
 	uint16_t len;
 	uint16_t dist;
-
 };
 
 int lz77 (uint8_t *in, int bytes, struct lz_out **out, int win_size)
@@ -980,6 +1026,25 @@ void test_lz77 (void)
 {
 #endif
 
+int count_bits (uint64_t src)
+{
+	int count = 1;
+	
+	while (src >>= 1)
+		count++;
+	
+	return count;
+}
+
+void reorder (uint16_t *dst, uint16_t *src)
+{
+	int order[19] = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15};
+	int i;
+	
+	for (i = 0; i < 19; i++) 
+		dst[i] = src[order[i]];
+}
+
 void swap (char *a, char *b)
 {
 	char c = *a;
@@ -987,21 +1052,23 @@ void swap (char *a, char *b)
 	*a = *b;
 	*b = c;
 }
-#if 0
+#if 1
 int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 {
 	int pos = 0, toc, i;
-	struct huff_len_table hlt[259];
+	struct huff_len_table hlt[288];
 	make_hufftable(hlt);
 	struct bit_stream *bs;
 	struct huff_list *hlist, *dlist;
 	struct lz_out *lz;
 	int bl_count[288], code, eb, ev;
+	uint16_t new_dist[20];
 	
 	while (pos < len) {
 		if ((toc = (len - pos)) > blk_size)
 			toc = blk_size;
-		
+			
+
 		memset(bl_count, 0, sizeof(bl_count));
 	
 		alloc_bit_stream(&bs, toc * 2);
@@ -1009,58 +1076,66 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 		int num = lz77(src + pos, toc, &lz, 512);
 	
 		printf("[%s]: testing huffman coder\n", __func__);
-		
-
 	
-		huff_encode(src + pos, toc, &hlist);
+		//printf("%d unique\n", huff_encode(src + pos, toc, 288, &hlist));
 		
-		uint16_t tmp[32] = { 0 };
-		
-		for (i = 0; i < num; i++) {
+		uint16_t *lens = calloc(sizeof(uint16_t), toc);
+		uint16_t *dist = calloc(sizeof(uint16_t), toc);
+
+		for (i = 0; i < toc; i++) {
 			dist_code(lz[i].dist, &code, &eb, &ev);
-			tmp[code]++;
+			dist[i] = code;
+			
+			
+			if (lz[i].dist) {
+				lens[i] = hlt[lz[i].len].len_code;
+				i += lz[i].len;
+			} else {
+				lens[i] = lz[i].len;
+			}
+			
+
+			//printf("%d: len %d dist %d\n", i, lens[i], dist[i]);
 		}
 		
-		for (i = 0; i < 32; i++) 
-			printf("%d distance codes of length %d\n", tmp[i], i);
+		int num_dist = huff_encode (dist, toc, 32, &dlist);
+		int num_lenc = huff_encode (lens, toc, 288, &hlist); 
+		printf("%d unique dist codes, %d unique len/lit codes\n", num_dist, num_lenc);
 		
-		huff_encode (tmp, 31, &dlist);
+		//print_huffcodes(hlist, 288);
+		//print_huffcodes(dlist, 31);
 		
-/*		int n, code = 0, bits, next_code[288];
-	///int max_code = hlist[287].hcode;
-    bl_count[0] = 0;
-
-    for (bits = 1; bits <= 15; bits++) {
-
-        code = (code + bl_count[bits-1]) << 1;
-
-        next_code[bits] = code;
-    }
-    
-        for (n = 0;  n < 288; n++) {
-
-        len = hlist[n].hc_len;
-
-        if (len != 0) {
-
-            hlist[n].hcode = next_code[len];
-
-            next_code[len]++;
-
-        }
-
-    }
-*/
-		print_huffcodes(hlist, 288);
+		int num_codelens = 0;
+		int vcl[20] = { 0 };
 		
-		print_huffcodes(dlist, 31);
-		//make_static_hlist(&hlist, &dlist, &bit_count);
+		for (i = 0; i < 288; i++) {
+			printf("%d: code %d len %d freq %d\n", i, lens[i], 
+				hlist[i].hc_len, hlist[i].count);
+			lens[i] = hlist[i].hc_len;
+		}
+		for (i = 0; i < 19; i++) {
+			printf("%d: code %d len %d freq %d\n", i, dist[i], 
+				dlist[i].hc_len, dlist[i].count);
+			dist[i] = dlist[i].hc_len;
+			
+			if (vcl[dist[i]]++ == 0)
+				++num_codelens;
+		}
 		
-		if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
-			return -1;
+		printf("%d unique dist code lengths\n", num_codelens);
+	
+		reorder(new_dist, dist);
+		
+		write_bit_stream(bs, ((toc != blk_size) ? 1 : 0) + 6, 3);
+		write_bit_stream(bs, num_lenc - 256, 5);
+		write_bit_stream(bs, num_dist, 5);
+		write_bit_stream(bs, num_codelens - 4, 4);
+		
+		write_rle_codes(new_dist, 19, bs);
+		
+		write_rle_codes(lens, 288, bs);
 		
 		for (i = 0; i < num; i++) {
-	
 			int length = lz[i].len;
 			int pos = lz[i].dist;
 			
@@ -1083,12 +1158,19 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 			}
 		}
 		
+		write_bit_stream(bs, hlist[256].hcode, hlist[256].hc_len);
+		
+		if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
+			return -1;
+		
 		printf("%d bytes to %d\n", toc, bs->byte_pos);
 	
 		free_bit_stream(bs);
 		free(lz);
 		free(hlist);
 		free(dlist);
+		free(lens);
+		free(dist);
 		
 		pos += toc;
 	}
@@ -1204,16 +1286,7 @@ int write_gzfile (const char *src, const char *dst)
 int main (void)
 {
 
-	struct bit_stream *bs;
-	alloc_bit_stream(&bs, 256);
-	
-	code_rep(1, 2, bs);
-	code_rep(4, 19, bs);
-	code_rep(0, 835, bs);
-	
-	print_bit_stream(bs);
-	
-	free_bit_stream(bs);
+	test_repcode();
 	
 	//return 0;
 	
