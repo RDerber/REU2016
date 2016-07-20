@@ -23,10 +23,19 @@ set datafile separator ","
 set output outputPath
 set title graphTitle
 
+print graph
+print xvals
+print yvals
+
 set xlabel myXLabel
 set ylabel "Transform Time (µsec)"
 set key center bottom right title box 3
-f(x)=a*log(x)/log(2)+b
-fit f(x) graph u xvals:yvals via a,b
-title_f(a,b)=sprintf('f(x)=%.2flog(x)/log(2)+%.2f',a,b)
-plot graph u xvals:yvals notitle with linespoints,f(x) t title_f(a,b)
+a=.01
+b=.1
+c=.01
+d=.01
+e=1
+f(x)=c*x**3+e
+fit f(x) graph using xvals:yvals via c,e
+title_f(c,e)=sprintf('f(x)=%.2fx^3+%.2f',c,e)
+plot graph u xvals:yvals notitle with linespoints,f(x) t title_f(c,e)

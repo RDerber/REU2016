@@ -1,4 +1,16 @@
 #/bin/bash
+#Creates a benchmark report of the following programs:
+# -FastaTo2Bit.c
+# -MultiFastaTo2Bit.c
+# -SamTo2Bit.c
+# -CodonOptimizer.c
+# -divideAndOptimize.c
+#
+# The benchmark consists of a directory titled with the current date, containing subdirectories with the following information for each function:
+#   - A .json output file with all timing information
+#   - Relative .csv files for each function 
+#   - Relative .png graphs for each function
+#
 
 today=$(date +%Y-%m-%d-%T)
 mkdir ./tests/benchmarkTests/$today
@@ -10,6 +22,12 @@ sh fastaScript.sh $today
 cp ./tests/fastaTests/$today/*png ./tests/benchmarkTests/$today
 cp ./tests/fastaTests/$today/*csv ./tests/benchmarkTests/$today
 cp ./tests/fastaTests/$today/*json ./tests/benchmarkTests/$today
+
+echo Fastq Timing
+sh fastqScript.sh $today
+cp ./tests/fastqTests/$today/*png ./tests/benchmarkTests/$today
+cp ./tests/fastqTests/$today/*csv ./tests/benchmarkTests/$today
+cp ./tests/fastqTests/$today/*json ./tests/benchmarkTests/$today
 
 echo Mutli-Fasta Timing
 sh multiScript.sh $today
@@ -41,6 +59,11 @@ cp ./tests/divAndOptTests/$today/*json ./tests/benchmarkTests/$today
 
 
 #Mapping n inputs to output values [0-n]
-#echo SuperOptimizer
+
+echo SuperOptimizer
+sh superScript.sh $today
+cp ./tests/superTests/$today/*png ./tests/benchmarkTests/$today
+cp ./tests/superTests/$today/*csv ./tests/benchmarkTests/$today
+cp ./tests/superTests/$today/*json ./tests/benchmarkTests/$today
 
 

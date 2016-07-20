@@ -107,7 +107,67 @@ int randGen (char* fileType, int fileSize, char* fileName, int numSeq) {
 			printf("Error writing file");
 		}
 	}else if(!strcmp(fileType,"q")||!strcmp(fileType,"Q")){ // FASTQ
-		printf("Sorry, this feature is currently unavailble.");
+		int j;
+		FILE * ofp;
+		if((ofp = fopen(fileName,"w"))!= NULL){
+			char dateAndTime [80]; 			//Create Header Line
+			strftime(dateAndTime, 80, "%x - %I:%M%p", localtime(&currentTime));
+			fprintf(ofp,"%s %s %s %s\n","@Randomly Generated File on", dateAndTime, "File Name:",fileName);		
+			int seqSize = fileSize/numSeq;
+			int remainder = fileSize%numSeq;
+	
+			for(i=0; i<numSeq; i++){
+				if(i!= 0){
+					fprintf(ofp,"\n%s %d\n","@Sequence Header #",(i+1));
+				}
+				if(i != numSeq-1){
+					for(j=0; j < seqSize; ++j){	// Random Sequence
+						int letter = rand()%4;
+						if(letter == 0){			
+							fprintf(ofp,"%c",'A');
+						}else if(letter == 1){			
+							fprintf(ofp,"%c",'C');
+						}else if(letter == 2){			
+							fprintf(ofp,"%c",'G');
+						}else if(letter == 3){			
+							fprintf(ofp,"%c",'T');
+						}
+						
+					}
+					fprintf(ofp,"\n%s %d\n","+Optional Sequence Header #",(i+1));
+					for(j=0; j < seqSize; ++j){	// Random Quality
+						int qChar = rand()%94 + 33;
+						fprintf(ofp,"%c",qChar);
+					}	
+						
+				}
+				else{					// Attatch remainder to the last sequence 
+					for(j=0; j < seqSize+remainder; ++j){
+						int letter = rand()%4;
+						if(letter == 0){			
+							fprintf(ofp,"%c",'A');
+						}else if(letter == 1){			
+							fprintf(ofp,"%c",'C');
+						}else if(letter == 2){			
+							fprintf(ofp,"%c",'G');
+						}else if(letter == 3){			
+							fprintf(ofp,"%c",'T');
+						}
+					}
+					fprintf(ofp,"\n%s %d\n","+Optional Sequence Header #",(i+1));
+					for(j=0; j < seqSize; ++j){	// Random Quality
+						int qChar = rand()%94 + 33;
+						fprintf(ofp,"%c",qChar);
+					}	
+				}
+			}
+	
+			fclose(ofp);
+			printf("\"%s\" %s\n",fileName,"FASTQ file created.");	
+			
+		}else{		
+			printf("Error writing file");
+		}
 	}else if(!strcmp(fileType,"s")||!strcmp(fileType,"S")){ // SAM
 		int j;
 		FILE * ofp;

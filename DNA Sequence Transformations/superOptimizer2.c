@@ -5,15 +5,16 @@
 #include <limits.h>
 #include "jsonData.h"
 
-enum operationID {add = 0, sub = 1, and = 2, xor = 3, lsl = 4, lsr = 5};
-char operations[] = {'+','-','&','^','<','>'};
+enum operationID {add = 0, and = 1, xor = 2, lsl = 3, lsr = 4};
+char operations[] = {'+','&','^','<','>'};
 
+/*These functions allow us to use an array of function pointers pointing to these functions in order to identify and perform the operation in constant time and without the use of a switch case statement. */
 unsigned char addFunc(unsigned char a, unsigned int b){
 	return a+b;
 }
 
 unsigned char andFunc(unsigned char a, unsigned int b){
-	return a&(~b);
+	return a&b;
 }
 
 unsigned char xorFunc(unsigned char a, unsigned int b){
@@ -36,20 +37,13 @@ unsigned char assignFunc(unsigned char a, unsigned int b){
 
 unsigned char (*functionPtrs[])(unsigned char,unsigned int) = {&addFunc,&andFunc,&xorFunc,&shiftLeftFunc,&shiftRightFunc,&assignFunc};
 
-int findmin(unsigned char* input, int numDistInputs){
-	int min = input[0];
-	int i;
-	for(i = 1; i<numDistInputs; ++i){
-		if(input[i] < min) min = input[i];
-	}
-	return min;
-}
-
+//uses opID to call the funtion in functionPtrs on the input values.
 unsigned char operator(unsigned char input, enum operationID opID, int val){
 	input = functionPtrs[opID](input,val);
 	return input;
 }
 
+/*checks to see if the inputs are minimal perfect hashed*/
 int compare (unsigned char* input, int numDistInputs, unsigned char * startingInput){
 	int i;
 	int j;
@@ -71,16 +65,19 @@ int compare (unsigned char* input, int numDistInputs, unsigned char * startingIn
 	}
 }
 
+//an exhaustive search of all sequences of operations, returning when the specifications set by compare are met.
 int superOptimizer (unsigned char * startingInput,unsigned char * input, int numDistInputs, int totOps, int numOps, char* opsSeq, int* numSeq){
-	int i,j,k;
+	unsigned int i,j,k;
 	unsigned char newinput[numDistInputs];
 	int opsSize = sizeof(operations)/sizeof(char);
-	int minInput = findmin(input,numDistInputs);
-	//printf("%s%d\n", "minInput: ", minInput);
-	int opsMax[] = {128, minInput+1, 128, 128, 8, 8};
+	int opsMax[] = {256, 256, 256, 8, 8};
+	
 	for(k = 0; k < opsSize; ++k){
 		int opIt = totOps - numOps;
 		int constMax = opsMax[k];
+		
+/*Below are theorietically optimizations, preventing redundant operatios from being tested (ex: lsl then lsr is redundant with & and shift) but with the current implementation they break the program.*/
+
 //		if(opIt > 0 && (opsSeq[opIt -1] == operations[k] ||
 //			 (k==0 && opsSeq[opIt-1] == operations[1]) ||
 //				(k==1 && opsSeq[opIt-1] == operations[0]) ||
@@ -89,9 +86,14 @@ int superOptimizer (unsigned char * startingInput,unsigned char * input, int num
 //							continue;
 		for(i = 0; i < constMax; ++i){
 			for(j = 0; j < numDistInputs; ++j){
-				newinput[j] = operator(input[j],k,i);
 				opsSeq[opIt] = k;
-				numSeq[opIt] = i;
+				if(k == and){
+					newinput[j] = operator(input[j],k,255-i);
+					numSeq[opIt] = 255-i;
+				}else{
+					newinput[j] = operator(input[j],k,i);
+					numSeq[opIt] = i;
+				}
 			}
 		if(!compare(newinput, numDistInputs, startingInput)) return 0;
 		else if(numOps > 1 &&
@@ -111,25 +113,26 @@ char evaluate(int input, char * opsSeq, int * numSeq, int maxNumOps){
 	return output;
 }
 
-int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random seed](for random inputs and file size) or specify inputs and files to transform [input 1]...[input n][evaluateFile][outputFile]
+int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random seed] [num of superOptruns] [num of EvalRuns]
 //	char input[] = {'\x00','\x01','\x02','\x03','\x04'};
 //	char input[] = {'A','C','G','T','N'};
 	int i,j,k;
-	int maxNumDistInputs = 200;	//input size exceeding 200 causes our naive unique number generator to be extremely slow, exceeding 256
+	int maxNumDistInputs = 200;//input size exceeding 200 causes our naive unique number generator to be extremely slow, exceeding 256
 				//breaks the number generator
 
-	int runs = atoi(argv[4]);
-	int numDataForms = 2; //RunTime, EvalTime, OpArray, numArray,input, output
+	int superOptRuns = atoi(argv[4]);
+	int evalRuns = atoi(argv[5]);
+	int numDataForms = 2; //runTime, evalTime
 	
 	unsigned char * input;
 	unsigned char * output;
 	int numDistInputs;
-	double runTimes[runs];
-	double evalTimes[runs];
+	double runTimes[superOptRuns];
+	double evalTimes[evalRuns];
 	int maxNumOps = 6;
 	long fileSize = atoi(argv[2]);
 	
-	if(argc != 5){
+	if(argc != 6){
 		printf("Bad arguments");
 		return -1;
 	}
@@ -164,7 +167,7 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 	}
 	int success = -1;
 	struct timeval time0,time1;
-	for(i=0;i<runs;i++){
+	for(i=0;i<superOptRuns;i++){
 		gettimeofday(&time0,NULL);
 		success = superOptimizer(input, input, numDistInputs, maxNumOps, maxNumOps, opsSeq, numSeq);
 		gettimeofday(&time1,NULL);
@@ -180,7 +183,7 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 		}
 	}
 	
-	for(i=0;i<runs;i++){
+	for(i=0;i<evalRuns;i++){
 		gettimeofday(&time0,NULL);
 		for(j = 0; j < fileSize; ++j){
 			evaluate(testBuf[j], opsSeq, numSeq, maxNumOps);
@@ -206,7 +209,11 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 	
 	int numLabels= sizeof(labelArray)/sizeof(char*); 
 	
-	if(write_super_file(timeArray, labelArray, numLabels, runs, opRep, numSeq, maxNumOps, input, output, numDistInputs) < 0)
+	int runsArray[numDataForms];
+	runsArray[0] = superOptRuns; 
+	runsArray[1] = evalRuns; 
+	
+	if(write_super_file(timeArray, labelArray, numLabels, runsArray, opRep, numSeq, maxNumOps, input, output, numDistInputs) < 0)
 		printf("error writing data file\n"); 
 		
 	free(input);

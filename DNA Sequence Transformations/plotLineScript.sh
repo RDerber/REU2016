@@ -30,4 +30,4 @@ set xtics rotate by -90
 f(x)=a*x+b
 fit f(x) graph u xvals:yvals via a,b
 title_f(a,b)=sprintf('f(x)=%.2fx+%.2f',a,b)
-plot graph u xvals:yvals with linespoints,f(x) t title_f(a,b)
+plot graph u xvals:yvals notitle with linespoints,f(x) t title_f(a,b)

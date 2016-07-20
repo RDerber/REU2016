@@ -35,4 +35,4 @@ b=50
 f(x)=a**x+b
 fit f(x) graph using xvals:yvals via a,b
 title_f(a,b)=sprintf('f(x)=%.2f^{x}+%.2f',a,b)
-plot graph u xvals:yvals with linespoints,f(x) t title_f(a,b)
+plot graph u xvals:yvals notitle with linespoints,f(x) t title_f(a,b)

@@ -10,18 +10,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "writeJson.h"
-//#include "divideAndOptimize.h"
+#include "jsonData.h"
+
 
 enum operationID {add = 0, and = 1, xor = 2, lsl = 3, lsr = 4, assign = 5};
 char operations[] = {'+','&','^','<','>','='};
 
+
+/*These functions allow us to use an array of function pointers pointing to these functions in order to identify and perform the operation in constant time and without the use of a switch case statement. */
 unsigned char addFunc(unsigned char a, unsigned int b){
 	return a+b;
 }
 
 unsigned char andFunc(unsigned char a, unsigned int b){
-	return a&(~b);
+	return a&(b);		
 }
 
 unsigned char xorFunc(unsigned char a, unsigned int b){
@@ -42,8 +44,10 @@ unsigned char assignFunc(unsigned char a, unsigned int b){
 	return b;
 }
 
+//this is the aforementioned funtion pointer array.
 unsigned char (*functionPtrs[])(unsigned char,unsigned int) = {&addFunc,&andFunc,&xorFunc,&shiftLeftFunc,&shiftRightFunc,&assignFunc};
 
+//Searches from the highest bit downwards, returns a number with only this bit. Only works for unsigned integers
 size_t highestBit(int num){
 	int i;
 	size_t check = 1;
@@ -56,6 +60,7 @@ size_t highestBit(int num){
 	}
 }
 
+//Finds the position of the first value in an array that is different than the input.
 char findFirstDiff(unsigned char input, unsigned char* arr, size_t arrSize){
 	int i;
 	for(i = 0; i < arrSize; ++i){
@@ -64,22 +69,14 @@ char findFirstDiff(unsigned char input, unsigned char* arr, size_t arrSize){
 	return 0;
 }
 
-int findmin(unsigned char* input, int inputSize){
-	int min = input[0];
-	int i;
-	for(i = 1; i<inputSize; ++i){
-		if(input[i] < min) min = input[i];
-	}
-	return min;
-}
-
+//uses opID to call the funtion in functionPtrs on the input values.
 char operate(unsigned char input, int opID, unsigned int val){
 	input = functionPtrs[opID](input,val);
 	return input;
 }
 
-int compare (unsigned char* input, int inputSize, unsigned char * startingInput){ // Checks to see if input values have been mapped
-										// to 2 separate groups. Then returns the size of 											// the first group. 
+/*Checks to see if input values have been mapped to 2 unique values, essentially grouping them into 2 different groups. Then returns the size of the first group.*/
+int compare (unsigned char* input, int inputSize, unsigned char * startingInput){ 
 	
 	int i,j;
 	char group1 = input[0];
@@ -95,28 +92,25 @@ int compare (unsigned char* input, int inputSize, unsigned char * startingInput)
 		if(input[j] == group1)++count1;
 		else if(input[j] != group2){			 
 			return 0;
-			}
+		}
 		else ++count2;
 	}
 
 	if(count1 >= inputSize/2 && count2 >= inputSize/2){
-//		printf("Transformations:\nInput:\tOutput:\n");
-//		for(i=0;i<inputSize;++i)
-//			printf("%d%s%d\n",startingInput[i],"   ->   ", input[i]);
 		return count1;
 	}else return 0;
 }
 
+//maps two unique numbers to 0 and 1
 int boolify(unsigned char a,unsigned char b, unsigned char *opsSeq,unsigned int *numSeq,int maxNumOps){
 	int i;
 	for(i=0;i<sizeof(char)*8;++i){
-		unsigned int check = '\x01'<<i;
+		unsigned int check = '\x01'<<i;	//shifts a bit left (0001 -> 0010) to check for a place where the bytes differ
 		if((a&check && !(b&check)) || (!(a&check) && b&check)){
 			opsSeq[maxNumOps-2] = and;
-			numSeq[maxNumOps-2] = ~check;
+			numSeq[maxNumOps-2] = check;
 			opsSeq[maxNumOps-1] = lsr;
 			numSeq[maxNumOps-1] = i;
-//			printf("%s %d","boolify:",(a&check)>>i);
 			return a&check;
 		}
 	}
@@ -125,7 +119,8 @@ int boolify(unsigned char a,unsigned char b, unsigned char *opsSeq,unsigned int 
 }
 
 int superOptimizer (unsigned char * startingInput, unsigned char * input, int inputSize, int totOps, int numOps, char* opsSeq,unsigned int* numSeq){
-	int i,j,k;
+	unsigned int j,k;
+	unsigned int i;
 	char constInput[inputSize];
 	for(i=0;i<inputSize;++i) constInput[i] = input[i];
 	int opsSize = sizeof(operations)/sizeof(char);
@@ -134,17 +129,24 @@ int superOptimizer (unsigned char * startingInput, unsigned char * input, int in
 	for(k = 0; k < opsSize; ++k){
 		int opIt = totOps - numOps;
 		int constMax = opsMax[k];
-	//	if(opIt > 0 && (opsSeq[opIt -1] == operations[k] ||
-	//				(k==3 && opsSeq[opIt-1] == operations[4]) ||
-	//					(k==4 && opsSeq[opIt -1] == operations[3])))
-	//						continue;
-		for(i = 0; i < constMax; ++i){
+		
+/*Below are theorietical optimizations, preventing redundant operatios from being tested (ex: lsl then lsr is redundant with & and shift) but with the current implementation they break the program.*/
+
+//		if(opIt > 0 && (opsSeq[opIt -1] == operations[k] ||
+//					(k==3 && opsSeq[opIt-1] == operations[4]) ||
+//						(k==4 && opsSeq[opIt -1] == operations[3])))
+//							continue;
+		for(i = 0; i != constMax-1; ++i){
 			for(j = 0; j < inputSize; ++j){				
-				input[j] = operate(constInput[j],k,i);
 				opsSeq[opIt] = k;
-//				if(k == and) numSeq[opIt] = ~i;
-//				else
-				 numSeq[opIt] = i;
+				if(k == and){
+					/*255-i is used to avoid & with 0 as the first operation that occurs. When &0 occurs it 					can cause drastic increases in the time it takes to find a correct sequence of 						operations, depending on the depth of the search. Better versions of this should not 						perform &0 at all.*/
+					input[j] = operate(constInput[j],k,255-i);
+					numSeq[opIt] = 255-i;
+				}else{
+					input[j] = operate(constInput[j],k,i);
+					numSeq[opIt] = i;
+				}
 			}
 			if((group1Size=compare(input, inputSize,  startingInput))!= 0){
 				return group1Size; 	// If successful sequence of 	
@@ -160,9 +162,11 @@ int superOptimizer (unsigned char * startingInput, unsigned char * input, int in
 	return -1;
 }
 
+
+//Recursively calls itself, divides an input set into 2 different sets, stores how it divides the set
 int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsigned char *output, int inputSize,char** opArray,unsigned int** numArray, int maxNumOps, int opLevel){
-	// Note: startingInput and input start out as the same thing
-//Base Case: Separated into arrays of size 2
+	//Note: startingInput and input start out as the same thing
+	//Base Case: Separated into arrays of size 2
 	int i;
 	char opsSeq[maxNumOps];
 	unsigned int numSeq[maxNumOps];
@@ -186,7 +190,7 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 	if(group1Size == -1) return -1;
 	int group2Size = inputSize-group1Size;
 
-//Separate inputs into groups based on the last superOptimizer run	
+	//Separate inputs into groups based on the last superOptimizer run	
 	unsigned char group1[group1Size];
 	unsigned char group2[group2Size];
 	unsigned char group1out[group1Size];
@@ -200,8 +204,7 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 	}
 
 	for(i=0; i<inputSize; ++i){ 			// Sorting out original values based on what they mapped to
-		if(input[i] == group1Check){		// **** Assuming that half of values will always map to 0. Is this true? 
-							// Otherwise, the comparison value can be set to input[0] and start at i=1; 
+		if(input[i] == group1Check){
 			group1[g1counter] = startingInput[i];
 			group1out[g1counter++] = output[i];
 		}
@@ -211,21 +214,11 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 		}
 	}
 
-//Recover opsSeq and numSeq from the last superOptimizer run
+	//Recover opsSeq and numSeq from the last superOptimizer run
 	for(i=0;i<maxNumOps;++i){
 		opArray[opLevel][i] = opsSeq[i];
 		numArray[opLevel][i] = numSeq[i];
 	}
-
-// Send each group off onto separate branches with empty opsSeq and numSeq arrays to fill in
-//	printf("%s%d\n","group1Size: ",group1Size);
-//	printf("%s%d\n","group2Size: ",group2Size);
-//	for(i=0; i<group1Size; ++i){
-//		printf("%s %d\n","group1:", group1[i]);
-//	}
-//	for(i=0; i<group2Size; ++i){
-//		printf("%s %d\n","group2:", group2[i]);
-//	}
 
 	unsigned char startingGroup1[group1Size];
 	unsigned char startingGroup2[group2Size];
@@ -235,11 +228,12 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 	for(i=0;i<group2Size;++i){
 		startingGroup2[i] = group2[i];
 	}
+	//call divide and optimize recursively on the two 1/2 sized groups
 	divideAndOptimize(startingGroup1, group1, group1out, group1Size, opArray, numArray, maxNumOps, opLevel*2);
 	return divideAndOptimize(startingGroup2, group2, group2out, group2Size, opArray, numArray, maxNumOps, ((opLevel*2) + 1));	
 }
 
-
+//prints information about the tree that was created, would like to make it prettier
 void treePrint(char** opArray, unsigned int ** numArray, size_t numBranches, int maxNumOps, int * numOps){
 	int i,j;
 	printf("%s %d\n","Number of branches:", numBranches);
@@ -256,11 +250,12 @@ void treePrint(char** opArray, unsigned int ** numArray, size_t numBranches, int
 
 }
 
+/*uses the supplied codonAminoAcidKey.txt to create arrays of inputs and outputs*/
 int keyIdentifier(FILE * ifp,unsigned char *input,unsigned char *output){
 	char byt; 
 	int inputCount = 0; 
 	int outputCount = 0;
-	while((byt=getc(ifp))!= EOF){
+	while((byt=getc(ifp))!= EOF){	//takes the three bases of the codon and maps them to a 2 bit format, information is preserved 						//as there are only 4 different bases
 	
 		if(byt != ' ' && byt != '\n' && byt != '\r' && byt!= ','){
 			if(byt != '>'){
@@ -288,7 +283,7 @@ int keyIdentifier(FILE * ifp,unsigned char *input,unsigned char *output){
 	}
 	return inputCount;
 } 
-
+/*reformats the fasta file into a 2 bit format with 3 bases in each byte*/
 int codonIdentifier(FILE * ifp,unsigned char *input){
 	char byt; 
 	char temp;
@@ -297,44 +292,43 @@ int codonIdentifier(FILE * ifp,unsigned char *input){
 
 	while((byt=getc(ifp))!= EOF){
 	
-		if(byt&'\x40'){
+		if(byt&'\x60'){	// &\x60 makes sure that a byte is not a control character
 			byt = byt & '\x06';
 			byt = byt << 3;
 			
-			while(!((temp = getc(ifp)) & '\x40')){}
+			while(!((temp = getc(ifp)) & '\x60')){}
 			temp =  temp & '\x06';
 			temp = temp <<1; 
 			byt = byt | temp; 
 
-			while(!((temp = getc(ifp)) & '\x40')){}
+			while(!((temp = getc(ifp)) & '\x60')){}
 			temp =  temp & '\x06';
 			temp = temp >> 1; 
 			byt = byt | temp; 
 			
-			input[inputCount++] = byt; 
+			input[inputCount++] = byt;
 		}
 	}
 	return inputCount;
 } 
 
+/*uses the tree that was formed by divide and optimize to descend towards the number it is tranformed into*/
 int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int maxNumOps){
 	int i = 1,j;
 	unsigned char direction;
 	while(opArray[i][maxNumOps-1] != assign){
 		direction = input;
 		for(j=0;j < maxNumOps;++j){
-			direction = operate(direction,((opArray[i])[j]),((numArray[i])[j]));
+			direction = operate(direction, (opArray[i])[j], ((numArray[i])[j]));
 		}
-	//	printf("%s%d %s%d\n","i: ",i, "direction: ",direction);
 		fflush(stdout);
 		i = i*2 + direction;
 	}
 	int output = numArray[i][maxNumOps-1];
-//	printf("%s %c %s %c\n","Input:", input, "Output:", output);
 	return output;
 }
 
-int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs][number of timing values to retain]
+int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	int i,j; 
 
 	int inputSize = 0; 
@@ -365,6 +359,8 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	
 	inputSize = keyIdentifier(ifp, input, output);
 	fclose(ifp);
+
+/*Random Input Generator */ 
 //	int inputSize = 128;
 //	unsigned char *input = malloc(sizeof(char)*inputSize);
 //	unsigned char *output = malloc(sizeof(char)*inputSize);
@@ -382,15 +378,15 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 
 
 
-	int maxNumOps = 5;			//must be at least 4 to store comparisions
+	int maxNumOps = 4;			//must be at least 4 to store comparisions
 
-	int success = -1;								// NEED TO IMPLEMENT divideAndOptimize in main
+	int success = -1;
 	size_t numBranches = 2 * highestBit(inputSize);						//number of operation sequences that divide
-	char **opArray = malloc(numBranches*sizeof(char*));							//out the inputs, similar to number of 
-	unsigned int ** numArray = malloc(numBranches*sizeof(unsigned int *));							//edges on a tree structure
+	char **opArray = malloc(numBranches*sizeof(char*));					//out the inputs, similar to number of 
+	unsigned int ** numArray = malloc(numBranches*sizeof(unsigned int *));				//edges on a tree structure
 	for(i=0;i < (numBranches); ++i){
 		opArray[i] = calloc(maxNumOps, sizeof(char));
-		numArray[i] = calloc(maxNumOps, sizeof(int));
+		numArray[i] = calloc(maxNumOps, sizeof(unsigned int));
 	}
 
 	unsigned char startingInput[inputSize];
@@ -418,7 +414,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 //		treePrint(opArray, numArray, numBranches, maxNumOps, numOps); 
 		
 
-//Map codons to amino acids
+		//Map codons to amino acids
 		
 		// Create Input Memory Buffer //
 		char *readIn = NULL;
@@ -455,9 +451,8 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		char * writeOut = malloc(sizeof(char)* (readSize+1));
 		int writeSize = readSize;
 		
-		float *times;
+		double *times;
 		int runs = 0;
-		int numTimes = 0;
 		int i, k;
 		if(argc == 4){
 			for(i=0;i<readSize; ++i){
@@ -467,8 +462,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		}
 		if(argc == 5){	//if a number of runs is given but no number of minimum times, default number of min times is 3
 			runs = atoi(argv[4]);
-			numTimes = 3;
-			times = calloc(runs, sizeof(float)); 
+			times = calloc(runs, sizeof(double)); 
 			struct timeval time0, time1; 
 			for(i=0;i<runs;i++){ // Record time of each run
 				gettimeofday(&time0,NULL);
@@ -480,24 +474,14 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 			}
 	
 		}
-		if(argc == 6){ //if both number of runs and the number of minimum times is given
-			runs = atoi(argv[4]);
-        		numTimes = atoi(argv[5]);
-			times = calloc(runs, sizeof(float));
-			struct timeval time0, time1; 
-			for(i=0;i<runs;i++){ // Record time of each run
-		                gettimeofday(&time0,NULL);
-		                for(k=0;k<readSize; ++k){
-						writeOut[k] = evaluate(readIn[k],opArray,numArray,maxNumOps);
-				}
-		                gettimeofday(&time1,NULL);
-		                times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-			}
-		}
-	
+
 		// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
 		if(argc > 4){
-			if(write_time_file(times, runs, numTimes,readSize) < 0)
+			char *labelArr[1];
+			labelArr[0] = "Transform Times";
+			int numLabels = sizeof(labelArr)/sizeof(char*); 
+			
+			if(write_time_file(&times, labelArr, numLabels, runs) < 0)	//write json file with timing data
 				printf("error writing time file\n");
 			free(times);
 		}

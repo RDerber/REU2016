@@ -2,9 +2,11 @@
 
 #Recompile all files before running timing function
 gcc jsonTitle.c -o jsonTitle
-gcc writeJson.c divideAndOptimize.c -o divideAndOptimize
+gcc -g jsonData.c divideAndOptimize.c -o divideAndOptimize
+gcc -g jsonData.c jsonSystemStats.c -o jsonSystemStats
+gcc -g divAndOptJsonToCSV.c -o divAndOptJsonToCSV
 
-if [ ! [ $1 = NULL ] ]
+if [ "$1" != "" ]
 then
 	today=$1
 else
@@ -13,67 +15,73 @@ fi
 
 mkdir ./tests/divAndOptTests/$today
 
+numInputFiles=0
+runs=500
+k=3
+folder="./tests/divAndOptTests/$today"
+
+./jsonSystemStats $folder/divAndOptTimeStats.json
+
 #Run divideAndOptimize divAndOpt Tests and Store in timeStats.txt
-./divideAndOptimize tests/divAndOptTests/key1.txt tests/divAndOptTests/key1In.txt tests/divAndOptTests/$today/key1Out.txt 100 3
-./jsonTitle timing.json "key1" "-c"
+./divideAndOptimize tests/divAndOptTests/key1.txt tests/divAndOptTests/key1In.txt $folder/key1Out.txt $runs
+./jsonTitle timing.json "key 1" "-c"
+# Add new line character inbetween files when appending
 echo "" >> timing.json
-cat timing.json >> ./tests/divAndOptTests/$today/divAndOptTimeStats.json
- # Add new line character inbetween files when appending
+cat timing.json >> $folder/divAndOptTimeStats.json
+((numInputFiles++))
 
-./divideAndOptimize tests/divAndOptTests/key2.txt tests/divAndOptTests/key2In.txt tests/divAndOptTests/$today/key2Out.txt 100 3
-./jsonTitle timing.json "key2" "-c"
+./divideAndOptimize tests/divAndOptTests/key2.txt tests/divAndOptTests/key2In.txt $folder/key2Out.txt $runs
+./jsonTitle timing.json "key 2" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/divAndOptTests/$today/divAndOptTimeStats.json
+cat timing.json >> $folder/divAndOptTimeStats.json
+((numInputFiles++))
 
-./divideAndOptimize tests/divAndOptTests/key3.txt tests/divAndOptTests/key3In.txt tests/divAndOptTests/$today/key3Out.txt 100 3
-./jsonTitle timing.json "key3" "-c"
+./divideAndOptimize tests/divAndOptTests/key3.txt tests/divAndOptTests/key3In.txt $folder/key3Out.txt $runs
+./jsonTitle timing.json "key 3" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/divAndOptTests/$today/divAndOptTimeStats.json
+cat timing.json >> $folder/divAndOptTimeStats.json
+((numInputFiles++))
 
-./divideAndOptimize tests/divAndOptTests/key4.txt tests/divAndOptTests/key4In.txt tests/divAndOptTests/$today/key4Out.txt 100 3
-./jsonTitle timing.json "key4" "-c"
+./divideAndOptimize tests/divAndOptTests/key4.txt tests/divAndOptTests/key4In.txt $folder/key4Out.txt $runs
+./jsonTitle timing.json "key 4" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/divAndOptTests/$today/divAndOptTimeStats.json
+cat timing.json >> $folder/divAndOptTimeStats.json
+((numInputFiles++))
 
-./divideAndOptimize tests/divAndOptTests/key5.txt tests/divAndOptTests/key5In.txt tests/divAndOptTests/$today/key5Out.txt 100 3
-./jsonTitle timing.json "key5" "-c"
+./divideAndOptimize tests/divAndOptTests/key5.txt tests/divAndOptTests/key5In.txt $folder/key5Out.txt $runs
+./jsonTitle timing.json "key 5" "-c"
 echo "" >> timing.json
-cat timing.json >> ./tests/divAndOptTests/$today/divAndOptTimeStats.json
+cat timing.json >> $folder/divAndOptTimeStats.json
+((numInputFiles++))
 
-./divideAndOptimize tests/divAndOptTests/key6.txt tests/divAndOptTests/key6In.txt tests/divAndOptTests/$today/key6Out.txt 100 3
-./jsonTitle timing.json "key6" "-c"
-echo "" >> timing.json
-cat timing.json >> ./tests/divAndOptTests/$today/divAndOptTimeStats.json
-
-#./divideAndOptimize divAndOptAminoAcidKey.txt tests/divAndOptTests/fasta100k.txt tests/divAndOptTests/$today/100kOut.txt 100 3
-#./jsonTitle timing.json "100k bases" "-c"
+./divideAndOptimize tests/divAndOptTests/key6.txt tests/divAndOptTests/key6In.txt $folder/key6Out.txt $runs
+./jsonTitle timing.json "key 6"
 #echo "" >> timing.json
-#cat timing.json >> ./tests/divAndOptTests/$today/divAndOptTimeStats.json
+cat timing.json >> $folder/divAndOptTimeStats.json
+((numInputFiles++))
 
-#./divideAndOptimize divAndOptAminoAcidKey.txt tests/divAndOptTests/fasta500k.txt tests/divAndOptTests/$today/500kOut.txt 100 3
-#./jsonTitle timing.json "500k bases" "-c"
+#./divideAndOptimize tests/divAndOptTests/key7.txt tests/divAndOptTests/key7In.txt $folder/key7Out.txt $runs
+#./jsonTitle timing.json "key 7" 
 #echo "" >> timing.json
-#cat timing.json >> ./tests/divAndOptTests/$today/divAndOptTimeStats.json
-
-#./divideAndOptimize divAndOptAminoAcidKey.txt tests/divAndOptTests/fasta1mil.txt tests/divAndOptTests/$today/1milOut.txt 100 3
-#./jsonTitle timing.json "1mil bases"
-#echo "" >> timing.json
-#cat timing.json >> ./tests/divAndOptTests/$today/divAndOptTimeStats.json
+#cat timing.json >> $folder/divAndOptTimeStats.json
+#((numInputFiles++))
 
 #Add Title to divAndOptTimeStats.txt file
-./jsonTitle ./tests/divAndOptTests/$today/divAndOptTimeStats.json "divideAndOptimize divAndOptAminoAcidKey.txt"  
+./jsonTitle $folder/divAndOptTimeStats.json "divideAndOptimize" "-f"
 
-./jsonToCSV ./tests/divAndOptTests/$today/divAndOptTimeStats.json ./tests/divAndOptTests/$today/divAndOptTimeStats.csv
+./divAndOptJsonToCSV $folder/divAndOptTimeStats.json $folder/divAndOptTimeStats.csv $numInputFiles $runs $k
+
 plotfile="divAndOptTimeStats.csv"
 output="divAndOpt.png"
-folder="./tests/divAndOptTests/$today"
 graph="$folder/$plotfile"
 touch $folder/$output
 outpath="$folder/$output"
 xlabel="Number of Key Inputs"
 graphTitle="Divide And Optimize Key Mapping"
+xvals=1
+yvals=2
 
-gnuplot -c plotLogScript.sh $graph "$graphTitle" $outpath "$xlabel"
+gnuplot -c plotLogScript.sh $graph "$graphTitle" $outpath "$xlabel" $xvals $yvals
 
 
 

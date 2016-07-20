@@ -109,6 +109,7 @@ int jsonTitle(char* filename, char * title, char* titleType){
 		fprintf(ofp,"%s%s%s","{\n\"",title,"\":{\n");
 		fwrite(output, 1, outputSize, ofp);
 		fprintf(ofp,"%s","\n}");
+		fprintf(ofp,"%s","\n}");
 
 	}
 
