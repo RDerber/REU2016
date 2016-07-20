@@ -257,7 +257,7 @@ int write_tag_json (FILE * dfp, int nest_level,
 		.
 		.
 		.
-		"numOps": 2
+		"num_ops": 2
 		"runTime":{
 			"run1": data
 			"run2": data
@@ -274,18 +274,18 @@ int write_tag_json (FILE * dfp, int nest_level,
 		} 
 	}
 ******************************************************************************************/
-int write_super_file (double **data_arr, char **label_arr, int num_labels, int num_runs, char * opsSeq, int * numSeq, int maxNumOps, char* input, char* output, int inputSize){
+int write_super_file (double **data_arr, char **label_arr, int num_labels, int *runs_arr, char * ops_seq, int * num_seq, int max_num_ops, char* input, char* output, int input_size){
 
 
 	int first = 1; // First line has not been printed 
 	int nest_level = 0; 
 	int i, j;
 	FILE * dfp;
-	int numOps = 0;
+	int num_ops = 0;
 
 	// Find the number of operations for the current run of superOptimizer.c //
-		for(i=0; i<maxNumOps; ++i){
-			if(numSeq[i] != 0 && opsSeq[i]!= 0) ++numOps;
+		for(i=0; i<max_num_ops; ++i){
+			if(num_seq[i] != 0 && ops_seq[i]!= 0) ++num_ops;
 		}
 	
 	if((dfp = fopen(TEMP_FILE,"w+")) == NULL){
@@ -294,7 +294,7 @@ int write_super_file (double **data_arr, char **label_arr, int num_labels, int n
 		}
 		
 	//print input values passed into superOptimizer.c //
-	for(i=0; i<inputSize; ++i){
+	for(i=0; i<input_size; ++i){
 		char inputLabel[12];
 		snprintf(inputLabel,12,"input %d", i);
 		write_num_json (dfp, nest_level, inputLabel, input[i], &first);
@@ -302,7 +302,7 @@ int write_super_file (double **data_arr, char **label_arr, int num_labels, int n
 	}
 	
 	//print output values to which the inputs were mapped //
-	for(i=0; i<inputSize; ++i){
+	for(i=0; i<input_size; ++i){
 		char outputLabel[12];
 		snprintf(outputLabel,12 ,"output %d", i);
 		write_num_json (dfp, nest_level, outputLabel, output[i], &first);
@@ -310,20 +310,20 @@ int write_super_file (double **data_arr, char **label_arr, int num_labels, int n
 	
 	//print the number of operations needed for the transformation //
 	
-	write_num_json(dfp, nest_level, "numOps", numOps, &first);
+	write_num_json(dfp, nest_level, "numOps", num_ops, &first);
 	
 	//print the operations //
-	for(i=0; i<numOps; ++i){
+	for(i=0; i<num_ops; ++i){
 		char opBuf [30];
 		snprintf(opBuf,30 ,"operation %d", i);
 		char opStr[2];
-		opStr[0] = opsSeq[maxNumOps-numOps+i];
+		opStr[0] = ops_seq[max_num_ops-num_ops+i];
 		opStr[1] = '\x00';
 		write_tag_json (dfp, nest_level, opBuf, opStr, &first);
 				
 		char numBuf[30];
 		snprintf(numBuf,30,"opvalue %d", i);
-		write_num_json (dfp, nest_level, numBuf, numSeq[maxNumOps-numOps+i], &first);
+		write_num_json (dfp, nest_level, numBuf, num_seq[max_num_ops-num_ops+i], &first);
 			
 	}
 	
@@ -340,7 +340,7 @@ int write_super_file (double **data_arr, char **label_arr, int num_labels, int n
 
 		// print data values for each run //
 		first = 1; // Start of a new json list
-		for(j = 0; j < num_runs; ++j){ 						
+		for(j = 0; j < runs_arr[i]; ++j){ 						
 			char run_title [10];
 			sprintf(run_title, "Run %d", j);
 			if(write_num_json(dfp, nest_level, run_title, data_arr[i][j], &first) < 0){ 
@@ -509,7 +509,7 @@ int write_laGrange_file (double **data_arr, char **label_arr, int num_labels, in
 	int nest_level = 0; 
 	int i, j;
 	FILE * dfp;
-	int numOps = 0;
+	int num_ops = 0;
 	
 	if((dfp = fopen(TEMP_FILE,"w+")) == NULL){
 			printf("Data file could not be written\n"); 

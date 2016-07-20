@@ -70,7 +70,7 @@ int superOptimizer (unsigned char * startingInput,unsigned char * input, int num
 	unsigned int i,j,k;
 	unsigned char newinput[numDistInputs];
 	int opsSize = sizeof(operations)/sizeof(char);
-	int opsMax[] = {128, 128, 128, 8, 8};
+	int opsMax[] = {256, 256, 256, 8, 8};
 	
 	for(k = 0; k < opsSize; ++k){
 		int opIt = totOps - numOps;
@@ -113,25 +113,26 @@ char evaluate(int input, char * opsSeq, int * numSeq, int maxNumOps){
 	return output;
 }
 
-int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random seed] [number of runs]
+int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random seed] [num of superOptruns] [num of EvalRuns]
 //	char input[] = {'\x00','\x01','\x02','\x03','\x04'};
 //	char input[] = {'A','C','G','T','N'};
 	int i,j,k;
 	int maxNumDistInputs = 200;//input size exceeding 200 causes our naive unique number generator to be extremely slow, exceeding 256
 				//breaks the number generator
 
-	int runs = atoi(argv[4]);
+	int superOptRuns = atoi(argv[4]);
+	int evalRuns = atoi(argv[5]);
 	int numDataForms = 2; //runTime, evalTime
 	
 	unsigned char * input;
 	unsigned char * output;
 	int numDistInputs;
-	double runTimes[runs];
-	double evalTimes[runs];
+	double runTimes[superOptRuns];
+	double evalTimes[evalRuns];
 	int maxNumOps = 6;
 	long fileSize = atoi(argv[2]);
 	
-	if(argc != 5){
+	if(argc != 6){
 		printf("Bad arguments");
 		return -1;
 	}
@@ -166,7 +167,7 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 	}
 	int success = -1;
 	struct timeval time0,time1;
-	for(i=0;i<runs;i++){
+	for(i=0;i<superOptRuns;i++){
 		gettimeofday(&time0,NULL);
 		success = superOptimizer(input, input, numDistInputs, maxNumOps, maxNumOps, opsSeq, numSeq);
 		gettimeofday(&time1,NULL);
@@ -182,7 +183,7 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 		}
 	}
 	
-	for(i=0;i<runs;i++){
+	for(i=0;i<evalRuns;i++){
 		gettimeofday(&time0,NULL);
 		for(j = 0; j < fileSize; ++j){
 			evaluate(testBuf[j], opsSeq, numSeq, maxNumOps);
@@ -208,7 +209,11 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 	
 	int numLabels= sizeof(labelArray)/sizeof(char*); 
 	
-	if(write_super_file(timeArray, labelArray, numLabels, runs, opRep, numSeq, maxNumOps, input, output, numDistInputs) < 0)
+	int runsArray[numDataForms];
+	runsArray[0] = superOptRuns; 
+	runsArray[1] = evalRuns; 
+	
+	if(write_super_file(timeArray, labelArray, numLabels, runsArray, opRep, numSeq, maxNumOps, input, output, numDistInputs) < 0)
 		printf("error writing data file\n"); 
 		
 	free(input);

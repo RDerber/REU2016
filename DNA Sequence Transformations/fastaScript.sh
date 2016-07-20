@@ -23,7 +23,7 @@ folder="./tests/fastaTests/$today"
 ./jsonSystemStats $folder/ft2bTimeStats.json
 
 #Run Fasta To 2 Bit Tests and Store in timeStats.txt
-valgrind ./FastaTo2Bit tests/fastaTests/fasta100.fasta $folder/100Out.txt $runs
+./FastaTo2Bit tests/fastaTests/fasta100.fasta $folder/100Out.txt $runs
 ./jsonTitle timing.json "100 bases" "-c"
 echo "" >> timing.json
 cat timing.json >> $folder/ft2bTimeStats.json

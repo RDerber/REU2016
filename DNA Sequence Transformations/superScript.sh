@@ -17,7 +17,8 @@ mkdir ./tests/superTests/$today
 
 folder="./tests/superTests/$today"
 runs=10
-maxNumInputs=3
+evals=100
+maxNumInputs=4
 fileSize=10000
 numInputSets=10
 k=3
@@ -31,7 +32,7 @@ do
 	for((inputSet=1; inputSet< (numInputSets+1); ++inputSet))
 		do
 			echo "input set number $inputSet is being printed"
-			./superOptimizer2 $i $fileSize $(( RANDOM )) $runs
+			./superOptimizer2 $i $fileSize $(( RANDOM )) $runs $evals
 			if [ $inputSet -eq $runs ]
 			then
 				./jsonTitle temp1.json "Input Set $inputSet"
@@ -59,7 +60,7 @@ done
 #Add Title to superInputTimeStats.txt file
 ./jsonTitle $folder/superInputTimeStats.json "superOptimizer" "-f"
 
-./superJsonToCSV $folder/superInputTimeStats.json $folder/superInputTimeStats.csv $folder/superNumOpTimeStats.csv $maxNumInputs $numInputSets $runs $k
+./superJsonToCSV $folder/superInputTimeStats.json $folder/superInputTimeStats.csv $folder/superNumOpTimeStats.csv $maxNumInputs $numInputSets $runs $evals $k
 inputPlotFile="superInputTimeStats.csv"
 numOpPlotFile="superNumOpTimeStats.csv"
 

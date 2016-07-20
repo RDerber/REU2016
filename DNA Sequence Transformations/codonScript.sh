@@ -23,7 +23,7 @@ folder="./tests/codonTests/$today"
 ./jsonSystemStats $folder/codonTimeStats.json
 
 #Run codonOptimizer Codon Tests and Store in timeStats.txt
-valgrind ./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta100.fasta $folder/100Out.txt $runs
+./codonOptimizer codonAminoAcidKey.txt tests/codonTests/fasta100.fasta $folder/100Out.txt $runs
 ./jsonTitle timing.json "100 bases" "-c"
 echo "" >> timing.json
 cat timing.json >> ./$folder/codonTimeStats.json

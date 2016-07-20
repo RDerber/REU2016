@@ -21,11 +21,12 @@ int findHigh(double * arr, size_t arrSize){
 }
 
 /*function applies specifically to json files made by superOptimizer, creates csv with data, averages the fastest runs to find a reasonable estimate for the cpu time spent*/
-int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int numInputSets, int m, int k, long inputSize){
+int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int numInputSets, int superOptRuns, int evalRuns, int k, long inputSize){
 	int i,j,h,g;
 	int end = 0;
 	int inArr[maxNumInputs];
-	int numTimeMatches = maxNumInputs * numInputSets * m * 2;
+	int numRuns = superOptRuns + evalRuns;
+	int numTimeMatches = maxNumInputs * numInputSets * numRuns;
 	int status;
 	regex_t re;
 	regmatch_t inputMatch;
@@ -64,6 +65,8 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	/*Time Data (RunTime and Eval Time Alternating)*/
 	
 	regmatch_t timingMatch;
+	printf("%s %d\n","NumRuns:", numRuns);
+	printf("%s %d\n","numTimeMatches:", numTimeMatches);
 	double timeArr[numTimeMatches];
 	char *timePattern = "Run [0-9]+";
 	
@@ -97,6 +100,8 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	
 	regfree(&re);
 	
+	printf("Hello out there!");
+	fflush(stdout);
 	/*NumOps*/
 	int metaNumOps = maxNumInputs*numInputSets;
 	regmatch_t numOpMatch;
@@ -161,8 +166,11 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 				int numStored = 0;
 				int hiloPos = 0;
 				double time;
-				for(j=0; j<m; ++j){
-					if((time = timeArr[h*numInputSets*m*2 + i*m*2 +j+g*m]) < hiloTime){
+				int runsVar = 0;
+				if(g==0) runsVar = superOptRuns;
+				else runsVar = evalRuns;
+				for(j=0; j<runsVar; ++j){
+					if((time = timeArr[h*numInputSets*numRuns + i*numRuns + j + g*superOptRuns]) < hiloTime){
 						if(numStored < k){
 							lowTime[numStored++] = time;
 						}else {
@@ -237,16 +245,17 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	
 	
 	
-int main (int argc, char * argv[]){ //[input json file] [output csv filename1] [output csv filename2] [maxNumInputs] [numInputSets] [m number of runs] [lowest k values to be averaged] 
+int main (int argc, char * argv[]){ //[input json file] [output csv filename1] [output csv filename2] [maxNumInputs] [numInputSets] [number of superOpt runs][number of evaluation runs] [lowest k values to be averaged] 
 
-	if(argc == 8){
+	if(argc == 9){
 
 		FILE * ofp1 = fopen(argv[2], "w");
 		FILE * ofp2 = fopen(argv[3], "w");
 		int maxNumInputs = atoi(argv[4]);
 		int numInputSets = atoi(argv[5]);
-		int m = atoi(argv[6]);
-		int k = atoi(argv[7]);
+		int superOptRuns = atoi(argv[6]);
+		int evalRuns = atoi(argv[7]);
+		int k = atoi(argv[8]);
 		
 		// Create Input Memory Buffer //
 		char *input = NULL;
@@ -286,7 +295,7 @@ int main (int argc, char * argv[]){ //[input json file] [output csv filename1] [
 		}
 		
 		
-		superJsonToCSV(input, ofp1, ofp2, maxNumInputs, numInputSets, m, k, inputSize);
+		superJsonToCSV(input, ofp1, ofp2, maxNumInputs, numInputSets, superOptRuns, evalRuns, k, inputSize);
 
 		free(input);
 		fclose(ofp1);
