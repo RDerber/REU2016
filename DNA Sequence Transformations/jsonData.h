@@ -17,7 +17,7 @@ int write_super_file (double **data_arr, char **label_arr, int num_labels, int *
 
 int write_time_file (double **data_arr, char **label_arr, int num_labels, int num_runs);
 
-int write_divAndOpt_file (double **data_arr, char **label_arr, int num_labels, int num_runs, int keySize);
+int write_DAO_file (double **data_arr, char **label_arr, int num_labels, int *runs_arr, char * input, char * output, int keySize);
 
 int write_laGrange_file (double **data_arr, char **label_arr, int num_labels, int num_runs, int* input, int* output, int inputSize);
 

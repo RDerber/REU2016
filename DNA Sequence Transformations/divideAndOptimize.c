@@ -350,8 +350,18 @@ int getFileSize(FILE *ifp){
 }
 
 int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
-	int i,j; 
 
+	if(argc < 4 || argc > 5){	//if a number of runs is given but no number of minimum times, default number of min times is 3
+		printf("wrong number of arguments");
+		return -1;
+	}
+	struct timeval time0, time1; 
+	int i,j=0,k;
+	int runs = atoi(argv[4]);
+	double *runTimes;
+	double * evalTimes;
+	runTimes = calloc(runs, sizeof(double)); 
+	evalTimes = calloc(runs, sizeof(double));
 	int keySize = 0; 
 	FILE * ifp;
 	ifp = fopen(argv[1],"r");
@@ -382,11 +392,14 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	for(i=0;i<keySize;++i){
 		startingInput[i] = input[i];
 	}
-	success = divideAndOptimize(startingInput, input, output, keySize, opArray, numArray, maxNumOps,1);
 	
-	free(startingInput);
-	free(input);
-	free(output);
+	for(k=0;k<runs; ++k){
+		gettimeofday(&time0,NULL);
+		success = divideAndOptimize(startingInput, input, output, keySize, opArray, numArray, maxNumOps,1);
+		gettimeofday(&time1,NULL);
+		runTimes[k] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+	}
+
 
 	int numOps[numBranches];
 	memset(numOps, 0, sizeof(numOps));
@@ -422,9 +435,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	// Create Output Buffer;
 	char * writeOut = malloc(sizeof(char)* (readSize+1));
 	
-	double *times;
-	int runs = 0;
-	int i,j=0,k;
+
 	if(argc == 4){
 		for(i=0;i<readSize; ++i){
 			if(readIn[i]&'\xe0')
@@ -432,45 +443,54 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 			
 		}
 	}
-	if(argc == 5){	//if a number of runs is given but no number of minimum times, default number of min times is 3
-		runs = atoi(argv[4]);
-		times = calloc(runs, sizeof(double)); 
-		struct timeval time0, time1; 
-		for(i=0;i<runs;i++){ // Record time of each run
-			gettimeofday(&time0,NULL);
-			j=0;
-			for(k=0;k<readSize; ++k){
-				if(readIn[k]&'\xe0'){
-					writeOut[j++] = evaluate(readIn[k],opArray,numArray,maxNumOps);	
-				}
-			}
-			gettimeofday(&time1,NULL);
-			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-		}
 
+	for(i=0;i<runs;i++){ // Record time of each run
+		gettimeofday(&time0,NULL);
+		j=0;
+		for(k=0;k<readSize; ++k){
+			if(readIn[k]&'\xe0'){
+				writeOut[j++] = evaluate(readIn[k],opArray,numArray,maxNumOps);	
+			}
+		}
+		gettimeofday(&time1,NULL);
+		evalTimes[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 	}
+
 
 	int writeSize = j;
 	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
 	if(argc > 4){
-	char *labelArr[1];
-		labelArr[0] = "Transform Times";
-		int numLabels = sizeof(labelArr)/sizeof(char*); 
-		if(write_divAndOpt_file(&times, labelArr, numLabels, runs, keySize) < 0) 
+		int numDataForms = 2;
+		double *timeArray[numDataForms];
+		char *labelArray[numDataForms];	
+		timeArray[0] = runTimes;
+		timeArray[1] = evalTimes;
+
+		labelArray[0] = "RunTimes";
+		labelArray[1] = "EvalTimes";
+		
+		int runsArray[numDataForms];
+		runsArray[0] = runs;
+		runsArray[1] = runs; 
+		if(write_DAO_file(timeArray, labelArray, numDataForms, runsArray, startingInput, output, keySize) < 0) 
 			printf("error writing time file\n");
-		free(times);
-	}
-	// Writing output buffer to specified output file//
-	FILE *ofp = fopen(argv[3],"w");
-	if(ofp == NULL){
-		printf("Error creating output file\n");
-		return -1;
-        }else{
-		fwrite(writeOut, 1, writeSize, ofp);
-		fclose(ofp);
+		}
+		free(input);
+		free(output);
+		free(runTimes);
+		free(evalTimes);
+		// Writing output buffer to specified output file//
+		FILE *ofp = fopen(argv[3],"w");
+		if(ofp == NULL){
+			printf("Error creating output file\n");
+			return -1;
+	        }else{
+			fwrite(writeOut, 1, writeSize, ofp);
+			fclose(ofp);
 		}
 	free(readIn);
 	free(writeOut);
+	free(startingInput);
 
 	} else printf("no sequence found");
 	for(i=0;i < (numBranches); ++i){

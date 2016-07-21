@@ -65,8 +65,8 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	/*Time Data (RunTime and Eval Time Alternating)*/
 	
 	regmatch_t timingMatch;
-	printf("%s %d\n","NumRuns:", numRuns);
-	printf("%s %d\n","numTimeMatches:", numTimeMatches);
+//	printf("%s %d\n","NumRuns:", numRuns);
+//	printf("%s %d\n","numTimeMatches:", numTimeMatches);
 	double timeArr[numTimeMatches];
 	char *timePattern = "Run [0-9]+";
 	

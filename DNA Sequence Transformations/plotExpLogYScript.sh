@@ -32,8 +32,9 @@ set ylabel "Transform Time (µsec)"
 set key center top left title box 3
 a=100
 b=50
-f(x)=a**x+b
-fit f(x) graph using xvals:yvals via a,b
-set log y
-title_f(a,b)=sprintf('f(x)=%.2f^{x}+%.2f',a,b)
-plot graph u xvals:yvals notitle with linespoints,f(x) t title_f(a,b)
+n=2
+#set log y
+f(x)=a*x+b
+fit f(x) graph using xvals:(log($2)) via a,b
+title_f(a,b)=sprintf('f(x)=%.2f*x+%.2f',a,b)
+plot graph u xvals:(log($2)) notitle with linespoints,f(x) t title_f(a,b)

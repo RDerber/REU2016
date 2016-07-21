@@ -447,36 +447,52 @@ int write_time_file (double **data_arr, char **label_arr, int num_labels, int nu
 
 
 ******************************************************************************************/
-int write_divAndOpt_file (double **data_arr, char **label_arr, int num_labels, int num_runs, int keySize){
+int write_DAO_file (double **data_arr, char **label_arr, int num_labels, int *runs_arr, char* xValues, char* yValues, int keySize){
 
 	int first = 1; // First line has not been printed 
 	int nest_level = 0; 
 	int i, j;
 	FILE * dfp;
+	int num_ops = 0;
 	
 	if((dfp = fopen(TIME_OUT,"w+")) == NULL){
 			printf("Data file could not be written\n"); 
 			return -1;
 		}
-		
-	// print timing data //
 	
-	// print out key size for the current run of divideAndOptimize.c // 
 	if(write_num_json(dfp, nest_level, "Key Size", keySize, &first) < 0){ 
 		printf("%s %d","error writing key size: ", keySize);
 		return -1;
 	}
+		
+	//print xValues values passed into laGrange.c //
+	for(i=0; i<keySize; ++i){
+		char xValLabel[12];
+		snprintf(xValLabel,12,"Input %d", i);
+		write_num_json (dfp, nest_level, xValLabel, xValues[i], &first);
 	
-	// write label before printing data values //
+	}
+	
+	//print yValues values to which the xValues were mapped //
+	for(i=0; i<keySize; ++i){
+		char yValLabel[12];
+		snprintf(yValLabel,12 ,"Output %d", i);
+		write_num_json (dfp, nest_level, yValLabel, yValues[i], &first);
+	}
+	
+	//print timing data //
+	
+	//write label before printing data values //
 	for(i = 0; i < num_labels; ++i){
 		if(write_json_title(dfp, nest_level, label_arr[i], &first)<0){
 			printf("Error writing label");
 			return -1;
 		}
 		++nest_level;
+
 		// print data values for each run //
-		first = 1; // start of new .json list
-		for(j = 0; j < num_runs; ++j){ 						
+		first = 1; // Start of a new json list
+		for(j = 0; j < runs_arr[i]; ++j){ 						
 			char run_title [10];
 			sprintf(run_title, "Run %d", j);
 			if(write_num_json(dfp, nest_level, run_title, data_arr[i][j], &first) < 0){ 
@@ -494,10 +510,10 @@ int write_divAndOpt_file (double **data_arr, char **label_arr, int num_labels, i
 		fprintf(dfp, "%c", '}'); 
 		
 	}
-		
+
 	fclose(dfp);
 	
-	fprintf(stderr, "[%s]: wrote timing data\n", __func__); //confirmation message
+	fprintf(stderr, "[%s]: wrote timing data\n", __func__); // confirmation message
 	
 	return 0;
 }

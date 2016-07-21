@@ -16,7 +16,8 @@ fi
 mkdir ./tests/divAndOptTests/$today
 
 numInputFiles=0
-runs=500
+runs=100
+evals=100
 k=3
 folder="./tests/divAndOptTests/$today"
 
@@ -55,33 +56,44 @@ cat timing.json >> $folder/divAndOptTimeStats.json
 ((numInputFiles++))
 
 ./divideAndOptimize tests/divAndOptTests/key6.txt tests/divAndOptTests/key6In.txt $folder/key6Out.txt $runs
-./jsonTitle timing.json "key 6"
+./jsonTitle timing.json "key 6" "-c"
 #echo "" >> timing.json
 cat timing.json >> $folder/divAndOptTimeStats.json
 ((numInputFiles++))
 
-#./divideAndOptimize tests/divAndOptTests/key7.txt tests/divAndOptTests/key7In.txt $folder/key7Out.txt $runs
-#./jsonTitle timing.json "key 7" 
+./divideAndOptimize tests/divAndOptTests/key7.txt tests/divAndOptTests/key7In.txt $folder/key7Out.txt $runs
+./jsonTitle timing.json "key 7" 
 #echo "" >> timing.json
-#cat timing.json >> $folder/divAndOptTimeStats.json
-#((numInputFiles++))
+cat timing.json >> $folder/divAndOptTimeStats.json
+((numInputFiles++))
 
 #Add Title to divAndOptTimeStats.txt file
 ./jsonTitle $folder/divAndOptTimeStats.json "divideAndOptimize" "-f"
 
-./divAndOptJsonToCSV $folder/divAndOptTimeStats.json $folder/divAndOptTimeStats.csv $numInputFiles $runs $k
+./divAndOptJsonToCSV $folder/divAndOptTimeStats.json $folder/divAndOptTimeStats.csv $numInputFiles $runs $evals $k
 
-plotfile="divAndOptTimeStats.csv"
-output="divAndOpt.png"
-graph="$folder/$plotfile"
-touch $folder/$output
-outpath="$folder/$output"
-xlabel="Number of Key Inputs"
-graphTitle="Divide And Optimize Key Mapping"
-xvals=1
-yvals=2
+inputPlotFile="divAndOptTimeStats.csv"
 
-gnuplot -c plotLogScript.sh $graph "$graphTitle" $outpath "$xlabel" $xvals $yvals
+output1="divAndOptRun.png"
+output2="divAndOptEval.png"
+
+
+inputDataFile="$folder/$inputPlotFile"
+
+touch $folder/$output1
+touch $folder/$output2
+
+outpath1="$folder/$output1"
+outpath2="$folder/$output2"
+
+inputXlabel="Size of Key"
+
+graphTitle1="Divide And Optimize Key Mapping"
+graphTitle2="Divide And Optimize Evaluation Time"
+
+
+gnuplot -c plotPolyScript.sh $inputDataFile "$graphTitle1" $outpath1 "$inputXlabel" "1" "2"
+gnuplot -c plotLogScript.sh $inputDataFile "$graphTitle2" $outpath2 "$inputXlabel" "1" "3"
 
 
 
