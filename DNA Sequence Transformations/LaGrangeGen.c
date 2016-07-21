@@ -8,7 +8,7 @@
  *
  *Generalized LaGrange function
  *
- *Inputs: input.txt, output.txt, [char1] [char2]..., [yValue1] [yValue2]...,
+ *Inputs: key.txt input.txt, output.txt 
  *
  *Creates Lagrange polynomial that maps the characters (char1, char2, ...) to their corresponding yValues (yValue1, yValue2, ...)
  *
@@ -130,7 +130,17 @@ int modInverse(long long num, int mod){ // Takes in a number A  and a modulus nu
 	return inverse;
 }
 
-int evaluate(int x, int polys[], int polysize, int mod){ // evaluates the polynomial in polys with argument x
+int modMersenne(int num, int mers, int numShift){
+	int temp = mers;
+	int notMod = ~mers;
+	while(num & notMod){
+		temp = num & mers;
+		num = temp + (num >> numShift);
+	}
+	return num;
+}
+
+int evaluate(int x, int polys[], int polysize, int mod, int numShift){ // evaluates the polynomial in polys with argument x
                                                  	 // uses fast exponentiation to compute x^n
 	int i;
 	int sum = 0;
@@ -147,17 +157,18 @@ int evaluate(int x, int polys[], int polysize, int mod){ // evaluates the polyno
 
 		if(i & check){
 			++log;
-			polyTable[log] = (polyTable[log-1]*polyTable[log-1])%mod;
+			polyTable[log] = modMersenne((polyTable[log-1]*polyTable[log-1]),mod, numShift);
 			check <<= 1;
 		}
 		for(j = 0; j < log; ++j){
 			if(((poly) >> j) & '\x01'){
-				product = (product * polyTable[j]) % mod;
+				product = modMersenne((product * polyTable[j]),mod, numShift);
 			}
 		}
-		sum = (sum + (product * (polys[polysize - i - 1] % mod)) % mod) % mod;
+		sum = modMersenne((sum + modMersenne((product * modMersenne((polys[polysize - i - 1]), mod, numShift)), mod, numShift)), mod, numShift);
 	}
-	sum = (sum + mod) % mod;
+	sum = modMersenne((sum + mod),mod, numShift);
+
 	return sum;
 }
 
@@ -290,7 +301,8 @@ int getFileSize(FILE *ifp){
 	return keySize;
 }
 
-int main (int argc, char **argv){	//allows user to specify input characters and the names of an input file and an output file.
+int main (int argc, char **argv){ // [key][input file][output file name] [number of runs]
+					//allows user to specify input characters and the names of an input file and an output file.
 					//The input file's contents are transformed using the polynomial formed from polyGenerator
 					//and the evaluate method and then written to a file with the name specified by them
 	FILE * ifp;
@@ -341,11 +353,21 @@ int main (int argc, char **argv){	//allows user to specify input characters and 
 	
 	char output[inputSize];
 
+// <Begin New Stuff>
+	int numShift = 0;
+	while((mod >> numShift)&1)++numShift; // Can also use while((mod>>numShift)&1)
+
+	for(i=0; i<keySize; ++i){ // remove negative number values before evaluating 
+			poly[i] = (poly[i] + mod)%mod;
+	}
+
+// <\End New Stuff>
+	
 	
 	for(i=0;i<runs;i++){
 		gettimeofday(&time0,NULL);
 		for(j=0;j<inputSize;++j){
-			output[j] = evaluate(input[j],poly,keySize,mod); 
+			output[j] = evaluate(input[j],poly,keySize,mod, numShift); 
 		}
 		gettimeofday(&time1,NULL);
 		evalTime[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
@@ -372,7 +394,7 @@ int main (int argc, char **argv){	//allows user to specify input characters and 
 	write_laGrange_file(timeArray, labelArray, numDataForms, runs, points, yValues, keySize);
 	
 	for(i=0;i<keySize;++i){
-		printf("%s %d %s %d %c","Point: ", points[i], "yValue: ", evaluate(-points[i],poly,keySize,mod),'\n');
+		printf("%s %d %s %d %c","Point: ", points[i], "yValue: ", evaluate(-points[i],poly,keySize,mod, numShift),'\n');
 	}
 	
 	free(input);
