@@ -16,7 +16,7 @@
 
 #define VECTOR_DIMMENSION                  500
 #define IMAGE_DIMMENSION                    28
-#define BLACK                            BLACK
+#define BLACK                              255
 
 //TIFF HEADER CODES
 #define HEADER_ENDIAN_LITTLE            0x4949
@@ -230,20 +230,21 @@ void draw_circle(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 }
 
 
-//Helper function to calculate b of y = mx + b given a coordinate and slope
+// Helper function to calculate b of y = mx + b given a coordinate and slope
 double calculate_b(int x, int y, double slope) {
 	return y - slope * x;
 }
 
-//Helper function to calculate the other coordinate of a coordinate pair given
-//the line equation, the coordinate, and the return type ('x' or 'y'). 
+// Helper function to calculate the other coordinate of a coordinate pair given
+// the line equation, the coordinate, and the return type ('x' or 'y'). 
 double calculate_other_coordinate(char XY, int coordinate, double slope, 
 		double b) {
-	if(XY == 'x'){
+	if (XY == 'x') {
 		return (coordinate - b) / slope;
-	} else {
+	} else if (XY == 'y') {
 		return coordinate * slope + b;
 	}
+	return 0.0;
 }
 
 
@@ -316,6 +317,7 @@ struct tag {
 		uint32_t numValues;
 		uint32_t value;
 };
+
 
 // Generates a tiff header with constants and the given pixel count
 struct header generate_tiff_header(unsigned int pixelCount){

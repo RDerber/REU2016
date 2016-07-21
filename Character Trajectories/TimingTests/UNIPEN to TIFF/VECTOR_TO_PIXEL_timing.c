@@ -531,6 +531,7 @@ int main(int argc, char **argv){
 
 	int i, j;
 	int numRuns = 50;
+	int k = 30;
 	int numCoordinates = 0;
 	
 	// time the transofrmation of all numbers of images up to numImages 
@@ -544,7 +545,6 @@ int main(int argc, char **argv){
 					(endTime.tv_sec - startTime.tv_sec) * 1000000;
 		}
 		coordinateCounts[i] = (double) numCoordinates / 2;
-		int k = 30;
 		timingArray[i] = calc_avg_k_lowest_runs(&runsArray, numRuns, k);
 		free(runsArray);
 	}
