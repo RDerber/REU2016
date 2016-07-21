@@ -401,115 +401,6 @@ unsigned long crc (unsigned char *buf, int len)
 
 
 /****************************************************************************************/
-/*	repetition coder	*/
-/****************************************************************************************/
-#ifdef HUFF_RCODER
-{
-#endif
-
-/*
-   0 - 15: Represent code lengths of 0 - 15
-       16: Copy the previous code length 3 - 6 times.
-           The next 2 bits indicate repeat length
-                 (0 = 3, ... , 3 = 6)
-              Example:  Codes 8, 16 (+2 bits 11),
-                        16 (+2 bits 10) will expand to
-                        12 code lengths of 8 (1 + 6 + 5)
-       17: Repeat a code length of 0 for 3 - 10 times.
-           (3 bits of length)
-       18: Repeat a code length of 0 for 11 - 138 times
-           (7 bits of length)
-*/
-
-int code_rep (int code_len, int num, struct bit_stream *bs)
-{
-	int n;
-	
-	if (code_len < 0 || code_len > 15 || num < 0)
-		return -1;
-		
-	printf("encoding %d reps of code len %d\n", num, code_len);
-		
-	write_bit_stream(bs, code_len, 4);
-		
-	if (code_len > 0) {
-		for (n = 6; n >= 3; n--) {
-			while (num >= n) {
-				write_bit_stream(bs, 16, 5);
-				write_bit_stream(bs, n - 3, 2);
-				num -= n;
-			}
-		}
-	} else {
-		for (n = 138; n >= 11; n--) {
-			while (num >= n) {
-				write_bit_stream(bs, 18, 5);
-				write_bit_stream(bs, n - 11, 7);
-				num -= n;
-			}
-		}
-		
-		for (n = 10; n >= 3; n--) {
-			while (num >= n) {
-				write_bit_stream(bs, 17, 5);
-				write_bit_stream(bs, n - 3, 3);
-				num -= n;
-			}
-		}
-	}
-	
-	while (num--) {
-		write_bit_stream(bs, code_len, 4);
-	}
-
-		
-	return 0;
-}
-
-int write_rle_codes (uint16_t *code_lens, int num, struct bit_stream *bs)
-{
-	int i, j, rl = 0;
-	
-	for (i = 0; i < num; ) {
-		for (rl = 0, j = i; j < num; j++) {
-			if (code_lens[i] != code_lens[j])
-				break;
-			rl++;
-		}
-		printf("run length = %d of %d\n", rl, code_lens[i]);
-		
-		code_rep(code_lens[i], rl, bs);
-		
-		i = j;
-	}
-	
-	return 0;
-}
-
-void test_repcode (void)
-{
-	struct bit_stream *bs;
-	alloc_bit_stream(&bs, 256);
-	
-	uint16_t code_lens[40] = {1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 
-			     0, 0, 0, 0, 0, 6, 3, 1, 6, 4, 
-			     5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 
-			     5, 5, 5, 5, 5, 5, 5, 2, 2, 2};
-			     
-	write_rle_codes(code_lens, 40, bs);
-	
-	code_rep(1, 2, bs);
-	code_rep(4, 19, bs);
-	code_rep(0, 835, bs);
-	
-	print_bit_stream(bs);
-	
-	free_bit_stream(bs);
-}
-
-
-
-/****************************************************************************************/
 /*	huffman coder	*/
 /****************************************************************************************/
 #ifdef HUFF_CODER
@@ -607,7 +498,7 @@ void make_huffman_tree (struct mh_node **tree, struct huff_list *hlist, int num,
 	mh.size = unique;
 	mh.array = calloc(num + chars, sizeof(struct mh_node *));
 	
-	for (i = 0; i < num; ++i)
+	for (i = 0; i < chars; ++i)
 		mh.array[i] = new_node(hlist[i].val, hlist[i].count);
 
 	for (i = (mh.size - 2) / 2; i >= 0; --i)
@@ -617,7 +508,7 @@ void make_huffman_tree (struct mh_node **tree, struct huff_list *hlist, int num,
 		left = extract_min(&mh);
 		right = extract_min(&mh);
 
-		top = new_node(256, left->freq + right->freq);
+		top = new_node(chars + 1, left->freq + right->freq);
 		top->left = left;
 		top->right = right;
 		mh_insert(&mh, top);
@@ -641,18 +532,11 @@ void find_huffcode (struct huff_list *hl, int chars, struct mh_node *base, int b
 		find_huffcode(hl, chars, base->right, buf, pos + 1);
 	}
 	
-	if (base->data != 256 && (!(base->left) && !(base->right))) {
-		printf("%d: ", base->data);	
-		
+	if (base->data != (chars + 1) && (!(base->left) && !(base->right))) {
 		int j;
-		for (j = 0; j < pos; j++) {
-			if (buf & (1 << j))
-				putchar('1');
-			else
-				putchar('0');
-		}
 		
-		putchar('\n');
+		//printf("%d: ", base->data);
+		//print_bits(buf, pos);	
 		
 		for (j = 0; j < chars; j++) {
 			if (hl[j].val == base->data) {
@@ -668,22 +552,15 @@ void find_huffcode (struct huff_list *hl, int chars, struct mh_node *base, int b
 	base = NULL;
 }
 
-void print_huffcodes (struct huff_list *hlist, int num)
+void print_huffcodes (struct huff_list *hlist, int start, int end)
 {
-	int i, j;
+	int i;
 	
-	for (i = 0; i < num; i++) {
-		printf("#%d, val = %d, code =(%d bits): %d | ", i, 
-			hlist[i].val, hlist[i].hc_len, hlist[i].hcode);
-
-			for (j = 0; j < hlist[i].hc_len; j++) {
-				if (hlist[i].hcode & (1 << j))
-					putchar('1');
-				else
-					putchar('0');
-			}
-		
-		putchar('\n');
+	for (i = start; i < end; i++) {
+		printf("#%d, val = %d, count = %d, code =(%d bits): ", i, 
+			hlist[i].val, hlist[i].count, hlist[i].hc_len);
+			
+		print_bits(hlist[i].hcode, hlist[i].hc_len);
 	}
 }
 
@@ -698,11 +575,11 @@ int huff_encode (uint16_t *src, int num, int chars, struct huff_list **hlist)
 	for (i = 0; i < num; i++)
 		count[src[i]]++;
 
-	for (i = 0; i < chars; i++) {
+	for (i = 0; i < chars; i++) { 
 		(*hlist)[i].val = i;
 		(*hlist)[i].count = count[i];
 		
-		printf("%d entries with value %d\n", count[i], i);
+		//printf("%d entries with value %d\n", count[i], i);
 		
 		if (count[i])
 			++unique;
@@ -758,7 +635,7 @@ void test_hcoder (void)
 	
 	huff_encode(test, 17, 288, &hlist);
 	
-	print_huffcodes(hlist, 17);
+	print_huffcodes(hlist, 0, 17);
 	
 	free(hlist);
 	
@@ -995,7 +872,7 @@ int lz77 (uint8_t *in, int bytes, struct lz_out **out, int win_size)
 	
 	fprintf(stderr, "[%s] total chars: %d, num LZ77: %d\n", __func__, num, num_dc);
 	
-	return num_dc;
+	return num;
 }
 
 void test_lz77 (void)
@@ -1015,6 +892,131 @@ void test_lz77 (void)
 }
 
 #ifdef LZW
+}
+#endif
+
+/****************************************************************************************/
+/*	repetition coder	*/
+/****************************************************************************************/
+#ifdef HUFF_RCODER
+{
+#endif
+
+/*
+   0 - 15: Represent code lengths of 0 - 15
+       16: Copy the previous code length 3 - 6 times.
+           The next 2 bits indicate repeat length
+                 (0 = 3, ... , 3 = 6)
+              Example:  Codes 8, 16 (+2 bits 11),
+                        16 (+2 bits 10) will expand to
+                        12 code lengths of 8 (1 + 6 + 5)
+       17: Repeat a code length of 0 for 3 - 10 times.
+           (3 bits of length)
+       18: Repeat a code length of 0 for 11 - 138 times
+           (7 bits of length)
+*/
+
+struct rep_out {
+	uint16_t len_code;
+	uint16_t lc_len;
+	uint16_t num_exbits;
+	uint16_t ext_val;
+};
+
+void add_rep_data (struct rep_out *out, int lc, int lcl, int ev, int evb)
+{
+	out->len_code = lc;
+	out->lc_len = lcl;
+				
+	out->ext_val = ev;
+	out->num_exbits = evb;
+}
+
+int code_rep (int code_len, int num, struct rep_out *out, int ind)
+{
+	int n;
+	int start = ind;
+	
+	if (code_len < 0 || code_len > 15 || num < 0)
+		return -1;
+		
+	add_rep_data(&out[ind++], code_len, 4, 0, 0);
+		
+	if (code_len > 0) {
+		for (n = 6; n >= 3; n--) {
+			while (num >= n) {
+				add_rep_data(&out[ind++], 16, 5, n - 3, 2);
+				num -= n;
+			}
+		}
+	} else {
+		for (n = 138; n >= 11; n--) {
+			while (num >= n) {
+				add_rep_data(&out[ind++], 18, 5, n - 11, 7);
+				num -= n;
+			}
+		}
+		
+		for (n = 10; n >= 3; n--) {
+			while (num >= n) {
+				add_rep_data(&out[ind++], 17, 5, n - 3, 3);
+				num -= n;
+			}
+		}
+	}
+	
+	while (num--) {
+		add_rep_data(&out[ind++], code_len, 4, 0, 0);
+	}
+		
+	return ind - start;
+}
+
+int write_rle_codes (uint16_t *code_lens, int num, struct rep_out *out)
+{
+	int i, j, rl = 0;
+	int count = 0;
+	
+	for (i = 0; i < num; ) {
+		for (rl = 0, j = i; j < num; j++) {
+			if (code_lens[i] != code_lens[j])
+				break;
+			rl++;
+		}
+		fprintf(stderr, "[%s]: writing run of %d '%d'\n", 
+				 __func__, rl, code_lens[i]);
+		
+		count += code_rep(code_lens[i], rl, out, count);
+		
+		i = j;
+	}
+	
+	return count;
+}
+
+void test_repcode (void)
+{
+	struct rep_out *out = calloc(sizeof(struct rep_out), 256);
+	
+	uint16_t code_lens[40] = {1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 
+			     0, 0, 0, 0, 0, 6, 3, 1, 6, 4, 
+			     5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 
+			     5, 5, 5, 5, 5, 5, 5, 2, 2, 2};
+			     
+	int i, n = write_rle_codes(code_lens, 40, out);
+	
+	n += code_rep(1, 2, out, n);
+	n += code_rep(4, 19, out, n);
+	n += code_rep(0, 835, out, n);
+
+	for (i = 0; i < n; i++)
+		printf("%d: %d %d %d %d\n", i, out[i].len_code, 
+			out[i].lc_len, out[i].num_exbits, out[i].ext_val);
+	
+	free(out);
+}
+
+#ifdef HUFF_CODER
 }
 #endif
 
@@ -1052,113 +1054,160 @@ void swap (char *a, char *b)
 	*a = *b;
 	*b = c;
 }
+
+/* returns number of unique lengths */
+int copy_huff_lens (struct huff_list *dlist, int num, uint16_t *dst)
+{
+	int i, count = 0; 
+	int *vcl = calloc(sizeof(int), num);
+	
+	for (i = 0; i < num; i++) {
+		//printf("%d: code %d len %d freq %d\n", i, dlist[i].val, 
+		//	dlist[i].hc_len, dlist[i].count);
+			
+		dst[i] = dlist[i].hc_len;
+		
+		if (vcl[dst[i]]++ == 0)
+			++count;
+	}
+	
+	free(vcl);
+	
+	return count;
+}
+
+void write_compressed_data (struct bit_stream *bs, struct lz_out *lz, int num, 
+		struct huff_list *hlist, struct huff_list *dlist, 
+		struct huff_len_table hlt[288])
+{
+	int i, code, ev, eb;
+	struct huff_len_table *hp;
+	
+	for (i = 0; i < num; i++) {
+		if (lz[i].dist) {
+			hp = &hlt[lz[i].len];
+			write_bit_stream(bs, hlist[hp->len_code].hcode,
+					     hlist[hp->len_code].hc_len);
+			if (hp->num_exbits)
+				write_bit_stream(bs, hp->ext_val, hp->num_exbits);
+			
+			dist_code(lz[i].dist, &code, &eb, &ev);
+			write_bit_stream(bs, dlist[code].hcode, 
+					     dlist[code].hc_len);
+			if (eb)
+				write_bit_stream(bs, ev, eb);
+		} else {
+			write_bit_stream(bs, hlist[lz[i].len].hcode, 
+					     hlist[lz[i].len].hc_len);
+		}
+	}
+		
+	write_bit_stream(bs, hlist[256].hcode, hlist[256].hc_len);
+}
+
+int write_rle_trees (struct bit_stream *bs, uint16_t *lens, uint16_t *dist)
+{
+	int count = 0;
+	int order[19] = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15};
+	struct rep_out *rd = calloc(19 * 2, sizeof(struct rep_out));
+	struct rep_out *rl = calloc(288 * 2, sizeof(struct rep_out));
+	uint16_t *tmp = calloc(288 * 2, sizeof(uint16_t));
+	int i, j;
+		
+	int nrd = write_rle_codes(dist, 19, rd);
+	int nrl = write_rle_codes(lens, 288, rl);
+	
+	for (i = 0, j = 0; i < nrl; i++, j++) {
+		tmp[j] = rl[i].len_code;
+		printf("%d len = %d\n", i, tmp[j]);
+	}
+	
+	for (i = 0; i < nrd; i++, j++) {
+		tmp[j] = rd[i].len_code;
+		printf("%d dst = %d\n", i, tmp[j]);
+	}
+			
+	printf("%d dr %d lr\n", nrd, nrl);
+	
+	struct huff_list *hlist;
+	
+	int h = huff_encode(tmp, nrd + nrl, 18, &hlist);
+	
+	for (i = 0; i < 19; i++) {
+		write_bit_stream(bs, hlist[order[i]].hc_len, 3);
+		printf("writing hcl for %d: %d\n", order[i], hlist[order[i]].hc_len);
+		
+		if (hlist[order[i]].hc_len)
+			++count;
+	}
+	
+	print_huffcodes(hlist, 0, h);
+	
+	free(hlist);
+	free(rd);
+	free(rl);
+	free(tmp);
+	
+	return count;	
+}
+
 #if 1
 int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 {
-	int pos = 0, toc, i;
+	int pos = 0, toc, i, j, num, num_dist, num_lenc, num_codelens = 0;
 	struct huff_len_table hlt[288];
-	make_hufftable(hlt);
 	struct bit_stream *bs;
 	struct huff_list *hlist, *dlist;
 	struct lz_out *lz;
-	int bl_count[288], code, eb, ev;
+	int code, eb, ev;
 	uint16_t new_dist[20];
+	uint16_t *lens, *dist;
+	
+	make_hufftable(hlt);
 	
 	while (pos < len) {
 		if ((toc = (len - pos)) > blk_size)
 			toc = blk_size;
-			
 
-		memset(bl_count, 0, sizeof(bl_count));
-	
 		alloc_bit_stream(&bs, toc * 2);
 		
-		int num = lz77(src + pos, toc, &lz, 512);
-	
-		printf("[%s]: testing huffman coder\n", __func__);
-	
-		//printf("%d unique\n", huff_encode(src + pos, toc, 288, &hlist));
-		
-		uint16_t *lens = calloc(sizeof(uint16_t), toc);
-		uint16_t *dist = calloc(sizeof(uint16_t), toc);
+		num = lz77(src + pos, toc, &lz, 512);
 
-		for (i = 0; i < toc; i++) {
+		lens = calloc(sizeof(uint16_t), toc + 288);
+		dist = calloc(sizeof(uint16_t), toc + 288);
+
+		for (i = 0, j = 0; i < num; i++) {
 			dist_code(lz[i].dist, &code, &eb, &ev);
 			dist[i] = code;
 			
+			lens[i] = (lz[i].dist) ? (hlt[lz[i].len].len_code) : (lz[i].len);
 			
-			if (lz[i].dist) {
-				lens[i] = hlt[lz[i].len].len_code;
-				i += lz[i].len;
-			} else {
-				lens[i] = lz[i].len;
-			}
-			
-
-			//printf("%d: len %d dist %d\n", i, lens[i], dist[i]);
+		//	printf("%d: len %d dist %d\n", i, lens[i], dist[i]);
 		}
 		
-		int num_dist = huff_encode (dist, toc, 32, &dlist);
-		int num_lenc = huff_encode (lens, toc, 288, &hlist); 
+		num_dist = huff_encode (dist, num, 32, &dlist);
+		num_lenc = huff_encode (lens, num, 288, &hlist); 
+		
 		printf("%d unique dist codes, %d unique len/lit codes\n", num_dist, num_lenc);
 		
-		//print_huffcodes(hlist, 288);
-		//print_huffcodes(dlist, 31);
+		print_huffcodes(hlist, 0, 288);
+		print_huffcodes(dlist, 0, 31);
 		
-		int num_codelens = 0;
-		int vcl[20] = { 0 };
+		printf("%d unique len code lengths\n", copy_huff_lens(hlist, 288, lens));
 		
-		for (i = 0; i < 288; i++) {
-			printf("%d: code %d len %d freq %d\n", i, lens[i], 
-				hlist[i].hc_len, hlist[i].count);
-			lens[i] = hlist[i].hc_len;
-		}
-		for (i = 0; i < 19; i++) {
-			printf("%d: code %d len %d freq %d\n", i, dist[i], 
-				dlist[i].hc_len, dlist[i].count);
-			dist[i] = dlist[i].hc_len;
-			
-			if (vcl[dist[i]]++ == 0)
-				++num_codelens;
-		}
-		
+		num_codelens = copy_huff_lens(dlist, 19, dist);
 		printf("%d unique dist code lengths\n", num_codelens);
 	
-		reorder(new_dist, dist);
+		//reorder(new_dist, dist);
 		
 		write_bit_stream(bs, ((toc != blk_size) ? 1 : 0) + 6, 3);
 		write_bit_stream(bs, num_lenc - 256, 5);
 		write_bit_stream(bs, num_dist, 5);
 		write_bit_stream(bs, num_codelens - 4, 4);
-		
-		write_rle_codes(new_dist, 19, bs);
-		
-		write_rle_codes(lens, 288, bs);
-		
-		for (i = 0; i < num; i++) {
-			int length = lz[i].len;
-			int pos = lz[i].dist;
-			
-			if (pos) {
-				write_bit_stream(bs, hlt[length].len_code, 9);
-			
-				if (hlt[length].num_exbits)
-					write_bit_stream(bs, hlt[length].ext_val, 
-							 hlt[length].num_exbits);
-				
-				dist_code(pos, &code, &eb, &ev);
 
-				write_bit_stream(bs, code, 5);
-			
-				if (eb)
-					write_bit_stream(bs, ev, eb);
-				
-			} else {
-				write_bit_stream(bs, length, 8);
-			}
-		}
-		
-		write_bit_stream(bs, hlist[256].hcode, hlist[256].hc_len);
+		printf("wrote %d length codes\n", write_rle_trees(bs, lens, new_dist));
+
+		write_compressed_data(bs, lz, num, hlist, dlist, hlt);
 		
 		if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
 			return -1;
@@ -1285,10 +1334,7 @@ int write_gzfile (const char *src, const char *dst)
 
 int main (void)
 {
-
 	test_repcode();
-	
-	//return 0;
 	
 	encode_hlist (NULL, 0);
 
@@ -1303,9 +1349,7 @@ int main (void)
 	
 	print_bits(test, 32);
 	print_bits(out, 32);
-	
-	//test_dlcoder();
-	//return 0;
+
 	make_tar_file("/Users/nobody1/Desktop/work", 
 				"/Users/nobody1/Desktop/test.tar");
 				
