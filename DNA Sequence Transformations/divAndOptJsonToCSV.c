@@ -97,7 +97,7 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int dAORuns,int 
 			numBuf[a++] = c;
 		}
 		numBuf[a] = '\x00';
-		timeArr[i] = atoi(numBuf); 
+		timeArr[i] = atof(numBuf); 
 		end += timingMatch.rm_eo;
 	}
 	
