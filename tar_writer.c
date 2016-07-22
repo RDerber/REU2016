@@ -570,7 +570,7 @@ int huff_encode (uint16_t *src, int num, int chars, struct huff_list **hlist)
 	struct mh_node *htree = NULL;
 	int unique = 0, i;
 	
-	*hlist = calloc(chars * 2, sizeof(struct huff_list));
+	*hlist = calloc(chars + 1, sizeof(struct huff_list));
 	
 	for (i = 0; i < num; i++)
 		count[src[i]]++;
@@ -578,7 +578,7 @@ int huff_encode (uint16_t *src, int num, int chars, struct huff_list **hlist)
 	for (i = 0; i < chars; i++) { 
 		(*hlist)[i].val = i;
 		(*hlist)[i].count = count[i];
-		
+			
 		//printf("%d entries with value %d\n", count[i], i);
 		
 		if (count[i])
@@ -937,10 +937,13 @@ int code_rep (int code_len, int num, struct rep_out *out, int ind)
 	int n;
 	int start = ind;
 	
-	if (code_len < 0 || code_len > 15 || num < 0)
-		return -1;
+	if (code_len < 0 || code_len > 15 || num < 0) {
+		printf("cl = %d, num = %d\n", code_len, num);
+		return 0;
+	}
 		
 	add_rep_data(&out[ind++], code_len, 4, 0, 0);
+	--num;
 		
 	if (code_len > 0) {
 		for (n = 6; n >= 3; n--) {
@@ -968,6 +971,8 @@ int code_rep (int code_len, int num, struct rep_out *out, int ind)
 	while (num--) {
 		add_rep_data(&out[ind++], code_len, 4, 0, 0);
 	}
+	
+	//printf("%d\n", ind - start);
 		
 	return ind - start;
 }
@@ -983,8 +988,8 @@ int write_rle_codes (uint16_t *code_lens, int num, struct rep_out *out)
 				break;
 			rl++;
 		}
-		fprintf(stderr, "[%s]: writing run of %d '%d'\n", 
-				 __func__, rl, code_lens[i]);
+		//fprintf(stderr, "[%s]: (%d, %d), count=%d, writing run of %d '%d'\n", 
+		//		 __func__, i, j, count, rl, code_lens[i]);
 		
 		count += code_rep(code_lens[i], rl, out, count);
 		
@@ -1038,7 +1043,7 @@ int count_bits (uint64_t src)
 	return count;
 }
 
-void reorder (uint16_t *dst, uint16_t *src)
+void reorder (uint16_t *dst, uint16_t *src) 
 {
 	int order[19] = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15};
 	int i;
@@ -1105,7 +1110,21 @@ void write_compressed_data (struct bit_stream *bs, struct lz_out *lz, int num,
 	write_bit_stream(bs, hlist[256].hcode, hlist[256].hc_len);
 }
 
-int write_rle_trees (struct bit_stream *bs, uint16_t *lens, uint16_t *dist)
+int max_code (struct huff_list *hl, int num)
+{
+	int i, c = 0;
+	
+	for (i = 0; i < num; i++) {
+		if (hl[i].count > 0) {
+			c = i;
+		}
+	}
+
+	return c;
+}
+
+int write_rle_trees (struct bit_stream *bs, uint16_t *lens, uint16_t *dist, 
+		struct huff_list **plist, int num_len, int num_dst, int last)
 {
 	int count = 0;
 	int order[19] = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15};
@@ -1119,21 +1138,30 @@ int write_rle_trees (struct bit_stream *bs, uint16_t *lens, uint16_t *dist)
 	
 	for (i = 0, j = 0; i < nrl; i++, j++) {
 		tmp[j] = rl[i].len_code;
-		printf("%d len = %d\n", i, tmp[j]);
+		//printf("%d len = %d\n", i, tmp[j]);
 	}
 	
 	for (i = 0; i < nrd; i++, j++) {
 		tmp[j] = rd[i].len_code;
-		printf("%d dst = %d\n", i, tmp[j]);
+		//printf("%d dst = %d\n", i, tmp[j]);
 	}
 			
-	printf("%d dr %d lr\n", nrd, nrl);
+	printf("%d dr %d lr %d j\n", nrd, nrl, j);
+
+	int h = huff_encode(tmp, nrd + nrl, 18, plist);
+	struct huff_list *hlist = *plist;
 	
-	struct huff_list *hlist;
+	print_huffcodes(hlist, 0, h);
 	
-	int h = huff_encode(tmp, nrd + nrl, 18, &hlist);
+	write_bit_stream(bs, last + 6, 3);
+	write_bit_stream(bs, num_len - 257, 5);
+	write_bit_stream(bs, num_dst - 1, 5);
+	write_bit_stream(bs, max_code(hlist, 19) - 4, 4);
 	
 	for (i = 0; i < 19; i++) {
+		if (!hlist[order[i]].count)
+			hlist[order[i]].hc_len = 0;
+		
 		write_bit_stream(bs, hlist[order[i]].hc_len, 3);
 		printf("writing hcl for %d: %d\n", order[i], hlist[order[i]].hc_len);
 		
@@ -1141,9 +1169,6 @@ int write_rle_trees (struct bit_stream *bs, uint16_t *lens, uint16_t *dist)
 			++count;
 	}
 	
-	print_huffcodes(hlist, 0, h);
-	
-	free(hlist);
 	free(rd);
 	free(rl);
 	free(tmp);
@@ -1157,10 +1182,9 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 	int pos = 0, toc, i, j, num, num_dist, num_lenc, num_codelens = 0;
 	struct huff_len_table hlt[288];
 	struct bit_stream *bs;
-	struct huff_list *hlist, *dlist;
+	struct huff_list *hlist, *dlist, *rlist;
 	struct lz_out *lz;
 	int code, eb, ev;
-	uint16_t new_dist[20];
 	uint16_t *lens, *dist;
 	
 	make_hufftable(hlt);
@@ -1195,22 +1219,40 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 		
 		printf("%d unique len code lengths\n", copy_huff_lens(hlist, 288, lens));
 		
-		num_codelens = copy_huff_lens(dlist, 19, dist);
+		num_codelens = copy_huff_lens(dlist, 31, dist);
 		printf("%d unique dist code lengths\n", num_codelens);
+		
+		printf("%d (%d) len, %d (%d) dist\n", 
+			num_lenc, max_code(hlist, 288), 
+			num_dist, max_code(dlist, 32));
 	
 		//reorder(new_dist, dist);
 		
-		write_bit_stream(bs, ((toc != blk_size) ? 1 : 0) + 6, 3);
-		write_bit_stream(bs, num_lenc - 256, 5);
-		write_bit_stream(bs, num_dist, 5);
-		write_bit_stream(bs, num_codelens - 4, 4);
 
-		printf("wrote %d length codes\n", write_rle_trees(bs, lens, new_dist));
+
+		printf("wrote %d length codes\n", 
+				write_rle_trees(bs, lens, dist, &rlist, 
+						max_code(hlist, 288),
+						max_code(dlist, 32),
+						((toc != blk_size) ? 1 : 0)));
+		
+		for (i = 0; i < num_lenc; i++) {
+			/*printf("lcode for %d = %d (%d bits)\n", i, 
+					 rlist[hlist[i].hc_len].hcode,
+					 rlist[hlist[i].hc_len].hc_len);*/
+			write_bit_stream(bs, rlist[hlist[i].hc_len].hcode, 
+					     rlist[hlist[i].hc_len].hc_len);
+
+		}
+		for (i = 0; i < num_dist; i++) {
+			write_bit_stream(bs, rlist[dlist[i].hc_len].hcode, 
+					     rlist[dlist[i].hc_len].hc_len);
+		}
 
 		write_compressed_data(bs, lz, num, hlist, dlist, hlt);
 		
 		if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
-			return -1;
+			return -1;	
 		
 		printf("%d bytes to %d\n", toc, bs->byte_pos);
 	
@@ -1218,6 +1260,7 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 		free(lz);
 		free(hlist);
 		free(dlist);
+		free(rlist);
 		free(lens);
 		free(dist);
 		
