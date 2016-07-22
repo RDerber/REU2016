@@ -131,30 +131,41 @@ int modInverse(long long num, int mod){ // Takes in a number A  and a modulus nu
 }
 
 int modMersenne(int num, int mers, int numShift){
+	if(num<0)
+		printf("%s %d","num:", num);
 	int temp = mers;
 	int notMod = ~mers;
 	while(num & notMod){
 		temp = num & mers;
 		num = temp + (num >> numShift);
 	}
+
 	return num;
 }
 
 int evaluate(int x, int polys[], int polysize, int mod, int numShift){ // evaluates the polynomial in polys with argument x
-                                                 	 // uses fast exponentiation to compute x^n
+        
+                                      	 // uses fast exponentiation to compute x^n
 	int i;
 	int sum = 0;
 	int polyTable[polysize]; 	// Stores x^(2n)  that will be used to calculate x^m 
 	memset(polyTable, 0 , sizeof(polyTable));
+	int temp;
+	temp = x & mod;
+	x = temp + (x >> numShift);
+	temp = x & mod;
+	x = temp + (x >> numShift);
+	temp = x & mod;
+	x = temp + (x >> numShift);
 	polyTable[0] = x;
 	int check = 1;
 	int log = 0;
-
+	
 	for(i = 0; i < polysize; ++i){
 		int poly = i;
 		int j;
 		int product = 1;
-
+		
 		if(i & check){
 			++log;
 			polyTable[log] = modMersenne((polyTable[log-1]*polyTable[log-1]),mod, numShift);

@@ -26,7 +26,7 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	int end = 0;
 	int inArr[maxNumInputs];
 	int numRuns = superOptRuns + evalRuns;
-	int numTimeMatches = maxNumInputs * numInputSets * numRuns;
+	double numTimeMatches = maxNumInputs * numInputSets * numRuns;
 	int status;
 	regex_t re;
 	regmatch_t inputMatch;
@@ -67,7 +67,7 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	regmatch_t timingMatch;
 //	printf("%s %d\n","NumRuns:", numRuns);
 //	printf("%s %d\n","numTimeMatches:", numTimeMatches);
-	double timeArr[numTimeMatches];
+	double *timeArr = malloc(numTimeMatches* sizeof(double));
 	char *timePattern = "Run [0-9]+";
 	
 	if(regcomp(&re, timePattern, REG_EXTENDED) != 0){
@@ -77,6 +77,7 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 	
 	end=0; //reset end
 	//populates timeArr with timing data found in the json file
+//	printf("%s %f", "numTimeMatches:", numTimeMatches);
 	for(i=0; i<numTimeMatches; ++i){
 		status = regexec(&re, input+end, 1, &timingMatch, 0); 
 	
@@ -94,14 +95,16 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 			numBuf[a++] = c;
 		}
 		numBuf[a] = '\x00';
-		timeArr[i] = atoi(numBuf); 
+
+		timeArr[i] = atof(numBuf);
+		if(i == 8925){
+			printf("%s %f", "timeArr[i]:", timeArr[i]);
+		}
 		end += timingMatch.rm_eo;
 	}
 	
 	regfree(&re);
-	
-	printf("Hello out there!");
-	fflush(stdout);
+
 	/*NumOps*/
 	int metaNumOps = maxNumInputs*numInputSets;
 	regmatch_t numOpMatch;
@@ -170,11 +173,14 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 				if(g==0) runsVar = superOptRuns;
 				else runsVar = evalRuns;
 				for(j=0; j<runsVar; ++j){
+//					printf("%s %d,%d,%d,%d\n","h,i,g,j ", h,i,g,j);
 					if((time = timeArr[h*numInputSets*numRuns + i*numRuns + j + g*superOptRuns]) < hiloTime){
 						if(numStored < k){
 							lowTime[numStored++] = time;
 						}else {
 							if((hiloPos = findHigh(lowTime,k)) < 0){
+								
+
 								fprintf(stderr, "%s","This really shouldn't happen");
 								return -1;
 							}
@@ -204,6 +210,8 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 		}
 		
 	}
+	
+	free(timeArr);
 	
 	//Find averages across input sets for each number of inputs
 	
@@ -293,7 +301,6 @@ int main (int argc, char * argv[]){ //[input json file] [output csv filename1] [
 			printf("%s\n", "the input file given does not exist");
 			return -1;
 		}
-		
 		
 		superJsonToCSV(input, ofp1, ofp2, maxNumInputs, numInputSets, superOptRuns, evalRuns, k, inputSize);
 

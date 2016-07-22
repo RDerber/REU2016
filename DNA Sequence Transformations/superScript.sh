@@ -26,6 +26,8 @@ k=3
 #Add new line character inbetween files when appending
 
 ./jsonSystemStats $folder/superInputTimeStats.json
+rm temp1.json
+rm temp2.json
 
 for ((i=1; i<(maxNumInputs+1); ++i))
 do
