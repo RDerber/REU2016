@@ -344,8 +344,8 @@ int write_super_file (double **data_arr, char **label_arr, int num_labels, int *
 			char run_title [10];
 			sprintf(run_title, "Run %d", j);
 			if(write_num_json(dfp, nest_level, run_title, data_arr[i][j], &first) < 0){ 
-				printf("%s %d\n%s %s\n %s %d\n","error writing element: ", i, "label: ", 
-					label_arr[i], "data: ", data_arr[i]);
+				printf("%s %d\n%s %s\n %s %f\n","error writing element: ", i, "label: ", 
+					label_arr[i], "data: ", *data_arr[i]);
 				return -1;
 			}
 		}
@@ -407,8 +407,8 @@ int write_time_file (double **data_arr, char **label_arr, int num_labels, int nu
 			char run_title [10];
 			sprintf(run_title, "Run %d", j);
 			if(write_num_json(dfp, nest_level, run_title, data_arr[i][j], &first) < 0){ 
-				printf("%s %d\n%s %s\n %s %d\n","error writing element: ", i, "label: ", 
-					label_arr[i], "data: ", data_arr[i]);
+				printf("%s %d\n%s %s\n %s %f\n","error writing element: ", i, "label: ", 
+					label_arr[i], "data: ", *data_arr[i]);
 				return -1;
 			}
 		}
@@ -496,8 +496,8 @@ int write_DAO_file (double **data_arr, char **label_arr, int num_labels, int *ru
 			char run_title [10];
 			sprintf(run_title, "Run %d", j);
 			if(write_num_json(dfp, nest_level, run_title, data_arr[i][j], &first) < 0){ 
-				printf("%s %d\n%s %s\n %s %d\n","error writing element: ", i, "label: ", 
-					label_arr[i], "data: ", data_arr[i]);
+				printf("%s %d\n%s %s\n %s %f\n","error writing element: ", i, "label: ", 
+					label_arr[i], "data: ", *data_arr[i]);
 				return -1;
 			}
 		}
@@ -568,8 +568,8 @@ int write_laGrange_file (double **data_arr, char **label_arr, int num_labels, in
 			char run_title [10];
 			sprintf(run_title, "Run %d", j);
 			if(write_num_json(dfp, nest_level, run_title, data_arr[i][j], &first) < 0){ 
-				printf("%s %d\n%s %s\n %s %d\n","error writing element: ", i, "label: ", 
-					label_arr[i], "data: ", data_arr[i]);
+				printf("%s %d\n%s %s\n %s %f\n","error writing element: ", i, "label: ", 
+					label_arr[i], "data: ", *data_arr[i]);
 				return -1;
 			}
 		}

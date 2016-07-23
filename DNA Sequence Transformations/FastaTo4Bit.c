@@ -19,8 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
-#include <float.h>
-#include "writeJson.h"
+#include "jsonData.h"
 
 int fastaTo4Bit(const char * input,char * output,long inputsize, long * outputsize){
 	int i = 0;
@@ -49,9 +48,39 @@ int fastaTo4Bit(const char * input,char * output,long inputsize, long * outputsi
 	*outputsize = k;
 	return 0;
 }
+int readInputToBuffer(FILE * ifp, char ** input, long * inputsize){
+ 	// Go to the end of the file //
+	if(fseek(ifp, 0L, SEEK_END)== 0){
+		// Get the size of the file. //
+		*inputsize = ftell(ifp);
+		if (*inputsize == -1) {
+			fputs("Error finding size of file", stderr);
+		return -1;
+		 }
+		//Allocate our buffer of that size +1 for null termination. //
+		*input = malloc (sizeof(char) * ((*inputsize)+1));
+		
+		// Return to start of file //
+		if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
+			fputs("Error returning to start of file", stderr);
+			return -1;
+		}
+		//Read the entire file into memory//
+		size_t newLen = fread(*input, sizeof(char), *inputsize, ifp);
+		if(newLen == 0){
+			fputs("Error reading file", stderr);
+			return -1;
+		} else {
+			// Null termination character at the end of the input buffer //
+			(*input)[newLen++] = '\0'; 
+		}
+		return 0;
+	} else return -1;
+}
+
 
 int main(int argc, char *argv[]){
-	if(!(argc == 3||argc == 4||argc == 5)){
+	if(!(argc == 3||argc == 4)){
 		printf("Incompatible number of arguments\n");
                 return -1;
         } 
@@ -61,32 +90,7 @@ int main(int argc, char *argv[]){
 	FILE *ifp = fopen(argv[1],"r");
 	long inputsize = 0;
 	if(ifp != NULL){
-	 // Go to the end of the file //
-	if(fseek(ifp, 0L, SEEK_END)== 0){
-		// Get the size of the file. //
-
-		inputsize = ftell(ifp);
-		if (inputsize == -1) {
-			fputs("Error finding size of file", stderr);
-		 }
-	
-		//Allocate our buffer of that size +1 for null termination. //
-		input = malloc (sizeof(char) * (inputsize+1));
-		
-
-		// Return to start of file //
-		if(fseek(ifp, 0L, SEEK_SET)!=0 ) {
-			fputs("Error returning to start of file", stderr);
-		}
-
-		//Read the entire file into memory//
-		size_t newLen = fread(input, sizeof(char), inputsize, ifp);
-		if(newLen == 0){
-			fputs("Error reading file", stderr);
-		} else {
-			input[newLen++] = '\0'; // Null termination character at the end of the input buffer 
-			}
-		}			
+		readInputToBuffer(ifp,&input,&inputsize);		
 		fclose(ifp);
 	}else{
 		printf("%s\n", "the input file given does not exist");
@@ -97,44 +101,29 @@ int main(int argc, char *argv[]){
 	char * output = malloc(sizeof(char)* (inputsize + 1));
 	long outputsize = 0;
 	
-	float *times;
+	double *times;
 	int runs = 0;
-	int numTimes = 0;
 	if(argc == 3){
 		fastaTo4Bit(input,output,inputsize,&outputsize);
 	}
-	if(argc == 4){	//if a number of runs is given but no number of minimum times, default number of min times is 3
+
+	if(argc == 4){ //if the number of runs is given
 		runs = atoi(argv[3]);
-		numTimes = 3;
-		times = calloc(runs, sizeof(float)); 
-		struct timeval time0, time1; 
-		int i;
-		for(i=0;i<runs;i++){ // Record time of each run
-			gettimeofday(&time0,NULL);
-			fastaTo4Bit(input,output,inputsize,&outputsize);
-			gettimeofday(&time1,NULL);
-			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-		}
+    times = calloc(runs, sizeof(double));
+    struct timeval time0, time1; 
+    int i;
+    for(i=0;i<runs;i++){ // Record time of each run
+    	gettimeofday(&time0,NULL);
+    	fastaTo4Bit(input,output,inputsize, &outputsize);
+    	gettimeofday(&time1,NULL);
+    	times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+    }
 
-	}
-	if(argc == 5){ //if both number of runs and the number of minimum times is given
-		runs = atoi(argv[3]);
-                numTimes = atoi(argv[4]);
-                times = calloc(runs, sizeof(float));
-                struct timeval time0, time1; 
-                int i;
-                for(i=0;i<runs;i++){ // Record time of each run
-                        gettimeofday(&time0,NULL);
-                        fastaTo4Bit(input,output,inputsize, &outputsize);
-                        gettimeofday(&time1,NULL);
-                        times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-                }
-
-	}
-
-	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
-	if(argc > 3){
-		if(write_time_file(times, runs, numTimes,inputsize) < 0)
+		//timing.json file output generated //
+		char *labelArr[1];
+		labelArr[0] = "Transform Times";
+		int numLabels = sizeof(labelArr)/sizeof(char*); 
+		if(write_time_file(&times, labelArr, numLabels, runs) < 0)
 			printf("error writing time file\n");
 		free(times);
 	}
