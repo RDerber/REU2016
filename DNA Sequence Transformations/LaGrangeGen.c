@@ -136,10 +136,11 @@ int modMersenne(int num, int mers, int numShift){
 //		printf("%s %d\n","num:", num);
 	int temp;
 	int notMod = ~mers;
-//	while(num & notMod){
+	int i = 0;
+	while(num & notMod){
 		temp = num & mers;
 		num = temp + (num >> numShift);
-//	}
+	}
 
 	return num;
 }
@@ -151,13 +152,6 @@ int evaluate(int x, int polys[], int polysize, int mod, int numShift){ // evalua
 	int sum = 0;
 	int polyTable[polysize]; 	// Stores x^(2n)  that will be used to calculate x^m 
 	memset(polyTable, 0 , sizeof(polyTable));
-	int temp;
-	temp = x & mod;
-	x = temp + (x >> numShift);
-	temp = x & mod;
-	x = temp + (x >> numShift);
-	temp = x & mod;
-	x = temp + (x >> numShift);
 	polyTable[0] = x;
 	int check = 1;
 	int log = 0;
@@ -280,14 +274,8 @@ int keyIdentifier(FILE * ifp,int *input,int *output){
 			//	continue; 
 				
 				for(j=0; j < i-1; ++j){
-					if(atoi(numBuf) == 0 && numBuf[j] != '0'){ // If it's a character, cast and put into output
-						output[outputCount++] = (int)numBuf[j]; 
-						break;
-					}
-					else{
-						output[outputCount++] = atoi(numBuf); //If it's a number, convert to int and put into output
-						break;
-					}
+					output[outputCount++] = (int)numBuf[j]; 
+					break;
 				}
 				
 			}
@@ -391,7 +379,7 @@ int main (int argc, char **argv){ // [key][input file][output file name] [number
 
 	
 	for(i=0;i<inputSize;++i){
-		fprintf(ofp,"%d", output[i]);
+		fprintf(ofp,"%c", output[i]);
 	}
 		
 	int numDataForms = 2;
