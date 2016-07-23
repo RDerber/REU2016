@@ -17,13 +17,13 @@ int keyIdentifier(FILE * ifp,char *input,int *output){
 	char numBuf[20];
 	while((byt=getc(ifp))!= EOF){
 	
-		if(byt != ' ' && byt != '\n' && byt != '\r' && byt!= ','){
+		if(byt != ' ' && byt != '\n' && byt != '\r'){
 			if(byt != '>'){
 				input[inputCount++] = byt;
 			}else{
-				while((byt = getc(ifp)) == ' ' || byt == '\n' || byt == '\r' || byt == ','){}
+				while((byt = getc(ifp)) == ' ' || byt == '\n' || byt == '\r'){}
 				i=0;
-				while(byt != '\n'){
+				while(byt != '\n' && byt != '\xff'){
 					 numBuf[i++] = byt;
 					 byt=getc(ifp);
 				}
@@ -105,6 +105,7 @@ int main (int argc, char * argv[]){ //[key] [fileSize] [outputFile]
 			int * output = malloc(keySize*sizeof(int));
 			keySize = keyIdentifier(ifp,input,output);
 			randDivAndOpt(argv[3],atoi(argv[2]),input,keySize);
+			fclose(ifp);
 			return 0;
 		} else {
 			printf("key not accessible");

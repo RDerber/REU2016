@@ -131,14 +131,15 @@ int modInverse(long long num, int mod){ // Takes in a number A  and a modulus nu
 }
 
 int modMersenne(int num, int mers, int numShift){
-	if(num<0)
-		printf("%s %d","num:", num);
-	int temp = mers;
+//	printf("%s %d\n","num:", num);
+//	if(num<0)
+//		printf("%s %d\n","num:", num);
+	int temp;
 	int notMod = ~mers;
-	while(num & notMod){
+//	while(num & notMod){
 		temp = num & mers;
 		num = temp + (num >> numShift);
-	}
+//	}
 
 	return num;
 }

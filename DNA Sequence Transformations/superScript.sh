@@ -16,9 +16,9 @@ fi
 mkdir ./tests/superTests/$today
 
 folder="./tests/superTests/$today"
-runs=10
+runs=20
 evals=100
-maxNumInputs=4
+maxNumInputs=3
 fileSize=10000
 numInputSets=10
 k=3
@@ -33,12 +33,12 @@ for ((i=1; i<(maxNumInputs+1); ++i))
 do
 	for((inputSet=1; inputSet< (numInputSets+1); ++inputSet))
 		do
-			echo "input set number $inputSet is being printed"
+			echo "input set number $inputSet is being evaluated"
 			echo $(date +%Y-%m-%d-%T)
 			echo "Current Number of Inputs: $i"
 			echo ""
 			./superOptimizer2 $i $fileSize $(( RANDOM )) $runs $evals
-			if [ $inputSet -eq $runs ]
+			if [ $inputSet -eq $numInputSets ]
 			then
 				./jsonTitle temp1.json "Input Set $inputSet"
 			else	

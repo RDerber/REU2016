@@ -147,7 +147,10 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 	for(i=0;i<numDistInputs;++i){
 		input[i] = rand()%255;
 		for(j=0;j<i;++j){
-			if(input[i] == input[j]) --i;
+			if(input[i] == input[j]){
+				--i;
+				break;
+			}
 		}
 	}
 	

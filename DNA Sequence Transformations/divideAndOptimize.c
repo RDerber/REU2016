@@ -46,13 +46,12 @@ unsigned char (*functionPtrs[])(unsigned char,unsigned int) = {&addFunc,&andFunc
 size_t highestBit(int num){
 	int i;
 	size_t check = 1;
-	for(i=0;i < sizeof(int)*8;++i){
-		check<<=1;
-	}
+	check <<= sizeof(int)*8;
 	for(i = sizeof(int) * 8;i > 0;--i){
 		if(num&check) return check;
 		else check>>=1;
 	}
+	return 0;
 }
 
 char findFirstDiff(unsigned char input, unsigned char* arr, size_t arrSize){
@@ -126,7 +125,7 @@ int superOptimizer (unsigned char * startingInput, unsigned char * input, int in
 	unsigned int i,j,k;
 	char constInput[inputSize];
 	for(i=0;i<inputSize;++i) constInput[i] = input[i];
-	int opsSize = sizeof(operations)/sizeof(char)-1;
+	int opsSize = 2;
 	int opsMax[] = {256, 256, 256, 8, 8};
 	int group1Size = 0;
 	for(k = 0; k < opsSize; ++k){
@@ -269,7 +268,7 @@ int keyIdentifier(FILE * ifp,unsigned char *input,unsigned char *output){
 	int outputCount = 0;
 	while((byt=getc(ifp))!= EOF){
 	
-		if(byt != ' ' && byt != '\n' && byt != '\r'){
+		if(byt >= 33){
 			if(byt != '>'){
 				input[inputCount++] = byt;
 			}else{
@@ -293,8 +292,6 @@ int evaluate(unsigned char input, char** opArray, unsigned int ** numArray, int 
 		for(j=0;j < maxNumOps;++j){
 			direction = operate(direction,((opArray[i])[j]),((numArray[i])[j]));
 		}
-
-		fflush(stdout);
 		i = i*2 + direction;
 	}
 	int output = numArray[i][maxNumOps-1];
@@ -349,19 +346,20 @@ int getFileSize(FILE *ifp){
 	return keySize;
 }
 
-int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
+int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs][number of evals]
 
-	if(argc < 4 || argc > 5){	//if a number of runs is given but no number of minimum times, default number of min times is 3
+	if(argc < 4 || argc > 6){	//if a number of runs is given but no number of minimum times, default number of min times is 3
 		printf("wrong number of arguments");
 		return -1;
 	}
 	struct timeval time0, time1; 
 	int i,j=0,k;
 	int runs = atoi(argv[4]);
+	int evals = atoi(argv[5]);
 	double *runTimes;
 	double * evalTimes;
 	runTimes = calloc(runs, sizeof(double)); 
-	evalTimes = calloc(runs, sizeof(double));
+	evalTimes = calloc(evals, sizeof(double));
 	int keySize = 0; 
 	FILE * ifp;
 	ifp = fopen(argv[1],"r");
@@ -376,7 +374,6 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	
 	keySize = keyIdentifier(ifp, input, output);			// keySize now equals the number of inputs in the key	
 	fclose(ifp);
-
 	int maxNumOps = 4;			//Always should be 5
 
 	int success = -1;							
@@ -394,10 +391,23 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 	}
 	
 	for(k=0;k<runs; ++k){
+//		for(i=0;i < (numBranches); ++i){
+//			opArray[i] = calloc(maxNumOps, sizeof(char));
+//			numArray[i] = calloc(maxNumOps, sizeof(int));
+//		}
+		for(i=0;i<keySize;++i){
+			input[i] = startingInput[i];
+		}
 		gettimeofday(&time0,NULL);
 		success = divideAndOptimize(startingInput, input, output, keySize, opArray, numArray, maxNumOps,1);
 		gettimeofday(&time1,NULL);
 		runTimes[k] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+//		if(k != runs-1){
+//			for(j=0;j < (numBranches); ++j){
+///				free(opArray[i]);
+//				free(numArray[i]);
+//			}
+//		}
 	}
 
 
@@ -444,7 +454,7 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		}
 	}
 
-	for(i=0;i<runs;i++){ // Record time of each run
+	for(i=0;i<evals;i++){ // Record time of each run
 		gettimeofday(&time0,NULL);
 		j=0;
 		for(k=0;k<readSize; ++k){
@@ -471,12 +481,11 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 		
 		int runsArray[numDataForms];
 		runsArray[0] = runs;
-		runsArray[1] = runs; 
+		runsArray[1] = evals; 
 		if(write_DAO_file(timeArray, labelArray, numDataForms, runsArray, startingInput, output, keySize) < 0) 
 			printf("error writing time file\n");
 		}
-		free(input);
-		free(output);
+		
 		free(runTimes);
 		free(evalTimes);
 		// Writing output buffer to specified output file//
@@ -488,13 +497,15 @@ int main(int argc, char** argv){ // [key][inputFile][outputFile][number of runs]
 			fwrite(writeOut, 1, writeSize, ofp);
 			fclose(ofp);
 		}
+	free(input);
+	free(output);
 	free(readIn);
 	free(writeOut);
 	free(startingInput);
 
 	} else printf("no sequence found");
+	
 	for(i=0;i < (numBranches); ++i){
-		
 		free(opArray[i]);
 		free(numArray[i]);
 	}

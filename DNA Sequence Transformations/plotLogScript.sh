@@ -26,7 +26,7 @@ set title graphTitle
 set xlabel myXLabel
 set ylabel "Transform Time (µsec)"
 set key center bottom right title box 3
-f(x)=a*log(x)/log(2)+b
+f(x)=a*log(x)+b
 fit f(x) graph u xvals:yvals via a,b
-title_f(a,b)=sprintf('f(x)=%.2flog(x)/log(2)+%.2f',a,b)
+title_f(a,b)=sprintf('f(x)=%.2flog(x)+%.2f',a,b)
 plot graph u xvals:yvals notitle with linespoints,f(x) t title_f(a,b)

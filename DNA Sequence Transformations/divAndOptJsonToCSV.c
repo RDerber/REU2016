@@ -23,17 +23,17 @@ int findHigh(double * arr, size_t arrSize){
 	return highPos;
 }
 
-int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int dAORuns,int evalRuns, int k){
+int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int numInputSets, int dAORuns,int evalRuns, int k){
 	int i,j,h,g;
 	int end = 0;
 	int inArr[maxNumInputs];
 	int numRuns = dAORuns + evalRuns;
-	int numTimeMatches = maxNumInputs * numRuns;
+	int numTimeMatches = maxNumInputs *numInputSets* numRuns;
 	int status;
 	regex_t re;
 	regmatch_t inputMatch;
 	
-	char *inputPattern = "Key Size"; 
+	char *inputPattern = "key [0-9]+"; 
 	/*Number of Inputs*/
 	
 	if(regcomp(&re, inputPattern, REG_EXTENDED) != 0){
@@ -47,17 +47,17 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int dAORuns,int 
 			printf("%s %s","The following expression was not found:", inputPattern);
 			return -1;
 		}
-		int loc = inputMatch.rm_eo+3;
+		int loc = inputMatch.rm_so+4;
 		char c;
 		int a=0;
 		char numBuf[20];
 //		printf("%s %d\n","loc:",loc);
-		while((c = input[(loc++)+end]) != ','){
+		while((c = input[(loc++)+end]) != '"'){
 //			printf("%c",c);
 			numBuf[a++] = c;
 		}
 		numBuf[a] = '\x00';
-		inArr[i] = atoi(numBuf);
+		inArr[i] = 2*atoi(numBuf);
 		end += inputMatch.rm_eo;
 		
 		//printf("%s %d\n","i:",i);
@@ -85,6 +85,7 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int dAORuns,int 
 		status = regexec(&re, input+end, 1, &timingMatch, 0); 
 	
 		if(status != 0){
+			printf("%s %d", "i:", i);
 			printf("%s %s","The following expression was not found:", timePattern);
 			return -1;
 		}
@@ -97,7 +98,7 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int dAORuns,int 
 			numBuf[a++] = c;
 		}
 		numBuf[a] = '\x00';
-		timeArr[i] = atoi(numBuf); 
+		timeArr[i] = atof(numBuf); 
 		end += timingMatch.rm_eo;
 	}
 	
@@ -113,44 +114,52 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int dAORuns,int 
 	double avgTime = 0;
 	double lowTime[k];
 	for(h=0;h<maxNumInputs;h++){
-		for(g=0; g<2; ++g){
-			double hiloTime = DBL_MAX;
-			int numStored = 0;
-			int hiloPos = 0;
-			double time;
-			int runsVar = 0;
-			if(g==0) runsVar = dAORuns;
-			else runsVar = evalRuns;
-			for(j=0; j<runsVar; ++j){
-				//printf("%s %f\n", "hiloTime:", hiloTime);
-				if((time = timeArr[h*numRuns+g*dAORuns+j]) < hiloTime){
-					//printf("%s %f %s %d\n","time:",time, "j:",j);
-					if(numStored < k){
-						lowTime[numStored++] = time;
-					}else {
-						if((hiloPos = findHigh(lowTime,k)) < 0){
-							fprintf(stderr, "%s","This really shouldn't happen");
-							return -1;
+		for(i=0;i<numInputSets; ++i){
+			for(g=0; g<2; ++g){
+				double hiloTime = DBL_MAX;
+				int numStored = 0;
+				int hiloPos = 0;
+				double time;
+				int runsVar = 0;
+				if(g==0) runsVar = dAORuns;
+				else runsVar = evalRuns;
+				for(j=0; j<runsVar; ++j){
+					//printf("%s %f\n", "hiloTime:", hiloTime);
+					if((time = timeArr[h*numInputSets*numRuns+ i*numRuns+g*dAORuns+j]) < hiloTime){
+						//printf("%s %f %s %d\n","time:",time, "j:",j);
+						if(numStored < k){
+							lowTime[numStored++] = time;
+						}else {
+							if((hiloPos = findHigh(lowTime,k)) < 0){
+								fprintf(stderr, "%s","This really shouldn't happen");
+								return -1;
+							}
+							lowTime[hiloPos] = time;
+							hiloTime = lowTime[findHigh(lowTime,k)];
 						}
-						lowTime[hiloPos] = time;
-						hiloTime = lowTime[findHigh(lowTime,k)];
+						
 					}
-					
 				}
-			}
-			double lowSum = 0;
-			for(j=0; j<k; ++j){
-				lowSum += lowTime[j];
-			}
-			double avgLowTime = lowSum/(double)k;
-			if(g==0){ //runTimes Avg - running sum
-				inputAvgRunTime[h] += avgLowTime;
-			}else{ // EvalTimes Avg - running sum		
-				inputAvgEvalTime[h] += avgLowTime;
+				double lowSum = 0;
+				for(j=0; j<k; ++j){
+					lowSum += lowTime[j];
+				}
+				double avgLowTime = lowSum/(double)k;
+				if(g==0){ //runTimes Avg - running sum
+					inputAvgRunTime[h] += avgLowTime;
+				}else{ // EvalTimes Avg - running sum		
+					inputAvgEvalTime[h] += avgLowTime;
+				}
 			}
 		}
 	}
 	
+	//Find averages across input sets for each number of inputs
+	
+	for(h=0;h<maxNumInputs;++h){
+		inputAvgRunTime[h] /= (double)numInputSets;
+		inputAvgEvalTime[h] /= (double)numInputSets;
+	}
 	
 			
 	//Print out CSV Files
@@ -168,15 +177,16 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int dAORuns,int 
 	
 	
 	
-int main (int argc, char * argv[]){ //[input json file] [output csv] [maxNumInputs] [number of divAndOpt runs][number of evaluation runs] [lowest k values to be averaged] 
+int main (int argc, char * argv[]){ //[input json file] [output csv] [maxNumInputs] [numInputSets] [number of divAndOpt runs][number of evaluation runs] [lowest k values to be averaged] 
 
-	if(argc == 7){
+	if(argc == 8){
 
 		FILE * ofp = fopen(argv[2], "w");
 		int maxNumInputs = atoi(argv[3]);
-		int dAORuns = atoi(argv[4]);
-		int evalRuns = atoi(argv[5]);
-		int k = atoi(argv[6]);
+		int numInputSets = atoi(argv[4]);
+		int dAORuns = atoi(argv[5]);
+		int evalRuns = atoi(argv[6]);
+		int k = atoi(argv[7]);
 		
 		// Create Input Memory Buffer //
 		char *input = NULL;
@@ -215,7 +225,7 @@ int main (int argc, char * argv[]){ //[input json file] [output csv] [maxNumInpu
 			return -1;
 		}
 		
-		timingJsonToCSV(input, ofp, maxNumInputs, dAORuns, evalRuns, k);
+		timingJsonToCSV(input, ofp, maxNumInputs,numInputSets, dAORuns, evalRuns, k);
 		free(input);
 		fclose(ofp);
 		

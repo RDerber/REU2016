@@ -2,6 +2,8 @@
 
 #Recompile all files before running timing function
 gcc jsonTitle.c -o jsonTitle
+gcc -g keyGen.c -o keyGen
+gcc -g randFromKey.c -o randFromKey
 gcc -g jsonData.c divideAndOptimize.c -o divideAndOptimize
 gcc -g jsonData.c jsonSystemStats.c -o jsonSystemStats
 gcc -g divAndOptJsonToCSV.c -o divAndOptJsonToCSV
@@ -14,63 +16,73 @@ else
 fi
 
 mkdir ./tests/divAndOptTests/$today
+rm temp1.json
+rm temp2.json
 
-numInputFiles=0
-runs=100
-evals=100
-k=3
+numKeys=30	#This is the numer of different sized keys tested (each with it's own corresponding input file)
+		#cannot be much higher than 50 for good run time. Will break if higher than 63 (63*2 = 126. 127 is max acceptible 
+		#random ascii value
+		
+numInputSets=100 #This is the number of files tested for each key size 
+
+runs=1 #The number of times the divAndOp Sequence finder is run
+evals=10 #The number of times the found sequence is used to translate an input file
+
+k=1 #The lowest K timing values to be averaged in the timing report to make the csv file
+
 folder="./tests/divAndOptTests/$today"
 
 ./jsonSystemStats $folder/divAndOptTimeStats.json
-
-#Run divideAndOptimize divAndOpt Tests and Store in timeStats.txt
-./divideAndOptimize tests/divAndOptTests/key1.txt tests/divAndOptTests/key1In.txt $folder/key1Out.txt $runs
-./jsonTitle timing.json "key 1" "-c"
-# Add new line character inbetween files when appending
-echo "" >> timing.json
-cat timing.json >> $folder/divAndOptTimeStats.json
-((numInputFiles++))
-
-./divideAndOptimize tests/divAndOptTests/key2.txt tests/divAndOptTests/key2In.txt $folder/key2Out.txt $runs
-./jsonTitle timing.json "key 2" "-c"
-echo "" >> timing.json
-cat timing.json >> $folder/divAndOptTimeStats.json
-((numInputFiles++))
-
-./divideAndOptimize tests/divAndOptTests/key3.txt tests/divAndOptTests/key3In.txt $folder/key3Out.txt $runs
-./jsonTitle timing.json "key 3" "-c"
-echo "" >> timing.json
-cat timing.json >> $folder/divAndOptTimeStats.json
-((numInputFiles++))
-
-./divideAndOptimize tests/divAndOptTests/key4.txt tests/divAndOptTests/key4In.txt $folder/key4Out.txt $runs
-./jsonTitle timing.json "key 4" "-c"
-echo "" >> timing.json
-cat timing.json >> $folder/divAndOptTimeStats.json
-((numInputFiles++))
-
-./divideAndOptimize tests/divAndOptTests/key5.txt tests/divAndOptTests/key5In.txt $folder/key5Out.txt $runs
-./jsonTitle timing.json "key 5" "-c"
-echo "" >> timing.json
-cat timing.json >> $folder/divAndOptTimeStats.json
-((numInputFiles++))
-
-./divideAndOptimize tests/divAndOptTests/key6.txt tests/divAndOptTests/key6In.txt $folder/key6Out.txt $runs
-./jsonTitle timing.json "key 6" "-c"
-#echo "" >> timing.json
-cat timing.json >> $folder/divAndOptTimeStats.json
-((numInputFiles++))
-
-./divideAndOptimize tests/divAndOptTests/key7.txt tests/divAndOptTests/key7In.txt $folder/key7Out.txt $runs
-./jsonTitle timing.json "key 7" 
-#echo "" >> timing.json
-cat timing.json >> $folder/divAndOptTimeStats.json
-((numInputFiles++))
+for ((i=1; i<(numKeys+1); ++i))
+do
+	for((inputSet=1; inputSet<(numInputSets+1); ++inputSet))
+		do
+			#Create random key
+			./keyGen $(( 2 * $i )) tests/divAndOptTests/ $(( RANDOM ))
+			
+			#Create random key input file
+			./randFromKey tests/divAndOptTests/key"$i".txt 10000 tests/divAndOptTests/key"$i"In.txt
+			
+			#status
+			echo "input set number $inputSet is being evaluated"
+			echo $(date +%Y-%m-%d-%T)
+			echo "Current Key #: $i"
+			echo ""
+			#Run divideAndOptimize divAndOpt Tests and Store in temp1.json
+			./divideAndOptimize tests/divAndOptTests/key"$i".txt tests/divAndOptTests/key"$i"In.txt $folder/key"$i"Out.txt $runs $evals
+		
+			if [ $inputSet -eq $numInputSets ]
+			then
+					./jsonTitle temp1.json "Input Set $inputSet"
+			else	
+					./jsonTitle temp1.json "Input Set $inputSet" "-c"
+					echo "" >> temp1.json
+			fi
+				
+			cat temp1.json >> temp2.json
+		done
+		
+		
+	if [ "$i" = "$maxNumInputs" ]
+	then
+		./jsonTitle temp2.json "key $i" 
+	else
+		./jsonTitle temp2.json "key $i" "-c"
+		# Add new line character inbetween files when appending
+		echo "" >> temp2.json
+		rm temp1.json
+	fi
+	
+	cat temp2.json >> $folder/divAndOptTimeStats.json
+	rm temp2.json
+done
+	
+	
 
 #Add Title to divAndOptTimeStats.txt file
 ./jsonTitle $folder/divAndOptTimeStats.json "divideAndOptimize" "-f"
 
-./divAndOptJsonToCSV $folder/divAndOptTimeStats.json $folder/divAndOptTimeStats.csv $numInputFiles $runs $evals $k
+./divAndOptJsonToCSV $folder/divAndOptTimeStats.json $folder/divAndOptTimeStats.csv $numKeys $numInputSets $runs $evals $k
 
 inputPlotFile="divAndOptTimeStats.csv"
 

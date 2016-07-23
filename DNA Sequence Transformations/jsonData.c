@@ -455,7 +455,7 @@ int write_DAO_file (double **data_arr, char **label_arr, int num_labels, int *ru
 	FILE * dfp;
 	int num_ops = 0;
 	
-	if((dfp = fopen(TIME_OUT,"w+")) == NULL){
+	if((dfp = fopen(TEMP_FILE,"w+")) == NULL){
 			printf("Data file could not be written\n"); 
 			return -1;
 		}
