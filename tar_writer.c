@@ -1153,12 +1153,23 @@ int write_rle_trees (struct bit_stream *bs, uint16_t *lens, uint16_t *dist,
 	
 	print_huffcodes(hlist, 0, h);
 	
+	int maxbl = 0;
+	
+	for (maxbl = 19 - 1; maxbl >= 3; maxbl--) {
+		printf("%d: hlist[%d].count = %d\n", maxbl, 
+			order[maxbl], hlist[order[maxbl]].hc_len);
+		if (hlist[order[maxbl]].hc_len != 0)
+			break;
+	}
+	
+	printf("sending %d len %d dist %d code lengths (0-18)\n", num_len, num_dst, maxbl);
+	
 	write_bit_stream(bs, last + 6, 3);
 	write_bit_stream(bs, num_len - 257, 5);
 	write_bit_stream(bs, num_dst - 1, 5);
-	write_bit_stream(bs, max_code(hlist, 19) - 4, 4);
+	write_bit_stream(bs, maxbl + 1 - 4, 4);
 	
-	for (i = 0; i < 19; i++) {
+	for (i = 0; i < maxbl; i++) {
 		if (!hlist[order[i]].count)
 			hlist[order[i]].hc_len = 0;
 		
@@ -1179,7 +1190,7 @@ int write_rle_trees (struct bit_stream *bs, uint16_t *lens, uint16_t *dist,
 #if 1
 int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 {
-	int pos = 0, toc, i, j, num, num_dist, num_lenc, num_codelens = 0;
+	int pos = 0, toc, i, j, num, num_dist, num_lenc;
 	struct huff_len_table hlt[288];
 	struct bit_stream *bs;
 	struct huff_list *hlist, *dlist, *rlist;
@@ -1201,40 +1212,35 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 		dist = calloc(sizeof(uint16_t), toc + 288);
 
 		for (i = 0, j = 0; i < num; i++) {
-			dist_code(lz[i].dist, &code, &eb, &ev);
-			dist[i] = code;
+			if (lz[i].dist) { 
+				dist_code(lz[i].dist, &code, &eb, &ev);
+				dist[i] = code;
+				lens[i] = hlt[lz[i].len].len_code;
+			} else {
+				lens[i] = lz[i].len;
+			}
 			
-			lens[i] = (lz[i].dist) ? (hlt[lz[i].len].len_code) : (lz[i].len);
-			
-		//	printf("%d: len %d dist %d\n", i, lens[i], dist[i]);
+			//printf("%d: lz len = %d dist = %d | len %d dist %d\n", i, 
+			//	lz[i].len, lz[i].dist, 
+			//	lens[i], dist[i]);
 		}
 		
 		num_dist = huff_encode (dist, num, 32, &dlist);
 		num_lenc = huff_encode (lens, num, 288, &hlist); 
 		
-		printf("%d unique dist codes, %d unique len/lit codes\n", num_dist, num_lenc);
+		//print_huffcodes(hlist, 0, 288);
+		//print_huffcodes(dlist, 0, 31);
 		
-		print_huffcodes(hlist, 0, 288);
-		print_huffcodes(dlist, 0, 31);
-		
-		printf("%d unique len code lengths\n", copy_huff_lens(hlist, 288, lens));
-		
-		num_codelens = copy_huff_lens(dlist, 31, dist);
-		printf("%d unique dist code lengths\n", num_codelens);
-		
-		printf("%d (%d) len, %d (%d) dist\n", 
+		printf("%d (%d) len, %d (%d) dist, %d unique len, %d unique dist\n", 
 			num_lenc, max_code(hlist, 288), 
-			num_dist, max_code(dlist, 32));
-	
-		//reorder(new_dist, dist);
-		
+			num_dist, max_code(dlist, 32),
+			copy_huff_lens(hlist, 288, lens),
+			copy_huff_lens(dlist, 32, dist));
+			
+		i = write_rle_trees(bs, lens, dist, &rlist, max_code(hlist, 288) + 1,
+				max_code(dlist, 32) + 1, ((toc != blk_size) ? 1 : 0));
 
-
-		printf("wrote %d length codes\n", 
-				write_rle_trees(bs, lens, dist, &rlist, 
-						max_code(hlist, 288),
-						max_code(dlist, 32),
-						((toc != blk_size) ? 1 : 0)));
+		printf("wrote %d length codes\n", i);
 		
 		for (i = 0; i < num_lenc; i++) {
 			/*printf("lcode for %d = %d (%d bits)\n", i, 
