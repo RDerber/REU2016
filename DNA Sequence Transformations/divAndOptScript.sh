@@ -19,16 +19,16 @@ mkdir ./tests/divAndOptTests/$today
 rm temp1.json
 rm temp2.json
 
-numKeys=30	#This is the numer of different sized keys tested (each with it's own corresponding input file)
+numKeys=40	#This is the numer of different sized keys tested (each with it's own corresponding input file)
 		#cannot be much higher than 50 for good run time. Will break if higher than 63 (63*2 = 126. 127 is max acceptible 
 		#random ascii value
 		
-numInputSets=100 #This is the number of files tested for each key size 
+numInputSets=10 #This is the number of files tested for each key size 
 
-runs=1 #The number of times the divAndOp Sequence finder is run
-evals=10 #The number of times the found sequence is used to translate an input file
+runs=100 #The number of times the divAndOp Sequence finder is run
+evals=100 #The number of times the found sequence is used to translate an input file
 
-k=1 #The lowest K timing values to be averaged in the timing report to make the csv file
+k=3 #The lowest K timing values to be averaged in the timing report to make the csv file
 
 folder="./tests/divAndOptTests/$today"
 
@@ -51,7 +51,7 @@ do
 			#Run divideAndOptimize divAndOpt Tests and Store in temp1.json
 			./divideAndOptimize tests/divAndOptTests/key"$i".txt tests/divAndOptTests/key"$i"In.txt $folder/key"$i"Out.txt $runs $evals
 		
-			if [ $inputSet -eq $numInputSets ]
+			if [ "$inputSet" = "$numInputSets" ]
 			then
 					./jsonTitle temp1.json "Input Set $inputSet"
 			else	
@@ -63,9 +63,10 @@ do
 		done
 		
 		
-	if [ "$i" = "$maxNumInputs" ]
+	if [ "$i" = "$numKeys" ]
 	then
 		./jsonTitle temp2.json "key $i" 
+		echo "then!"
 	else
 		./jsonTitle temp2.json "key $i" "-c"
 		# Add new line character inbetween files when appending

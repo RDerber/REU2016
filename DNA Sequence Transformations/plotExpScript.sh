@@ -29,7 +29,7 @@ print yvals
 
 set xlabel myXLabel
 set ylabel "Transform Time (µsec)"
-set key center bottom right title box 3
+set key center top left title box 3
 a=100
 b=50
 f(x)=a**x+b

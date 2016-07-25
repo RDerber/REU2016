@@ -85,7 +85,7 @@ int randDivAndOpt (char* fileName, int fileSize, char* characters, int numChar){
 		}
 		
 		fclose(ofp);
-		printf("\"%s\" %s\n",fileName,"divAndOptfile created.");
+//		printf("\"%s\" %s\n",fileName,"file created.");
 		return 0;
 	}else {
 		printf("Error writing file");	

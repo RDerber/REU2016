@@ -23,10 +23,10 @@ int findHigh(double * arr, size_t arrSize){
 	return highPos;
 }
 
-int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int numInputSets, int dAORuns,int evalRuns, int k){
+int timingJsonToCSV(char * input, long inputSize, FILE * ofp, int maxNumInputs, int numInputSets, int dAORuns,int evalRuns, int k){
 	int i,j,h,g;
-	int end = 0;
-	int inArr[maxNumInputs];
+	long end = 0;
+	int *inArr = malloc(maxNumInputs * sizeof(int));
 	int numRuns = dAORuns + evalRuns;
 	int numTimeMatches = maxNumInputs *numInputSets* numRuns;
 	int status;
@@ -42,12 +42,14 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int numInputSets
 	}
 	
 	for(i=0; i<maxNumInputs; ++i){
+		printf("%s %d\n","i:",i);
+		fflush(stdout);
 		status = regexec(&re, input+end, 1, &inputMatch, 0); // Find Num Inputs
 		if(status != 0){
 			printf("%s %s","The following expression was not found:", inputPattern);
 			return -1;
 		}
-		int loc = inputMatch.rm_so+4;
+		long loc = inputMatch.rm_so+4;
 		char c;
 		int a=0;
 		char numBuf[20];
@@ -66,15 +68,32 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int numInputSets
 //		printf("%s %d\n","begin:",inputMatch.rm_so);
 //		printf("%s %d\n","end:",end);
 	}
-	
+	printf("numInputs");
+	fflush(stdout);
 	regfree(&re);
 	
 	/*Time Data */
 	
 	regmatch_t timingMatch;
-	double timeArr[numTimeMatches];
-	char *timePattern = "Run [0-9]+";
+	double *timeArr = malloc(numTimeMatches*sizeof(double));
+//	char *timePattern = "Run [0-9]+?\"";
+	j=0;
+	while(i<inputSize){
+		if(input[i++] == 'R' && input[i++] == 'u' && input[i++] == 'n' && input[i++] == ' '){
+			while(input[i++] != '"');
+			i+=2;
+			char numBuf[20];
+			int a = 0;
+			char c;
+			while((c = input[i++]) != ',' && c!='\n' && c!='\r'){
+				numBuf[a++] = c;
+			}
+			numBuf[a] = '\x00';
+			timeArr[j++] = atof(numBuf); 
+		}
+	}	
 	
+/* Regex Timing Match
 	if(regcomp(&re, timePattern, REG_EXTENDED) != 0){
 		printf("Regex Comparison Error");
 		return -1;
@@ -82,6 +101,8 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int numInputSets
 	
 	end=0; //reset end
 	for(i=0; i<numTimeMatches; ++i){
+		printf("%s %d\n","i:",i);
+		fflush(stdout);
 		status = regexec(&re, input+end, 1, &timingMatch, 0); 
 	
 		if(status != 0){
@@ -90,7 +111,7 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int numInputSets
 			return -1;
 		}
 	
-		int loc = timingMatch.rm_eo+3;
+		long loc = timingMatch.rm_eo+2;
 		char numBuf [20];
 		char c;
 		int a=0;
@@ -101,11 +122,13 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int numInputSets
 		timeArr[i] = atof(numBuf); 
 		end += timingMatch.rm_eo;
 	}
-	
+	printf("numTimeMatches");
+	fflush(stdout);
 	regfree(&re);
+*/
 	
-	double inputAvgRunTime [maxNumInputs]; 
-	double inputAvgEvalTime [maxNumInputs];
+	double *inputAvgRunTime = malloc (maxNumInputs * sizeof(double)); 
+	double *inputAvgEvalTime = malloc(maxNumInputs*sizeof(double));
 
 	for(i=0;i<maxNumInputs;++i){
 		inputAvgEvalTime[i] = 0;
@@ -171,6 +194,11 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int numInputSets
 	//	printf("%s %f, %p\n", "inputAvgEvalTime[i]:", inputAvgEvalTime[i], inputAvgEvalTime);
 	}
 	
+	free(inArr);
+	free(timeArr);
+	free(inputAvgRunTime);
+	free(inputAvgEvalTime);
+	
 	return 0;
 	
 }
@@ -225,7 +253,7 @@ int main (int argc, char * argv[]){ //[input json file] [output csv] [maxNumInpu
 			return -1;
 		}
 		
-		timingJsonToCSV(input, ofp, maxNumInputs,numInputSets, dAORuns, evalRuns, k);
+		timingJsonToCSV(input, inputSize, ofp, maxNumInputs,numInputSets, dAORuns, evalRuns, k);
 		free(input);
 		fclose(ofp);
 		

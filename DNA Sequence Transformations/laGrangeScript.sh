@@ -15,61 +15,48 @@ fi
 
 mkdir ./tests/laGrangeTests/$today
 
-numInputFiles=0
+numKeys=40
 runs=100
 k=3
 folder="./tests/laGrangeTests/$today"
 
 ./jsonSystemStats $folder/laGrangeTimeStats.json
 
-#Run LaGrangeGen laGrange Tests and Store in timeStats.txt
-./LaGrangeGen tests/laGrangeTests/key1.txt tests/laGrangeTests/key1In.txt $folder/key1Out.txt $runs
-./jsonTitle temp1.json "key 1" "-c"
-# Add new line character inbetween files when appending
-echo "" >> temp1.json
-cat temp1.json >> $folder/laGrangeTimeStats.json
-((numInputFiles++))
 
-./LaGrangeGen tests/laGrangeTests/key2.txt tests/laGrangeTests/key2In.txt $folder/key2Out.txt $runs
-./jsonTitle temp1.json "key 2" "-c"
-echo "" >> temp1.json
-cat temp1.json >> $folder/laGrangeTimeStats.json
-((numInputFiles++))
+rm temp1.json
+for((i=1; i<(numKeys+1); ++i))
+do
+	#Create random key
+	./keyGen $(( 2 * $i )) tests/laGrangeTests/ $(( RANDOM ))
+	
+	#Create random key input file
+	./randFromKey tests/laGrangeTests/key"$i".txt 10000 tests/laGrangeTests/key"$i"In.txt
+	
+	#status
+	echo $(date +%Y-%m-%d-%T)
+	echo "Current Key #: $i"
+	echo ""
+	#Run divideAndOptimize laGrange Tests and Store in temp1.json
+	./LaGrangeGen tests/laGrangeTests/key"$i".txt tests/laGrangeTests/key"$i"In.txt $folder/key"$i"Out.txt $runs
 
-./LaGrangeGen tests/laGrangeTests/key3.txt tests/laGrangeTests/key3In.txt $folder/key3Out.txt $runs
-./jsonTitle temp1.json "key 3" "-c"
-echo "" >> temp1.json
-cat temp1.json >> $folder/laGrangeTimeStats.json
-((numInputFiles++))
-
-./LaGrangeGen tests/laGrangeTests/key4.txt tests/laGrangeTests/key4In.txt $folder/key4Out.txt $runs
-./jsonTitle temp1.json "key 4" "-c"
-echo "" >> temp1.json
-cat temp1.json >> $folder/laGrangeTimeStats.json
-((numInputFiles++))
-
-./LaGrangeGen tests/laGrangeTests/key5.txt tests/laGrangeTests/key5In.txt $folder/key5Out.txt $runs
-./jsonTitle temp1.json "key 5" "-c"
-echo "" >> temp1.json
-cat temp1.json >> $folder/laGrangeTimeStats.json
-((numInputFiles++))
-
-./LaGrangeGen tests/laGrangeTests/key6.txt tests/laGrangeTests/key6In.txt $folder/key6Out.txt $runs
-./jsonTitle temp1.json "key 6" 
-#echo "" >> temp1.json
-cat temp1.json >> $folder/laGrangeTimeStats.json
-((numInputFiles++))
-
-./LaGrangeGen tests/laGrangeTests/key7.txt tests/laGrangeTests/key7In.txt $folder/key7Out.txt $runs
-./jsonTitle temp1.json "key 7" 
-#echo "" >> temp1.json
-cat temp1.json >> $folder/laGrangeTimeStats.json
-((numInputFiles++))
+	
+	if [ "$i" = "$numKeys" ]
+	then
+		./jsonTitle temp1.json "key $i"
+	else
+		./jsonTitle temp1.json "key $i" "-c"
+		# Add new line character inbetween files when appending
+		echo "" >> temp1.json
+	fi
+	
+	cat temp1.json >> $folder/laGrangeTimeStats.json
+	rm temp1.json
+done
 
 #Add Title to laGrangeTimeStats.txt file
 ./jsonTitle $folder/laGrangeTimeStats.json "LaGrangeGen" "-f"
 
-./laGrangeJsonToCSV $folder/laGrangeTimeStats.json $folder/laGrangeTimeStats.csv $numInputFiles $runs $k
+./laGrangeJsonToCSV $folder/laGrangeTimeStats.json $folder/laGrangeTimeStats.csv $numKeys $runs $k
 
 inputPlotFile="laGrangeTimeStats.csv"
 
