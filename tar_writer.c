@@ -574,6 +574,9 @@ int huff_encode (uint16_t *src, int num, int chars, struct huff_list **hlist)
 	
 	for (i = 0; i < num; i++)
 		count[src[i]]++;
+		
+	if (chars > 128)
+		count[256]++;
 
 	for (i = 0; i < chars; i++) { 
 		(*hlist)[i].val = i;
@@ -1033,6 +1036,19 @@ void test_repcode (void)
 {
 #endif
 
+struct gzip_block_writer {
+	struct huff_list *hlist;	/* literals/lengths */
+	struct huff_list *dlist;	/* distances */
+	struct huff_list *rlist;	/* code lengths */
+	
+	int num_len;
+	int num_dst;
+	int num_clen;
+	
+	struct bit_stream *bs;
+	int last;
+};
+
 int count_bits (uint64_t src)
 {
 	int count = 1;
@@ -1081,6 +1097,12 @@ int copy_huff_lens (struct huff_list *dlist, int num, uint16_t *dst)
 	return count;
 }
 
+
+void reverse_write (struct bit_stream *bs, uint64_t in, int bits)
+{
+	write_bit_stream(bs, reverse_bits(in, bits), bits);
+}
+
 void write_compressed_data (struct bit_stream *bs, struct lz_out *lz, int num, 
 		struct huff_list *hlist, struct huff_list *dlist, 
 		struct huff_len_table hlt[288])
@@ -1114,11 +1136,11 @@ int max_code (struct huff_list *hl, int num)
 {
 	int i, c = 0;
 	
-	for (i = 0; i < num; i++) {
-		if (hl[i].count > 0) {
+	for (i = 0; i < num; i++)
+		if (hl[i].count && hl[i].val > hl[c].val)
 			c = i;
-		}
-	}
+
+	printf("max val = ind %d = %d\n", c, hl[c].val);
 
 	return c;
 }
@@ -1128,51 +1150,50 @@ int write_rle_trees (struct bit_stream *bs, uint16_t *lens, uint16_t *dist,
 {
 	int count = 0;
 	int order[19] = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15};
-	struct rep_out *rd = calloc(19 * 2, sizeof(struct rep_out));
-	struct rep_out *rl = calloc(288 * 2, sizeof(struct rep_out));
+	struct rep_out *rt = calloc(288 * 2, sizeof(struct rep_out));
 	uint16_t *tmp = calloc(288 * 2, sizeof(uint16_t));
-	int i, j;
-		
-	int nrd = write_rle_codes(dist, 19, rd);
-	int nrl = write_rle_codes(lens, 288, rl);
+	int i, j, h, nrt, maxbl = 0;
+	struct huff_list *hlist;
+	/*
+	memcpy(tmp, lens, num_len * sizeof(uint16_t));
+	memcpy(tmp + num_len * sizeof(uint16_t), dist, num_dst * sizeof(uint16_t));
+	*/
+	for (i = 0, j = 0; i < num_len; i++)
+		tmp[j++] = lens[i];
 	
-	for (i = 0, j = 0; i < nrl; i++, j++) {
-		tmp[j] = rl[i].len_code;
-		//printf("%d len = %d\n", i, tmp[j]);
-	}
-	
-	for (i = 0; i < nrd; i++, j++) {
-		tmp[j] = rd[i].len_code;
-		//printf("%d dst = %d\n", i, tmp[j]);
-	}
-			
-	printf("%d dr %d lr %d j\n", nrd, nrl, j);
+	for (i = 0; i < num_dst; i++)
+		tmp[j++] = dist[i];
 
-	int h = huff_encode(tmp, nrd + nrl, 18, plist);
-	struct huff_list *hlist = *plist;
+	nrt = write_rle_codes(tmp, num_dst + num_len, rt);
 	
-	print_huffcodes(hlist, 0, h);
+	for (i = 0; i < nrt; i++)
+		tmp[i] = rt[i].len_code;
+
+	h = huff_encode(tmp, nrt, 19, plist);
+	hlist = *plist;
 	
-	int maxbl = 0;
+	print_huffcodes(hlist, 0, 19);
 	
-	for (maxbl = 19 - 1; maxbl >= 3; maxbl--) {
-		printf("%d: hlist[%d].count = %d\n", maxbl, 
-			order[maxbl], hlist[order[maxbl]].hc_len);
+	for (maxbl = 19 - 1; maxbl >= 3; maxbl--)
 		if (hlist[order[maxbl]].hc_len != 0)
 			break;
-	}
-	
-	printf("sending %d len %d dist %d code lengths (0-18)\n", num_len, num_dst, maxbl);
-	
-	write_bit_stream(bs, last + 6, 3);
+
+	//130,608
+	//130,692
+	printf("[%s]: sending huffman trees:\n"
+		"\tlength codes:      %d\n"
+		"\tdist codes:        %d\n"
+		"\tcode length codes: %d\n"
+		"\trle length codes:  %d\n"
+		"\tencoded rle codes: %d\n", 
+		__func__, num_len, num_dst, maxbl, nrt, h);
+
+	write_bit_stream(bs, last + (3 << 1), 3);
 	write_bit_stream(bs, num_len - 257, 5);
 	write_bit_stream(bs, num_dst - 1, 5);
 	write_bit_stream(bs, maxbl + 1 - 4, 4);
 	
-	for (i = 0; i < maxbl; i++) {
-		if (!hlist[order[i]].count)
-			hlist[order[i]].hc_len = 0;
-		
+	for (i = 0; i < maxbl + 1; i++) {
 		write_bit_stream(bs, hlist[order[i]].hc_len, 3);
 		printf("writing hcl for %d: %d\n", order[i], hlist[order[i]].hc_len);
 		
@@ -1180,8 +1201,22 @@ int write_rle_trees (struct bit_stream *bs, uint16_t *lens, uint16_t *dist,
 			++count;
 	}
 	
-	free(rd);
-	free(rl);
+	for (i = 0; i < nrt; i++) {
+		//if (!hlist[rt[i].len_code].hc_len)
+		//	reverse_write(bs, 0, 1);
+		//else
+			write_bit_stream(bs, hlist[rt[i].len_code].hcode,
+				 	hlist[rt[i].len_code].hc_len);
+				 	
+		if (rt[i].ext_val) 
+			write_bit_stream(bs, rt[i].ext_val, rt[i].num_exbits);
+			
+		printf("%d: *1writing code %d for %d (%d bits)\n", i, 
+			 hlist[rt[i].len_code].hcode, rt[i].len_code, 
+			 hlist[rt[i].len_code].hc_len);
+	}
+	
+	free(rt);
 	free(tmp);
 	
 	return count;	
@@ -1200,16 +1235,20 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 	
 	make_hufftable(hlt);
 	
+	alloc_bit_stream(&bs, len * 2);
+	
 	while (pos < len) {
 		if ((toc = (len - pos)) > blk_size)
 			toc = blk_size;
 
-		alloc_bit_stream(&bs, toc * 2);
 		
+		//alloc_bit_stream(&bs, len * 2);
 		num = lz77(src + pos, toc, &lz, 512);
 
 		lens = calloc(sizeof(uint16_t), toc + 288);
 		dist = calloc(sizeof(uint16_t), toc + 288);
+		
+		num_dist = num_lenc = 0;
 
 		for (i = 0, j = 0; i < num; i++) {
 			if (lz[i].dist) { 
@@ -1219,10 +1258,6 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 			} else {
 				lens[i] = lz[i].len;
 			}
-			
-			//printf("%d: lz len = %d dist = %d | len %d dist %d\n", i, 
-			//	lz[i].len, lz[i].dist, 
-			//	lens[i], dist[i]);
 		}
 		
 		num_dist = huff_encode (dist, num, 32, &dlist);
@@ -1241,28 +1276,18 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 				max_code(dlist, 32) + 1, ((toc != blk_size) ? 1 : 0));
 
 		printf("wrote %d length codes\n", i);
-		
-		for (i = 0; i < num_lenc; i++) {
-			/*printf("lcode for %d = %d (%d bits)\n", i, 
-					 rlist[hlist[i].hc_len].hcode,
-					 rlist[hlist[i].hc_len].hc_len);*/
-			write_bit_stream(bs, rlist[hlist[i].hc_len].hcode, 
-					     rlist[hlist[i].hc_len].hc_len);
-
-		}
-		for (i = 0; i < num_dist; i++) {
-			write_bit_stream(bs, rlist[dlist[i].hc_len].hcode, 
-					     rlist[dlist[i].hc_len].hc_len);
-		}
 
 		write_compressed_data(bs, lz, num, hlist, dlist, hlt);
 		
-		if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
-			return -1;	
+		//if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
+		//	return -1;	
 		
 		printf("%d bytes to %d\n", toc, bs->byte_pos);
+		
+		//if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
+		//	return -1;	
 	
-		free_bit_stream(bs);
+		//free_bit_stream(bs);
 		free(lz);
 		free(hlist);
 		free(dlist);
@@ -1272,6 +1297,12 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 		
 		pos += toc;
 	}
+
+	if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
+		return -1;	
+		
+	printf("%d bytes to %d\n", len, bs->byte_pos);
+	
 	
 	return 0;
 }
@@ -1393,11 +1424,11 @@ int main (void)
 	
 	test_lz77();
 	
-	uint64_t test = 3243242;
-	uint64_t out = reverse_bits(test, 32);
+	uint64_t test = 1243243452;
+	uint64_t out = reverse_bits(test, 31);
 	
-	print_bits(test, 32);
-	print_bits(out, 32);
+	print_bits(test, 31);
+	print_bits(out, 31);
 
 	make_tar_file("/Users/nobody1/Desktop/work", 
 				"/Users/nobody1/Desktop/test.tar");
