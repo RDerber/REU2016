@@ -116,7 +116,16 @@ int modInverse(int num, int mod){ // Takes in a number A  and a modulus number B
 
 }
 
-int evaluate(int x, int polys[], int polysize, int mod){ // evaluate method not working - alters memory, changing polynomial coeff values
+int modMersenne(int num, int mers, int numShift){
+	int temp = mers;
+	int notMod = ~mers;
+	while(num & notMod){
+		num = num + (num >> numShift);
+	}
+	return num;
+}
+
+int evaluate(int x, int polys[], int polysize, int mod, int numShift){ // evaluate method not working - alters memory, changing polynomial coeff values
 	int i;
 	int sum = 0;
 //	printf("%s %d %c", "size of poly: ", polysize, '\n');
@@ -124,16 +133,16 @@ int evaluate(int x, int polys[], int polysize, int mod){ // evaluate method not 
 		int poly = (polysize - i) - 1;
 		int j;
 		int product = 1;
-		int mult = (x + mod) % mod;
+		int mult = modMersenne(x + mod, mod, numShift);
 		for(j = 0; j < sizeof(poly)*8; ++j){
 			if(((poly) >> j) & '\x01'){
-				product = (product * mult) % mod;
+				product = modMersenne(product * mult, mod, numShift);
 			}
-			mult = (mult*mult)%mod;
+			mult = modMersenne(mult*mult, mod, numShift);
 		}
-		sum = (sum + (product * polys[i]) % mod) % mod;
+		sum = modMersenne((sum + modMersenne((product * polys[i]), mod, numShift)), mod , numShift);
 	}
-	sum = (sum + mod) % mod;
+	sum = modMersenne(sum + mod);
 	return sum;
 }
 
@@ -144,7 +153,8 @@ int polyGenerator(int points[], int yValues[], int size, int poly[]){ // Takes i
 	long denoms[size]; // keeps track of denomenator of each row
 	memset(denoms, 0, sizeof(denoms)); // Initializes arrays to all 0s in memory 
 	memset(poly, 0, sizeof(poly));
-
+	
+	
 	for(i=0; i<size; ++i){
 		int j;
 		int pointsTemp[size-1];// size of pointsTemp is one less than number of Points as we remove one point during each iteration
@@ -234,18 +244,22 @@ int main (int argc, char *argv[]){
 		fprintf(ofp, "%c", flinec);
 	}
 	fprintf(ofp, "%c", '\n');
-
+	
+	int notMod = ~mod;
+	int numShift = 0;
+	while(!(notMod&1))++numShift; // Can also use while(mod^1)
+	
 	while((ch = getc(ifp)) != EOF){
 
 		if(ch & '\x40' ){
 
-			char temp = evaluate(ch, poly, size, mod);
+			char temp = evaluate(ch, poly, size, mod,numShift);
 			fprintf(ofp, "%d",temp);
 		}
 
 	}
 	int ans = 0;
-	ans = evaluate(13, poly, size, mod);
+	ans = evaluate(13, poly, size, mod, numShift);
 	printf("%c %d %c", '\n', ans, '\n');
 
 	fclose(ofp);
