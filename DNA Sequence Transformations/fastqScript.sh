@@ -21,6 +21,16 @@ numInputFiles=0
 runs=100
 k=3
 
+#Test Fasta for accuracy
+./fastqTo2Bit tests/fastqTests/fastqTest.fastq $folder/testOut.txt $folder/testHead.txt $folder/testPosition.txt $folder/testQuality.txt  1
+
+DIFF=$(diff -a tests/fastqTests/testCheck.txt $folder/testOut.txt)
+if [ "$DIFF" != "" ] 
+then
+	echo "The FASTQ to 2Bit conversion is no longer correct. Terminating timing script."
+	exit
+fi
+
 ./jsonSystemStats $folder/ft2bTimeStats.json
 
 #Run fastqTo 2 Bit Tests and Store in timeStats.txt

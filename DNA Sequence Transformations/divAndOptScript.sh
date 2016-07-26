@@ -32,6 +32,16 @@ k=3 #The lowest K timing values to be averaged in the timing report to make the 
 
 folder="./tests/divAndOptTests/$today"
 
+#Test divAndOpt for accuracy
+./divideAndOptimize tests/divAndOptTests/testKey.txt tests/divAndOptTests/testKeyIn.txt $folder/testOut.txt 1 1
+
+DIFF=$(diff -a tests/divAndOptTests/testCheck.txt $folder/testOut.txt)
+if [ "$DIFF" != "" ] 
+then
+	echo "DivideAndOptimize is no longer correct. Terminating timing script."
+	exit
+fi
+
 ./jsonSystemStats $folder/divAndOptTimeStats.json
 for ((i=1; i<(numKeys+1); ++i))
 do

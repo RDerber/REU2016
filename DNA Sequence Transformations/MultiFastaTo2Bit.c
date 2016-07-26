@@ -48,6 +48,7 @@ int multiTo2Bit(const char * input,char * output,char * headers, int * positions
 		char byt;
 		// Move sequence header into header buffer, store its position //
 		if(input[i] == '>'){
+			++i; // skip over '>' 
 			positions[p++] = k; 
 			// header positions delimited with -1 //
 			positions[p++] = -1; 

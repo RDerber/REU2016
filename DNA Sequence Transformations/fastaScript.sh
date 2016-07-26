@@ -20,6 +20,17 @@ runs=100
 k=3
 folder="./tests/fastaTests/$today"
 
+#Test Fasta for accuracy
+./FastaTo2Bit tests/fastaTests/fastaTest.fasta $folder/testOut.txt 1
+
+DIFF=$(diff -a tests/fastaTests/testCheck.fasta $folder/testOut.txt)
+if [ "$DIFF" != "" ] 
+then
+	echo "The FASTA to 2Bit conversion is no longer correct. Terminating timing script."
+	exit
+fi
+
+#Insert System Stats into output file
 ./jsonSystemStats $folder/ft2bTimeStats.json
 
 #Run Fasta To 2 Bit Tests and Store in timeStats.txt

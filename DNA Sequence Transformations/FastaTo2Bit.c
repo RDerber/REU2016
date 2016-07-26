@@ -45,19 +45,6 @@ int twoBit(char * input, char * output, long inputsize, long * numBases){
 	for(firstlnlen = 0; input[firstlnlen] != '\n'; ++firstlnlen){ 
 		output[firstlnlen] = input[firstlnlen];
 	}
-<<<<<<< HEAD
-	fprintf(ofp, "%c", '\n');
-	fflush(ofp);
-	char byt;
-	while((byt = getc(ifp)!= EOF)){//get first char and shift right
-//	if(byt != '\n' && byt != '\r'){ // mask with x40
-		while(!(byt&'\x40')){
-			byt = getc(ifp);
-		}
-		if(byt== EOF) break;
-		byt = byt & '\x06';
-		byt = byt << 5;
-=======
 	output[firstlnlen]='\n';
 	
 	
@@ -76,7 +63,6 @@ int twoBit(char * input, char * output, long inputsize, long * numBases){
 		++i;
 		byt = byt &'\x06';	// 2 Bit conversion of first base in grouping of 4
 		byt = byt << 5;		// Shift first base to the left-most position on the output byte
->>>>>>> timing
 		char temp;
 		unsigned j;
 		for(j = 2; j > 0 && i < inputsize; --j){ // 2 Bit conversion of the 2nd and 3rd bases

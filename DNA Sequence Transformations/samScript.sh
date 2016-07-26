@@ -20,6 +20,21 @@ runs=100
 k=3
 folder="./tests/samTests/$today"
 
+#Test Fasta for accuracy
+./SamTo2Bit tests/samTests/samTest.SAM $folder/testOut.txt  $folder/testHeaders.txt $folder/testPositions.txt 1
+
+DIFF=$(diff -a tests/samTests/testCheck.txt $folder/testOut.txt)
+if [ "$DIFF" != "" ] 
+then
+	echo "The SAM to 2Bit conversion is no longer correct. Terminating timing script."
+	exit
+fi
+
+#Insert System Stats into output file
+./jsonSystemStats $folder/sam2BTimeStats.json
+
+
+
 #Run SAM To 2 Bit Tests and Store in timeStats.txt
 ./SamTo2Bit tests/samTests/sam100.SAM $folder/100Out.txt $folder/100headers.txt $folder/100positions.txt $runs
 ./jsonTitle timing.json "100 bases" "-c"

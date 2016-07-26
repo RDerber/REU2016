@@ -16,11 +16,21 @@ fi
 mkdir ./tests/laGrangeTests/$today
 
 numKeys=40
-runs=100
+runs=10
 k=3
 folder="./tests/laGrangeTests/$today"
 
 ./jsonSystemStats $folder/laGrangeTimeStats.json
+
+#Test LaGrange for accuracy
+./LaGrangeGen tests/laGrangeTests/testKey.txt tests/laGrangeTests/testKeyIn.txt $folder/testOut.txt 1
+
+DIFF=$(diff -a tests/laGrangeTests/testCheck.txt $folder/testOut.txt)
+if [ "$DIFF" != "" ] 
+then
+	echo "LaGrangeGen is no longer correct. Terminating timing script."
+	exit
+fi
 
 
 rm temp1.json

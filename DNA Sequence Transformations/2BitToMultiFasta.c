@@ -105,9 +105,13 @@ int twoBit(const char * filename,const char * outFileName, const char * headerFi
 		}else seqPos = INT_MAX;
 		free(posNumber);
 		
+		// Print Header Line
+		fprintf(ofp,"%c",'>');
 		while((head = getc(hfp)) != '\x00' && head != EOF)
 			fprintf(ofp,"%c",head);
-		fprintf(ofp,"\n");	
+		fprintf(ofp,"\n");
+		
+		//Print Sequence	
 		while(i < seqPos){
 			if((byt=getc(ifp))!= EOF){
 			bitSeparator(byt, ofp);

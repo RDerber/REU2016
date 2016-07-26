@@ -42,7 +42,7 @@ int twoBit(const char * filename,const char * outFileName){
 	ifp = fopen(filename,"r");
 	ofp = fopen(outFileName, "w");
 	char flinec;
-	while((flinec = getc(ifp)) != '\n' && flinec != '\r'){
+	while((flinec = getc(ifp)) != '\n'){
 		fprintf(ofp, "%c", flinec);
 	}	
 	fprintf(ofp, "%c", '\n');

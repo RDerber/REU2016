@@ -363,14 +363,17 @@ int main (int argc, char **argv){ // [key][input file][output file name] [number
 
 // <\End New Stuff>
 	
-	
+	long outputSize = 0;
 	for(i=0;i<runs;i++){
 		gettimeofday(&time0,NULL);
+		int t = 0;
 		for(j=0;j<inputSize;++j){
-			output[j] = evaluate(input[j],poly,keySize,mod, numShift); 
+			if(input[j]&'\xe0')
+				output[t++] = evaluate(input[j],poly,keySize,mod, numShift); 
 		}
 		gettimeofday(&time1,NULL);
 		evalTime[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+		outputSize = t;
 	}
 	if((ofp = fopen(argv[3], "w")) == NULL){
 		printf("error opening output file");
@@ -378,7 +381,7 @@ int main (int argc, char **argv){ // [key][input file][output file name] [number
 	}
 
 	
-	for(i=0;i<inputSize;++i){
+	for(i=0;i<outputSize;++i){
 		fprintf(ofp,"%c", output[i]);
 	}
 		

@@ -21,6 +21,16 @@ numInputFiles=0
 runs=100
 k=3
 
+#Test MultiFasta for accuracy
+./MultiFastaTo2Bit tests/multiTests/multiTest.fasta $folder/testOut.txt $folder/testHead.txt $folder/testPosition.txt 1
+
+DIFF=$(diff -a tests/multiTests/testCheck.txt $folder/testOut.txt)
+if [ "$DIFF" != "" ] 
+then
+	echo "The MultiFASTA to 2Bit conversion is no longer correct. Terminating timing script."
+	exit
+fi
+
 ./jsonSystemStats $folder/ft2bTimeStats.json
 
 #Run multiFastaTo 2 Bit Tests and Store in timeStats.txt
