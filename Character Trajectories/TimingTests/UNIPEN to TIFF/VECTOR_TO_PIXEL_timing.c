@@ -17,7 +17,7 @@
 
 #define VECTOR_DIMMENSION                  500
 #define NUM_IMAGES                        4256
-#define BLACK                              BLACK
+#define BLACK                              255
 
 
 // TIFF HEADER CODES
@@ -531,7 +531,7 @@ int main(int argc, char **argv){
 
 	int i, j;
 	int numRuns = 50;
-	int k = 30;
+	int k = 3;
 	int numCoordinates = 0;
 	
 	// time the transofrmation of all numbers of images up to numImages 
