@@ -532,8 +532,12 @@ int main(int argc, char **argv){
 
 	int i, j;
 	int numRuns = 50;
+<<<<<<< HEAD
 	int k1 = 30;
 	int k2 = 3;
+=======
+	int k = 3;
+>>>>>>> 699647cfab1d655c750ffdf95c6ae37579d005fa
 	int numCoordinates = 0;
 	
 	// time the transofrmation of all numbers of images up to numImages 

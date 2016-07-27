@@ -1,7 +1,4 @@
 # REU2016
 DNA Sequence Conversions
-
-LaGrangeGen.c
-Input: [inputfile] [outputfile] [Any number of ascii characters] [Y values corresponding to each character***]
-
-***No Y-Value can exceed 8190. Otherwise, it will be modded in the creation of the polynomial and it will become a smaller number. Larger Y-values can be used if a mersenne prime that is larger than any y-value is added to the mersenne prime array in the findMod method. In addition you must also alter the initial value that mod is set to in polyGenerator to the new product of all of the mersenne primes in the mersenne array. Its current value, using the first four mersenne primes in the array, is 225735769.
+------------------------
+These files are our own implementations of transformations from many different DNA Sequence storage formats to others (mostly a 2-bit format defined by us). We chose this 2 bit format as it is the minimal amount of space in which one can store all 4 different bases. The specific mapping is: A:00 C:01 G:11 T:10. This mapping allows us to use a very fast transformation from ascii to 2-bit by extracting the second and third lowest priority bits in the ascii character.

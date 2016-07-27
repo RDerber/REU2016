@@ -9,173 +9,132 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
 int bitSeparator(char byt, FILE * ofp){
-		int i;
-                        for(i = 3; i>0; --i){
-                                char temp = byt & ('\x03' << (2*i));//get nucleotide from byte
-                                temp =  (temp >> (i*2)-1)&'\x06';//shift to position in ascii char and make sure no ones were carried
-                                if(!(temp^'\x04')){//if temp is a T, not A,G,C
-                                        temp = 'T';
-                                }
-                                else{
-                                        temp = temp | '\x41';   //convert to ascii char
-                                }
-                                fprintf(ofp, "%c", temp);
-                        }
-                        byt = byt & '\x03';//get last nucleotide
-                        byt = byt << 1;//shift to position in ascii char
-                        if(!(byt^'\x04')){//if temp is a T, not A,G,C
-                                byt = 'T';
-                        }
-                        else{
-                                byt = byt | '\x41';     //convert to ascii char
-                        }
-                        fprintf(ofp, "%c", byt);
-//                      fprintf(ofp, "%c", '\n');
-		return 0;	
-		}
+
+	char byt1;
+	char byt2;
+	char byt3;
+	char byt4;
+	byt1 = byt>>5; //get first nucleotide
+	byt1 &= '\x06';
+	byt1 |= '\x41';//convert to capital character
+	if(!(byt1 ^ '\x45')){
+		byt1 = 'T';
+	}
+	byt2 = byt>>3;
+	byt2 &= '\x06'; //get last nucleotide
+	byt2 |= '\x41'; //convert to capital character
+	if(!(byt2 ^ '\x45')){
+		byt2 = 'T';
+	}
+	byt3 = byt>>1;
+	byt3 &= '\x06'; //get last nucleotide
+	byt3 |= '\x41'; //convert to capital character
+	if(!(byt3 ^ '\x45')){
+		byt3 = 'T';
+	}
+	byt4 = byt<<1;
+	byt4 &= '\x06'; //get last nucleotide
+	byt4 |= '\x41'; //convert to capital character
+	if(!(byt4 ^ '\x45')){
+		byt4 = 'T';
+	}
+	fprintf(ofp, "%c", byt1);
+	fprintf(ofp, "%c", byt2);
+	fprintf(ofp, "%c", byt3);
+	fprintf(ofp, "%c", byt4);
+	return 0;
+                }
+	
 
 
 
-int twoBit(const char * filename,const char * outFileName){
+int twoBit(const char * filename,const char * outFileName, const char * headerFileName, const char * positionFileName){
 	FILE * ifp;
 	FILE * ofp;
-	ifp = fopen(filename,"r");
-//	char * lineptr = NULL;
-//	size_t * len = 0;
-//	getline(&lineptr,len, ifp);
-//	char newFileName[100];
-//	printf("Give a name to the file this program will create and write to:" );
-//	gets(newFileName);
-	ofp = fopen(outFileName, "w");
-	char flinec;
-	while((flinec = getc(ifp)) != '\n'){
-		fprintf(ofp, "%c", flinec);
-	}	
-	fprintf(ofp, "%c", '\n');
+	FILE * hfp;
+	FILE * pfp;
+	if((ifp = fopen(filename,"r")) == NULL){
+		printf("Error opening input file");
+		return -1; 
+		}
+	if((ofp = fopen(outFileName, "w"))==NULL){
+		printf("Error creating output file");
+		return -1; 
+		}
+	if((hfp = fopen(headerFileName, "r")) == NULL){
+		printf("Error opening header file");
+		return -1; 
+		}
+	if((pfp = fopen(positionFileName, "r")) == NULL){
+		printf("Error opening position file");
+		return -1; 
+		}
 	int byt;
-	int eof = 0;//not end of file
-	char spacearray[8]; // Checking for spaces signifying new sequence
-	char newSequence[] = {'N','e','w',' ','S','e','q','u','e','n','c','e',' ','S', 't','a','r','t','s',' ','B','e','l','o','w'};
-	int stringSize = sizeof(newSequence)/sizeof(newSequence[0]);
-	int s;
-	
-	while((byt=getc(ifp))!= EOF){
-	
-		if(byt==newSequence[0]){
-			for(s=1;s<stringSize;++s){
-				byt = getc(ifp);
-				printf("%c%s", byt, ", ");
-				if(byt != newSequence[s]){
-					int t;
-					for(t=0;t<s;++t){
-						bitSeparator(newSequence[t],ofp);
-					}
-					break;
-				}
-			
+	int head;
+	int position;
+	int i;
+	long startPoint = 3;
+	int end = 0;
+	int seqPos = 0;
+	while(!end){
+		int posLength = 0;
+		fseek(pfp, startPoint, SEEK_SET);
+		while((position = getc(pfp))!= '-'){
+			if(position == EOF){
+				end = 1;
+				break;
 			}
-			if(s==stringSize){
-				byt = getc(ifp);
-				fprintf(ofp,"%c",'\n');
-				while((byt=getc(ifp)) != '\n'){
-					fprintf(ofp,"%c",byt);
-				}
-				fprintf(ofp,"%c",'\n');
-				byt = getc(ifp);
+			posLength++;
+		}
+		char *posNumber = malloc(sizeof(char)*(posLength+1));
+		fseek(pfp, startPoint, SEEK_SET);
+		startPoint += (posLength+2);
+
+		for(i=0; i<posLength; ++i){
+			char num = getc(pfp);
+			posNumber[i] = num; 
+		}
+		posNumber[posLength]='\x00';
+		fseek(pfp, startPoint, SEEK_SET);
+		i = seqPos;
+		if(!end){
+			seqPos = atoi(posNumber);
+		}else seqPos = INT_MAX;
+		free(posNumber);
+		
+		// Print Header Line
+		fprintf(ofp,"%c",'>');
+		while((head = getc(hfp)) != '\x00' && head != EOF)
+			fprintf(ofp,"%c",head);
+		fprintf(ofp,"\n");
+		
+		//Print Sequence	
+		while(i < seqPos){
+			if((byt=getc(ifp))!= EOF){
+			bitSeparator(byt, ofp);
+			++i;
+			}else{
+				end = 1;
+				break;
 			}
 		}
-
-	//	byt = getc(ifp);
-	//	if((~ byt)){//check if eof or all Gs
-
-//		while(byt == ' '){
-//		spacearray[s] = byt;
-//		s++;
-//		byt = getc(ifp);
-//		}
-//		if(s!=8){
-//		int j;
-//			for(j=0; j<s; ++j){
-//			bitSeparator(spacearray[s],ofp);
-//			}	
-//		}
-//		else{
-//			char newSeq;
-//			while((newSeq = getc(ifp))!= '\n'){
-//				fprintf(ofp,"%c",newSeq);
-//			}
-
-//		}
-	
-		
-
-
-	bitSeparator(byt, ofp); // helped function for commented-out code below
-
-
-
-
-
-//			int i;
-//			for(i = 3; i>0; --i){
-//				char temp = byt & ('\x03' << (2*i));//get nucleotide from byte
-//				temp =  (temp >> (i*2)-1)&'\x06';//shift to position in ascii char and make sure no ones were carried
-//				if(!(temp^'\x04')){//if temp is a T, not A,G,C
-//					temp = 'T';
-//				}
-//				else{
-//					temp = temp | '\x41';	//convert to ascii char
-//				}
-//				fprintf(ofp, "%c", temp);
-//			}
-//			byt = byt & '\x03';//get last nucleotide
-//			byt = byt << 1;//shift to position in ascii char
-//			if(!(byt^'\x04')){//if temp is a T, not A,G,C
-//				byt = 'T';
-//			}
-//			else{
-//				byt = byt | '\x41';	//convert to ascii char
-//			}
-//			fprintf(ofp, "%c", byt);
-//			fprintf(ofp, "%c", '\n');
-//		}else{
-//			int i=1;
-//			char checkeof;
-//			char eofarr[30];
-//			eofarr[0] = byt;
-//			while(!((checkeof=getc(ifp)) ^ '\xff') && i < 30){//extract up to 30 bytes of -1
-//			//	checkeof = getc(ifp);
-//				eofarr[i]=checkeof;
-//				++i;
-//			}
-//
-//			if(i!=30){
-//				int k=0;
-//				for(k;k<i;++k){
-//				//	ungetc(eofarr[i],ifp);	//if a non -1 byte was extracted undo extraction of last i bytes
-//				
-//				bitSeparator(eofarr[k],ofp);
-//					
-//				}
-//				bitSeparator(checkeof, ofp);
-//			}else{
-//				eof = 1;//if 30 -1 bytes were extracted end of file is true
-//			}
-//		}
+		fprintf(ofp, "\n");
 	}
+	
 	fclose(ofp);
 	fclose(ifp);
-//	free(lineptr);
 	return 0;
 }
 
-int main(int argc, char *argv[]){
-	if(argc == 3){
-		twoBit(argv[1],argv[2]);
+int main(int argc, char *argv[]){	//arguments: inputfile,outputfile,header file,positions file
+	if(argc == 5){
+		twoBit(argv[1],argv[2], argv[3],argv[4]);
 		return 0;
         }else{
+		printf("incorrect arguments\n");
 		 return 1;
 	}
  }
