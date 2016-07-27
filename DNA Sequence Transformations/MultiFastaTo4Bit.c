@@ -2,19 +2,24 @@
  * MultiFastaTo4Bit.c
  *
  *Inputs:
-<<<<<<< HEAD
- * [FASTA input file] [Name of 4-bit output file]
- *
- *
-=======
- * [FASTA input file] [Name of 4-bit output file][number of runs] [number of minimum time values to compare]
+ * [FASTA input file] [Name of 4-bit output file][Output Header File][number of runs]
  *
  *The last two arguments are optional:
  *	-If included, a timing report will be output in timeStats.txt
  *	-If just the number of runs are provided, the num of min time values will default to 3
  *	
->>>>>>> timing
- *    
+ *Each four bit sequence will be converted to a nucleotide base:
+ *		A = 0001
+ *		C = 0011
+ *		G = 0111
+ *		T = 0100
+ *		N = 1110
+ *
+ * The bases are then stored as ASCII characters, retaining the left-to-right order in which they were read
+ *  Ex: AG will convert to 0001 0111
+ *
+ * If the number of bases is not a multiple of 2, the last byte in the translation will end with (num bases % 2) pairs of zeros
+ * 	These pairs of zeros will then translate back into FASTA as an extra '@' appended on the end of the sequence    
  *
  */
 
@@ -25,8 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
-#include <float.h>
-#include "writeJson.h"
+#include "jsonData.h"
 
 int multiTo4Bit(const char * input,char * output,char * headers, long inputsize, long * outputsize, long * headersize){
 	int i = 0;
@@ -36,14 +40,16 @@ int multiTo4Bit(const char * input,char * output,char * headers, long inputsize,
 	while(i < inputsize){
 		char byt;
 
+	// Copy header lines into header buffer //
 		if(input[i] == '>'){
-			output[k++] = '<';
+			output[k++] = '<'; // Mark header location with '<' character
 			while(input[i] != '\n')
 				headers[h++] = input[i++];
 			++i;
 			headers[h++] = '\x00';
 		}
 		
+		// Convert characters to 4Bit sequences //
 		while(!(input[i] & '\x60')) ++i;
 		if(i < inputsize && input[i] != '>'){
 			byt = input[i++]& '\x0f';
@@ -64,9 +70,9 @@ int multiTo4Bit(const char * input,char * output,char * headers, long inputsize,
 	return 0;
 }
 
-int main(int argc, char *argv[]){
-	if(!(argc == 3||argc == 4||argc == 5)){
-		printf("Incompatible number of arguments\n");
+int main(int argc, char *argv[]){ //[FASTA input file] [Name of 4-bit output file][Output Header File][number of runs] 
+	if(!(argc == 4 || argc == 5)){
+		printf("Incompatible number of arguments for MultiFastaTo4Bit\n");
                 return -1;
         } 
 
@@ -113,50 +119,35 @@ int main(int argc, char *argv[]){
 	long outputsize = 0;
 	long headersize = 0;
 	
-	float *times;
+	double *times;
 	int runs = 0;
-	int numTimes = 0;
-	if(argc == 3){
+	if(argc == 4){
 		multiTo4Bit(input,output,headers,inputsize,&outputsize,&headersize);
 	}
-	if(argc == 4){	//if a number of runs is given but no number of minimum times, default number of min times is 3
-		runs = atoi(argv[3]);
-		numTimes = 3;
-		times = calloc(runs, sizeof(float)); 
-		struct timeval time0, time1; 
-		int i;
-		for(i=0;i<runs;i++){ // Record time of each run
-			gettimeofday(&time0,NULL);
-			multiTo4Bit(input,output,headers,inputsize,&outputsize,&headersize);
-			gettimeofday(&time1,NULL);
-			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-		}
 
-	}
-	if(argc == 5){ //if both number of runs and the number of minimum times is given
-		runs = atoi(argv[3]);
-                numTimes = atoi(argv[4]);
-                times = calloc(runs, sizeof(float));
-                struct timeval time0, time1; 
-                int i;
-                for(i=0;i<runs;i++){ // Record time of each run
-                        gettimeofday(&time0,NULL);
-                        multiTo4Bit(input,output,headers,inputsize, &outputsize, &headersize);
-                        gettimeofday(&time1,NULL);
-                        times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-                }
+	if(argc == 5){ //if the number of run times is given 
+		runs = atoi(argv[4]);
+		times = calloc(runs, sizeof(double));
+    struct timeval time0, time1; 
+    int i;
+    for(i=0;i<runs;i++){ // Record time of each run
+    	gettimeofday(&time0,NULL);
+      multiTo4Bit(input,output,headers,inputsize, &outputsize, &headersize);
+      gettimeofday(&time1,NULL);
+      times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+    }
 
-	}
-
-	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
-	if(argc > 3){
-		if(write_time_file(times, runs, numTimes,inputsize) < 0)
+	//timing.json file output generated //
+		char *labelArr[1];
+		labelArr[0] = "Transform Times";
+		int numLabels = sizeof(labelArr)/sizeof(char*); 
+		if(write_time_file(&times, labelArr, numLabels, runs) < 0)
 			printf("error writing time file\n");
 		free(times);
 	}
 	// Writing output buffer to specified output file//
 	FILE *ofp = fopen(argv[2],"w");
-	FILE *hfp = fopen("4BitHeaders.txt","w");
+	FILE *hfp = fopen(argv[3],"w");
 	if(ofp == NULL || hfp == NULL){
 		printf("Error creating output file\n");
 		return -1;

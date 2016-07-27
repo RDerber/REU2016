@@ -11,7 +11,7 @@
  * Number of runs is optional
  *		 Number of runs must be provided as the 3rd argument to recieve a timing report
  *
- * Each nucleotide base will be converted to a two bit character:
+ * Each nucleotide base will be converted to a two bit sequence:
  *		A = 00
  *		C = 01
  *		G = 11
@@ -131,7 +131,7 @@ int readInputToBuffer(FILE * ifp, char ** input, long * inputsize){
 
 int main(int argc, char *argv[]){
 	if(!(argc == 3||argc == 4)){
-		printf("Incompatible number of arguments\n");
+		printf("Incompatible number of arguments for FastaTo2Bit\n");
                 return -1;
         } 
 

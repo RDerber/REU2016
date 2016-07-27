@@ -10,7 +10,7 @@
  *
  *		Names for the output files. *These do not need to be created before hand* 
  *
- * Output file (2bit encoded characters)
+ * Output file (2bit encoded sequences)
  * Header file (null delimited header lines)
  * Position file (positions, in bytes, of each sequence in the 2bit file, delimited with -1)
  * 
@@ -18,7 +18,7 @@
  *		- Number of runs must be provided as the 3rd argument to recieve a timing report
  *
  *
- * Each nucleotide base will be converted to a two bit character:
+ * Each nucleotide base will be converted to a two bit sequence:
  *		A = 00
  *		C = 01
  *		G = 11
@@ -138,7 +138,7 @@ int readInputToBuffer(FILE * ifp, char ** input, long * inputsize){
 
 int main(int argc, char *argv[]){ // [input][output][headerfile][positionfile][num runs]
 	if(!(argc == 5||argc == 6)){
-		printf("Incompatible number of arguments\n");
+		printf("Incompatible number of arguments for MultiFastaTo2Bit\n");
                 return -1;
         } 
 

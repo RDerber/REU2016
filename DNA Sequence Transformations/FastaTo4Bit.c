@@ -1,92 +1,26 @@
 /*
  * FastaTo4Bit.c
  *
-<<<<<<< HEAD
- * Functional for regular FASTA
- *  Needs to be modified
+ * Inputs:
+ *  [FASTA input file][Name of 4-bit output file][number of runs]
  *
-=======
- *Inputs:
- * [FASTA input file] [Name of 4-bit output file][number of runs] [number of minimum time values to compare]
- *
- *The last two arguments are optional:
+ * The last argument is optional:
  *	-If included, a timing report will be output in timeStats.txt
- *	-If just the number of runs are provided, the num of min time values will default to 3
  *	
+ * Each four bit sequence will be converted to a nucleotide base:
+ *		A = 0001
+ *		C = 0011
+ *		G = 0111
+ *		T = 0100
+ *		N = 1110
  *    
->>>>>>> timing
+ * The bases are then stored as ASCII characters, retaining the left-to-right order in which they were read
+ *  Ex: AG will convert to 0001 0111
  *
+ * If the number of bases is not a multiple of 2, the last byte in the translation will end with (num bases % 2) pairs of zeros
+ * 	These pairs of zeros will then translate back into FASTA as an extra '@' appended on the end of the sequence
+ * 
  */
-
-
-
-<<<<<<< HEAD
-#include <stdio.h>
-#include <stdlib.h>
-
-int fourBit(const char * filename,const char * outFileName){
-	FILE * ifp;
-	FILE * ofp;
-	ifp = fopen(filename,"r");
-//	char * lineptr = NULL;
-//	size_t * len = 0;
-//	getline(&lineptr,len, ifp);
-//	char newFileName[100];
-//	printf("Give a name to the file this program will create and write to:" );
-//	gets(newFileName);
-	ofp = fopen(outFileName, "w");
-	char flinec;
-	while((flinec = getc(ifp)) != '\n'){
-		fprintf(ofp, "%c", flinec);
-	}
-	fprintf(ofp, "%c", '\n');
-	fflush(ofp);
-	char byt;
-	while((byt = getc(ifp))!= EOF){//get first char and shift right
-//	if(byt != '\n' && byt != '\r'){ // mask with x40
-		while(!(byt&'\x40')){
-			byt = getc(ifp);
-		}
-		if(byt== EOF) break;
-		byt = byt & '\x0f';
-		byt = byt << 4;
-		char temp;
-	//	int i;
-	//	for(i = 2; i>0;--i){//get next two nucleotides shifting
-	//				//left accordingly
-	//		temp = getc(ifp);
-//	//		if(temp != '\n' && temp != '\r'){
-	//		if(temp&'\x40'){//performs above test w/o comparisons
-	//			temp = temp & '\x06';
-	//			temp = temp << (i*2)-1;
-	//			byt = byt|temp;
-	//		}else{
-	//			++i;
-	//		}
-	//	}
-		while(!((temp=getc(ifp)) & '\x40')){}	//while temp is null, \n or \r
-									//extract characters
-		temp = temp&'\x0f';
-		byt = byt|temp;
-		fprintf(ofp, "%c", byt);
-		fflush(ofp);
-	}
-	fclose(ofp);
-	fclose(ifp);
-//	free(lineptr);
-	return 0;
-}
-
-int main(int argc, char *argv[]){
-	if(argc == 3){
-		fourBit(argv[1],argv[2]);
-		return 0;
-        }else{
-		 return 1;
-	}
- }
-=======
-
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -97,21 +31,21 @@ int fastaTo4Bit(const char * input,char * output,long inputsize, long * outputsi
 	int i = 0;
 	int k = 0;
 
-	while((output[k++] = input[i++])!= '\n');// Remove first line
+	while((output[k++] = input[i++])!= '\n');// Remove header (first) line
 
 	while(i < inputsize){
 		char byt;
 		
-		while(!(input[i] & '\x40')) ++i;
+		while(!(input[i] & '\x40')) ++i; // Check for desired base character
 		if(i < inputsize){
-			byt = input[i++]& '\x0f';
+			byt = input[i++]& '\x0f'; // Convert nucleotide base char to 4Bit sequence
 			byt <<= 4;
 		}else break;
 
 		while(!(input[i] & '\x40')) ++i;	
 
 		if(i < inputsize){
-			byt = byt|(input[i++] & '\x0f');
+			byt = byt|(input[i++] & '\x0f'); // Convert second nucleotide base and append to byte
 		}
 		output[k++] = byt;
 			
@@ -151,9 +85,9 @@ int readInputToBuffer(FILE * ifp, char ** input, long * inputsize){
 }
 
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[]){ //[FASTA input file][Name of 4-bit output file][number of runs]
 	if(!(argc == 3||argc == 4)){
-		printf("Incompatible number of arguments\n");
+		printf("Incompatible number of arguments for FastaTo4Bit\n");
                 return -1;
         } 
 
@@ -211,4 +145,4 @@ int main(int argc, char *argv[]){
 	free(input);
 	free(output);
 }
->>>>>>> timing
+
