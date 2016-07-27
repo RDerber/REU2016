@@ -207,8 +207,7 @@ int divideAndOptimize(unsigned char * startingInput, unsigned char* input, unsig
 	}
 
 	for(i=0; i<inputSize; ++i){ 			// Sorting out original values based on what they mapped to
-		if(input[i] == group1Check){		// **** Assuming that half of values will always map to 0. Is this true? 
-							// Otherwise, the comparison value can be set to input[0] and start at i=1; 
+		if(input[i] == group1Check){	
 			group1[g1counter] = startingInput[i];
 			group1out[g1counter++] = output[i];
 		}
