@@ -13,8 +13,10 @@ else
 	today=$(date +%Y-%m-%d-%T)
 fi
 
+#Make results diretory 
 mkdir ./tests/laGrangeTests/$today
 
+#Adjustable timing parameters 
 numKeys=40
 runs=10
 k=3

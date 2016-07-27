@@ -13,10 +13,12 @@ else
 	today=$(date +%Y-%m-%d-%T)
 fi
 
+#Make results diretory 
 mkdir ./tests/fastqTests/$today
 
 folder="./tests/fastqTests/$today"
 
+#Adjustable timing parameters 
 numInputFiles=0 
 runs=100
 k=3

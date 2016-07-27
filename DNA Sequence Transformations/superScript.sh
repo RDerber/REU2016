@@ -13,8 +13,10 @@ else
 	today=$(date +%Y-%m-%d-%T)
 fi
 
+#Make results diretory 
 mkdir ./tests/superTests/$today
 
+#Adjustable timing parameters 
 folder="./tests/superTests/$today"
 runs=20
 evals=100
