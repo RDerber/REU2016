@@ -15,9 +15,12 @@ else
 	today=$(date +%Y-%m-%d-%T)
 fi
 
+#Make results directory and remove old files
 mkdir ./tests/divAndOptTests/$today
 rm temp1.json
 rm temp2.json
+
+#Adjustable timing parameters 
 
 numKeys=40	#This is the numer of different sized keys tested (each with it's own corresponding input file)
 		#cannot be much higher than 50 for good run time. Will break if higher than 63 (63*2 = 126. 127 is max acceptible 
