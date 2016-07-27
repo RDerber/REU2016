@@ -2,19 +2,49 @@
  *
  * samTo4Bit.c 
  *
- * Need to implement conversion
+ * Functional for SAM files
  *
+ * Includes an optional timing report exported in JSON format
+ 
+ * Parameters:
+ * [SAM input file] [Output 2Bit File Name] [Header Output File Name]Optional: [int number of runs]
  *
+ *			Names for the output files. *These do not need to be created before hand* 
+ * 
+ * Output file (2bit encoded characters)
+ * Header file (null delimited header lines)
+ * Position file (positions, in bytes, of each sequence in the 2bit file, delimited with -1)
  *
+ * Number of runs is optional
+ *		 Number of runs must be provided as the 3rd argument to recieve a timing report
  *
+ * The current version has the following settings:
+ *		-omits heading tag information
+ *		-reads in the QNAME field of the SAM file and saves it to a null delimited headerfile
+ *		-omits all other field information
+ *		-writes out each sequence in a multi-fasta 2 bit format: 
+ *				>writes sequences to output 2bit file
+ *				>writes starting position of each sequence to the position output file 
  *
+ * Each nucleotide base will be converted to a four bit sequence:
+ *		A = 0001
+ *		C = 0011
+ *		G = 0111
+ *		T = 0100
+ *		N = 1110
+ *
+ * The bases are then stored in bytes, retaining the left-to-right order in which they were read
+ *  Ex: AG will convert to 0001 0111 
+ *	
+ * If the number of bases is not a multiple of 2, the last byte in the translation will end with (num bases % 2) pairs of zeros
+ * 	These pairs of zeros will then translate back into FASTA as an extra '@' appended on the end of the sequence 
  *
  */
 
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "writeJson.h"
+#include "jsonData.h"
 
 int samTo4Bit(const char* input, char * output, char * headers,  long inputsize, long * outputsize, long * headersize){
 
@@ -62,9 +92,9 @@ int samTo4Bit(const char* input, char * output, char * headers,  long inputsize,
 
 }
 
-int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile] optional:[numberOfTestRuns][NumberOfRunsToAverage]
-	if(!(argc == 3||argc == 4||argc == 5)){
-		printf("Incompatible number of arguments\n");
+int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile][Header Output File Name] optional:[numberOfTestRuns]
+	if(!(argc == 5||argc == 6)){
+		printf("Incompatible number of arguments for SamTo4Bit\n");
 		return -1;
 	}
 	// Create Input Memory Buffer //
@@ -111,50 +141,35 @@ int main(int argc, char *argv[]){	//arguments: [inputFile][outputFile] optional:
 	long outputsize = 0;
 	long headersize = 0;
 	
-	float *times ;
+	double *times ;
 	int runs = 0;
-	int numTimes = 0;
-	if(argc == 3){
+	if(argc == 4){
 		samTo4Bit(input,output,headers,inputsize,&outputsize,&headersize);
 	}
-	if(argc == 4){	//if a number of runs is given but no number of minimum times, default number of min times is 3
-		runs = atoi(argv[3]);
-		numTimes = 3;
-		times = calloc(runs, sizeof(float)); 
-		struct timeval time0, time1; 
-		int i;
-		for(i=0;i<runs;i++){ // Record time of each run
-			gettimeofday(&time0,NULL);
-			samTo4Bit(input,output,headers,inputsize,&outputsize,&headersize);
-			gettimeofday(&time1,NULL);
-			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-		}
 
-	}
 	if(argc == 5){ //if both number of runs and the number of minimum times is given
-		runs = atoi(argv[3]);
-                numTimes = atoi(argv[4]);
-		times = calloc(runs, sizeof(float));
-                struct timeval time0, time1; 
-                int i;
-                for(i=0;i<runs;i++){ // Record time of each run
-                        gettimeofday(&time0,NULL);
-                        samTo4Bit(input,output,headers,inputsize,&outputsize,&headersize);
-                        gettimeofday(&time1,NULL);
-                        times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-                }
+		runs = atoi(argv[4]);
+		times = calloc(runs, sizeof(double));
+		struct timeval time0, time1; 
+    int i;
+    for(i=0;i<runs;i++){ // Record time of each run
+    	gettimeofday(&time0,NULL);
+      samTo4Bit(input,output,headers,inputsize,&outputsize,&headersize);
+      gettimeofday(&time1,NULL);
+      times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
+     }
 
-	}
-
-	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
-	if(argc > 3){ 
-		if(write_time_file(times, runs, numTimes,inputsize) < 0)
+		//timing.json file output generated //
+		char *labelArr[1];
+		labelArr[0] = "Transform Times";
+		int numLabels = sizeof(labelArr)/sizeof(char*); 
+		if(write_time_file(&times, labelArr, numLabels, runs) < 0)
 			printf("error writing time file\n");
 		free(times);
 	}
 	// Writing output buffer to specified output file//
 	FILE *ofp = fopen(argv[2],"w");
-	FILE *hfp = fopen("samTo4BitHeaders.txt","w");
+	FILE *hfp = fopen(argv[3],"w");
 	if(ofp == NULL){
 		printf("Error creating output file");
 		return -1;
