@@ -17,7 +17,7 @@
 
 #define VECTOR_DIMMENSION                  500
 #define NUM_IMAGES                        4256
-#define BLACK                              BLACK
+#define BLACK                              255
 
 
 // TIFF HEADER CODES
@@ -521,8 +521,9 @@ int main(int argc, char **argv){
 	char *data;
 	size_t fileLength = load_upen_to_buffer(FILE_PATH, &data);
 
-	double *timingArray;
-	timingArray = (double *) malloc(numImages * sizeof(double));
+	double *timingArray1 = (double *) malloc(numImages * sizeof(double));
+	
+	double *timingArray2 = (double *) malloc(numImages * sizeof(double));
 	
 	double *coordinateCounts;
 	coordinateCounts = (double *) malloc(numImages * sizeof(double));
@@ -531,7 +532,8 @@ int main(int argc, char **argv){
 
 	int i, j;
 	int numRuns = 50;
-	int k = 30;
+	int k1 = 30;
+	int k2 = 3;
 	int numCoordinates = 0;
 	
 	// time the transofrmation of all numbers of images up to numImages 
@@ -544,16 +546,19 @@ int main(int argc, char **argv){
 			runsArray[j] = (endTime.tv_usec - startTime.tv_usec) + 
 					(endTime.tv_sec - startTime.tv_sec) * 1000000;
 		}
+		printf("Finished %d transforms\n", i + 1);
 		coordinateCounts[i] = (double) numCoordinates / 2;
-		timingArray[i] = calc_avg_k_lowest_runs(&runsArray, numRuns, k);
+		timingArray1[i] = calc_avg_k_lowest_runs(&runsArray, numRuns, k1);
+		timingArray2[i] = calc_avg_k_lowest_runs(&runsArray, numRuns, k2);
 		free(runsArray);
 	}
 
 	// write timing data (character to runtime) to csv file
-	write_doubles_to_csv_file(timingArray, numImages, "testCharacter");
+	write_doubles_to_csv_file(timingArray1, numImages, "testCharacter_k=30");
+	write_doubles_to_csv_file(timingArray2, numImages, "testCharacter_k=3");
 	
 	// write timing data (coordinates to runtime) to csv file
-	write_double_pairs_to_csv_file(coordinateCounts, timingArray, numImages, 
+	write_double_pairs_to_csv_file(coordinateCounts, timingArray1, numImages, 
 		"testCoordinates");
 
 	return 0;
