@@ -123,7 +123,7 @@ int jsonTitle(char* filename, char * title, char* titleType){
 }
 
 
-int main(int argc, char ** argv){
+int main(int argc, char ** argv){	//[file name][title][title flag]
 	if(argc==3){
 		jsonTitle(argv[1],argv[2],NULL);
 		return 0;
