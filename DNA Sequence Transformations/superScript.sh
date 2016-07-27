@@ -2,7 +2,7 @@
 
 #Recompile all files before running timing function
 gcc -g jsonTitle.c -o jsonTitle
-gcc -g jsonData.c superOptimizer2.c -o superOptimizer2
+gcc -g jsonData.c superOptimizer.c -o superOptimizer
 gcc -g superJsonToCSV.c -o superJsonToCSV
 gcc -g jsonData.c jsonSystemStats.c -o jsonSystemStats
 
@@ -37,7 +37,7 @@ do
 			echo $(date +%Y-%m-%d-%T)
 			echo "Current Number of Inputs: $i"
 			echo ""
-			./superOptimizer2 $i $fileSize $(( RANDOM )) $runs $evals
+			./superOptimizer $i $fileSize $(( RANDOM )) $runs $evals
 			if [ $inputSet -eq $numInputSets ]
 			then
 				./jsonTitle temp1.json "Input Set $inputSet"

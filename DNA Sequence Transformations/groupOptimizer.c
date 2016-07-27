@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+//note: function pointer method of parsing operations that is used in superoptimizer has not been implemented here. Instead, less efficient case/switch statements are used.
 enum operationID {add = 0, sub = 1, and = 2, xor = 3, lsl = 4, lsr = 5};
 
 int findMin(char* input[], int numGroups, size_t groupSizes[]){
@@ -97,6 +98,7 @@ int superOptimizer (char * startingInput[], char * input[], int numGroups, size_
 	for(k = 0; k < opsSize; ++k){
 		int opIt = totOps - numOps;
 		int constMax = opsMax[k];
+//	these are possible optimizations, but in the current implementation they slow things down
 //		if(opIt > 0 && (opsSeq[opIt -1] == operations[k] ||
 //			 (k==0 && opsSeq[opIt-1] == operations[1]) ||
 //				(k==1 && opsSeq[opIt-1] == operations[0]) ||
@@ -127,25 +129,23 @@ int superOptimizer (char * startingInput[], char * input[], int numGroups, size_
 	return -1;
 }
 
-int main(int argc, char** argv){
-	//char input[] = {'\x00','\x01','\x02','\x03','\x04'};
-	char group1[] = {'A','C'};
-	size_t group1Size = sizeof(group1)/sizeof(group1[0]);
-	char group2[] = {'G','T'};
-	//char group3[] = {'\x43','\x00'};
-	size_t group2Size = sizeof(group2)/sizeof(group2[0]);
+int main(int argc, char** argv){// no arguments at the moment, groups are hard coded. simply prints out sequence found
+
+	char group1[] = {'C','A','\x00'};
+	char group2[] = {'G','T','\x00'};
+	
 	char *input[] = {group1,group2};
 	int numGroups = sizeof(input)/sizeof(input[0]);
 	size_t groupSizes[numGroups];
 	int i,j; 
-//	for(i = 0; i<numGroups;++i){
-//		for(j = 0; input[i][j] != '\x00'; ++j);
-//		groupSizes[i] = j;
-//		printf("%s%d%s%d","Group Num: ", i, "Group Size:", groupSizes[i]);
-//	}
-	groupSizes[0] = 2;
-	groupSizes[1] = 2;
-//	groupSizes[2] = 1;
+
+	for(i=0;i<numGroups;++i){
+		groupSizes[i] = 0;
+		j=0;
+		while(input[i][j++] != '\x00'){
+			++groupSizes[i];
+		}
+	}
 	
 	int maxNumOps = 6;
 	char opsSeq [maxNumOps];
