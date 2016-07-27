@@ -25,7 +25,7 @@
  *				>writes sequences to output 2bit file
  *				>writes starting position of each sequence to the position output file 
  *
- * Each nucleotide base will be converted to a two bit character:
+ * Each nucleotide base will be converted to a two bit sequence:
  *		A = 00
  *		C = 01
  *		G = 11

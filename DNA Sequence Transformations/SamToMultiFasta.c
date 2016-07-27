@@ -1,11 +1,23 @@
+/*
+ * 
+ * SamToMultiFasta.c
+ * 
+ * Converts SAM file to MultiFasta format, removing header tags and keeping the first SAM field as the header line
+ * 
+ * Parameters:
+ * [Input SAM File][Output MultiFasta File Name] Optional: [Number of runs]
+ * 
+ * 
+ */ 
+
 #include <stdio.h>
 #include <stdlib.h>
-#include "writeJson.h"
+#include "jsonData.h"
 
 int samToMultiFasta(const char* input, char * output, long inputsize){
 
 	int i = 0;
-	while(input[i] == '@'){
+	while(input[i] == '@'){ // Remove header tags
 		while(input[i] != '\n')
 			i++;
 		++i;
@@ -18,15 +30,15 @@ int samToMultiFasta(const char* input, char * output, long inputsize){
 
 		numtabs = 0;
 
-		while(input[i] != '\t'){
+		while(input[i] != '\t'){ // Read in first field from SAM file as header to output MultiFile
 			output[k++] = input[i++];
 		}
 		output[k++] = '\n';
-		while(numtabs<9)
+		while(numtabs<9) // Skip over other tags until sequence is reached
 			if(input[i++] == '\t')
 				++numtabs;
 
-		while(input[i] != '\t')
+		while(input[i] != '\t') //Copy sequence into MultiFile
 			output[k++] = input[i++];
 
 		while(input[i++] != '\n');
@@ -42,8 +54,8 @@ int samToMultiFasta(const char* input, char * output, long inputsize){
 
 }
 
-int main(int argc, char *argv[]){
-	if(!(argc == 3||argc == 4||argc == 5)){
+int main(int argc, char *argv[]){ //[Input SAM File][Output MultiFasta File Name] Optional: [Number of runs]
+	if(!(argc == 3||argc == 4)){
 		printf("Incompatible number of arguments\n");
 		return -1;
 	}
@@ -87,17 +99,14 @@ int main(int argc, char *argv[]){
 		// Create Output Buffer;
 	char * output = malloc(sizeof(char)* (inputsize+1));
 	int outputsize = 0;
-	
-	float *times ;
+	double *times ;
 	int runs = 0;
-	int numTimes = 0;
 	if(argc == 3){
 		outputsize = samToMultiFasta(input,output,inputsize);
 	}
 	if(argc == 4){	//if a number of runs is given but no number of minimum times, default number of min times is 3
 		runs = atoi(argv[3]);
-		numTimes = 3;
-		times = calloc(runs, sizeof(float)); 
+		times = calloc(runs, sizeof(double)); 
 		struct timeval time0, time1; 
 		int i;
 		for(i=0;i<runs;i++){ // Record time of each run
@@ -107,25 +116,11 @@ int main(int argc, char *argv[]){
 			times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
 		}
 
-	}
-	if(argc == 5){ //if both number of runs and the number of minimum times is given
-		runs = atoi(argv[3]);
-                numTimes = atoi(argv[4]);
-		times = calloc(runs, sizeof(float));
-                struct timeval time0, time1; 
-                int i;
-                for(i=0;i<runs;i++){ // Record time of each run
-                        gettimeofday(&time0,NULL);
-                        outputsize = samToMultiFasta(input,output,inputsize);
-                        gettimeofday(&time1,NULL);
-                        times[i] = (time1.tv_sec-time0.tv_sec)*1000000LL + time1.tv_usec - time0.tv_usec;
-                }
-
-	}
-
-	// JSON timing.txt file output if [runs] and [num min times] arguments are included // 
-	if(argc > 3){ 
-		if(write_time_file(times, runs, numTimes,inputsize) < 0)
+	//timing.json file output generated //
+		char *labelArr[1];
+		labelArr[0] = "Transform Times";
+		int numLabels = sizeof(labelArr)/sizeof(char*); 
+		if(write_time_file(&times, labelArr, numLabels, runs) < 0)
 			printf("error writing time file\n");
 		free(times);
 	}

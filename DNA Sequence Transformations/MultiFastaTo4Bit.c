@@ -2,11 +2,10 @@
  * MultiFastaTo4Bit.c
  *
  *Inputs:
- * [FASTA input file] [Name of 4-bit output file][Output Header File][number of runs]
+ * [FASTA input file][Name of 4-bit output file][Output Header File][number of runs]
  *
  *The last two arguments are optional:
  *	-If included, a timing report will be output in timeStats.txt
- *	-If just the number of runs are provided, the num of min time values will default to 3
  *	
  *Each four bit sequence will be converted to a nucleotide base:
  *		A = 0001
