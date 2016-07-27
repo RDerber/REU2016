@@ -22,14 +22,14 @@ rm temp2.json
 
 #Adjustable timing parameters 
 
-numKeys=40	#This is the numer of different sized keys tested (each with it's own corresponding input file)
+numKeys=20	#This is the numer of different sized keys tested (each with it's own corresponding input file)
 		#cannot be much higher than 50 for good run time. Will break if higher than 63 (63*2 = 126. 127 is max acceptible 
 		#random ascii value
 		
-numInputSets=10 #This is the number of files tested for each key size 
+numInputSets=1 #This is the number of files tested for each key size 
 
-runs=100 #The number of times the divAndOp Sequence finder is run
-evals=100 #The number of times the found sequence is used to translate an input file
+runs=20 #The number of times the divAndOp Sequence finder is run
+evals=50 #The number of times the found sequence is used to translate an input file
 
 k=3 #The lowest K timing values to be averaged in the timing report to make the csv file
 
