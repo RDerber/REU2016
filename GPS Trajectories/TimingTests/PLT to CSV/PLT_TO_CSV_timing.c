@@ -1,13 +1,33 @@
+/** 
+ * Modified PLT_TO_CSV program to test runtimes. Takes in one command 
+ * line argument N, runs and times M (defined as constant) transformations of 
+ * the first 0 to N GPS coordinates, and finds the average of the K (defined as 
+ * constant) lowest times. Does not export the transofmred csv file. Exports a 
+ * csv file with number of GPS coordinates vs time in microseconds. The csv file 
+ * Will be named PLATFORM + "CoordTest" + NUMIMAGES + ".csv"; Platform is 
+ * defined and should be changed according to where the transformation is run.
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 
+// NUMBER OF RUNS
+#define M                                   50
+// NUMBER OF LOWEST TIMES TO AVERAGE
+#define K                                    5
+
+// OUTPUT PLATFORMS
+#define CLOUD                          "Cloud"
+#define LOCAL                          "Local"
+
+// SET PLATFORM
+#define PLATFORM                         CLOUD
+
 // TODO: allow for variable filepaths
 #define INPUT_FILEPATH "000/20081023025304.plt"
-#define TIMING_FILEPATH_CLOUD  "CloudCharTest"
-#define TIMING_FILEPATH_LOCAL  "LocalCharTest"
 
 #define ID "000"
 #define LINE_OFFSET 6
@@ -34,6 +54,7 @@ size_t load_csv_to_buffer(char *filepath, char **buffer) {
 
 	return fileSize;
 }
+
 
 // Returns the number of lines(coordinates) in the provided buffer
 int count_GPS_coordinates(char *buffer) {
@@ -71,10 +92,6 @@ size_t input_coordinates(char *token, char **marker) {
     longitude = strtok(NULL, tokenDelimiters);
     size_t longitudeSize = strlen(longitude);
     
-    // printf("id: %s\n", ID);
-    // printf("lattitude: %s\n", lattitude);
-    // printf("longitude: %s\n", longitude);
-    
     // Copy data in generalized format into output buffer
     memcpy(*marker, ID, strlen(ID) * sizeof(char));
     *marker += strlen(ID) * sizeof(char);
@@ -92,7 +109,6 @@ size_t input_coordinates(char *token, char **marker) {
     return (strlen(ID) + lattitudeSize + longitudeSize + 3) * 
             sizeof(char);
 }
-
 
 
 // Converts the provided input file buffer into a generalized csv format and 
@@ -122,6 +138,7 @@ size_t convert_to_csv(char *inputBuffer, char **outputBuffer, int numToTransform
     return fileSize;
 }
 
+
 // Writes file of provided file size with contents of provided buffer
 void write_csv_file(char * filepath, char *buffer, size_t fileSize) {
     FILE *file = fopen(filepath, "w");
@@ -147,15 +164,16 @@ double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
 // Writes an array of doubles as pairs of indexes and their values to a csv file
 void write_doubles_to_csv_file(double *values, int numValues, char *name) {
 	char fileName[50];
-	sprintf(fileName, "%s%d.csv", name, numValues);
+	sprintf(fileName, "%sCoordTest%d.csv", name, numValues);
 	FILE *file = fopen(fileName, "w+");
 	int i;
 	for (i = 0; i < numValues; ++i) {
 		fprintf(file,"%d, %f\n", i + 1, values[i]);
-// 		printf("%d %f\n", i, values[i]);
+ 		printf("%d %f\n", i, values[i]);
 	}
 	fclose(file);
 }
+
 
 void main(int argc, char **argv){
     char *inputBuffer;
@@ -183,8 +201,8 @@ void main(int argc, char **argv){
 	struct timeval startTime, endTime;
 
 	int i, j;
-	int numRuns = 50;
-	int k = 5;
+	int numRuns = M;
+	int k = K;
 	
 	// time the transofrmation of all numbers of images up to numImages 
 	for (i = 0; i < numImages; ++i) {
@@ -207,7 +225,7 @@ void main(int argc, char **argv){
 	}
 
 	// write timing data (character to runtime) to csv file
-	write_doubles_to_csv_file(timingArray, numImages, TIMING_FILEPATH_CLOUD);
+	write_doubles_to_csv_file(timingArray, numImages, PLATFORM);
     
     free(inputBuffer);
 }

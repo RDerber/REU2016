@@ -1,3 +1,13 @@
+/** 
+ * Modified VECTOR_TO_PIXEL program to test runtimes. Takes in one command line 
+ * argument N, runs and times M (defined as constant) transformations of the 
+ * first 0 to N images, and finds the average of the K (defined as constant) 
+ * lowest times. Does not export any TIFF images. Exports a csv file with number 
+ * of images vs time in microseconds. The csv file Will be named PLATFORM + 
+ * "CharTest" + NUMIMAGES + ".csv"; Platform is defined and should be changed 
+ * according to where the transformation is run.
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -5,6 +15,19 @@
 #include <math.h>
 #include <sys/time.h>
   
+// NUMBER OF RUNS
+#define M                                   50
+// NUMBER OF LOWEST TIMES TO AVERAGE
+#define K                                    5
+
+// OUTPUT PLATFORMS
+#define CLOUD                          "Cloud"
+#define LOCAL                          "Local"
+
+// SET PLATFORM
+#define PLATFORM                         CLOUD
+
+// UNIPEN KEYWORDS  
 #define PEN_UP                        "PEN_UP"
 #define PEN_DOWN                    "PEN_DOWN"
 #define INCLUDE                      "INCLUDE"
@@ -18,7 +41,6 @@
 #define VECTOR_DIMMENSION                  500
 #define NUM_IMAGES                        4256
 #define BLACK                              255
-
 
 // TIFF HEADER CODES
 #define HEADER_ENDIAN_LITTLE            0x4949
@@ -175,6 +197,7 @@ void draw_circle(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
         }
     }
 }
+
 
 // Helper function to calculate b of y = mx + b given a coordinate and slope
 double calculate_b(int x, int y, double slope) {
@@ -462,10 +485,13 @@ int run_transformations(char *data, int numImages) {
 }
 
 
+// Function passed into qsort to sort the runtimes
 int sort_compare(const void * a, const void * b) {
 	return ( *(int*)a - *(int*)b );
 }
 
+// Calculates the average of the k lowest runs in the provided array. Returns 
+// that average as a double.
 double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
 	qsort(*array, numRuns, sizeof(int), sort_compare);
 	int i, sum = 0;
@@ -476,10 +502,10 @@ double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
 }
 
 
-// Writes an array of doubles as pairs of indexes and their values to a csv file
+// Writes the timing data to a csv file as pairs of index and value. 
 void write_doubles_to_csv_file(double *values, int numValues, char *name) {
 	char fileName[50];
-	sprintf(fileName, "%s.csv", name);
+	sprintf(fileName, "%sCharTest%d.csv", name, numValues);
 	FILE *file = fopen(fileName, "w+");
 	int i;
 	printf("reached\n");
@@ -496,15 +522,13 @@ void write_doubles_to_csv_file(double *values, int numValues, char *name) {
 void write_double_pairs_to_csv_file(double *x, double *y, int numValues, 
 		char *name) {
 	char fileName[50];
-	sprintf(fileName, "%s.csv", name);
+	sprintf(fileName, "%sVectTest%d.csv", name, numValues);
 	FILE *file = fopen(fileName, "w+");
 	int i;
-	printf("reached\n");
 	for (i = 0; i < numValues; ++i) {
 		fprintf(file,"%f, %f\n", x[i], y[i]);
 		printf("%f %f\n", x[i], y[i]);
 	}
-	printf("reached\n");
 	fclose(file);
 }
 
@@ -523,21 +547,14 @@ int main(int argc, char **argv){
 
 	double *timingArray1 = (double *) malloc(numImages * sizeof(double));
 	
-	double *timingArray2 = (double *) malloc(numImages * sizeof(double));
-	
 	double *coordinateCounts;
 	coordinateCounts = (double *) malloc(numImages * sizeof(double));
 
 	struct timeval startTime, endTime;
 
 	int i, j;
-	int numRuns = 50;
-<<<<<<< HEAD
-	int k1 = 30;
-	int k2 = 3;
-=======
-	int k = 3;
->>>>>>> 699647cfab1d655c750ffdf95c6ae37579d005fa
+	int numRuns = M;
+	int k = K;
 	int numCoordinates = 0;
 	
 	// time the transofrmation of all numbers of images up to numImages 
@@ -552,18 +569,16 @@ int main(int argc, char **argv){
 		}
 		printf("Finished %d transforms\n", i + 1);
 		coordinateCounts[i] = (double) numCoordinates / 2;
-		timingArray1[i] = calc_avg_k_lowest_runs(&runsArray, numRuns, k1);
-		timingArray2[i] = calc_avg_k_lowest_runs(&runsArray, numRuns, k2);
+		timingArray1[i] = calc_avg_k_lowest_runs(&runsArray, numRuns, k);
 		free(runsArray);
 	}
 
 	// write timing data (character to runtime) to csv file
-	write_doubles_to_csv_file(timingArray1, numImages, "testCharacter_k=30");
-	write_doubles_to_csv_file(timingArray2, numImages, "testCharacter_k=3");
+	write_doubles_to_csv_file(timingArray1, numImages, PLATFORM);
 	
 	// write timing data (coordinates to runtime) to csv file
 	write_double_pairs_to_csv_file(coordinateCounts, timingArray1, numImages, 
-		"testCoordinates");
+		PLATFORM);
 
 	return 0;
 }

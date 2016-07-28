@@ -1,17 +1,34 @@
+/** 
+ * Modified GO_TRACK_CSV_TO_CSV program to test runtimes. Takes in one command 
+ * line argument N, runs and times M (defined as constant) transformations of 
+ * the first 0 to N GPS coordinates, and finds the average of the K (defined as 
+ * constant) lowest times. Does not export the transofmred csv file. Exports a 
+ * csv file with number of GPS coordinates vs time in microseconds. The csv file 
+ * Will be named PLATFORM + "CoordTest" + NUMIMAGES + ".csv"; Platform is 
+ * defined and should be changed according to where the transformation is run.
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 
-#define INPUT_FILEPATH "Porto_taxi_data_test_partial_trajectories.csv"
-#define TIMING_FILEPATH_CLOUD  "CloudCharTest"
-#define TIMING_FILEPATH_LOCAL  "LocalCharTest"
+// NUMBER OF RUNS
+#define M                                   50
+// NUMBER OF LOWEST TIMES TO AVERAGE
+#define K                                    5
+
+// OUTPUT PLATFORMS
+#define CLOUD                          "Cloud"
+#define LOCAL                          "Local"
+
+// SET PLATFORM
+#define PLATFORM                         CLOUD
+
+#define INPUT_FILEPATH "go_track_trackspoints.csv"
 #define LINE_OFFSET 1
-#define MAX_INPUT_LINE_SIZE 20000
-#define MAX_OUTPUT_LINE_SIZE 64
-#define NUM_COORDINATES 14438
-#define NUM_FIELDS 9
+#define MAX_LINE_SIZE 64
 
 // Loads input file at the provided filepath into the provided buffer
 // Returns the size of the input file
@@ -35,65 +52,70 @@ size_t load_csv_to_buffer(char *filepath, char **buffer) {
 	return fileSize;
 }
 
+
+// Returns the number of lines(coordinates) in the provided buffer
+int count_GPS_coordinates(char *buffer) {
+    char *token;
+    char *fileDelimiters = "\n";
+    token = strtok(buffer, fileDelimiters);
+    
+    // Ignore headers/unimportant data
+    int i;
+    for (i = 0; i < LINE_OFFSET; ++i) {
+        buffer += strlen(token) + 1;
+        token = strtok(buffer, fileDelimiters);
+    }
+    
+    int numCoordinates = 0;
+    while (token != NULL) {
+        buffer += strlen(token) + 1;
+        token = strtok(buffer, fileDelimiters);
+        numCoordinates++;
+    }
+    return numCoordinates;
+}
+
+
 // Appends the id and coordinates within a provided token to the output bufffer
 // Returns the size of the appended line.
-size_t input_coordinates(char *token, char **marker, int numToTransform) {
-    char *tokenDelimiters = ",[]\" ";
+size_t input_coordinates(char *token, char **marker) {
+    char *tokenDelimiters = ",";
     char *lattitude;
     char *longitude;
     char *id;
     
     // Read in useful data 
     id = strtok(token, tokenDelimiters);
-
-    int i;
-    for (i = 0; i < NUM_FIELDS - 2; ++i) {
-        strtok(NULL, tokenDelimiters);   
-    }
     lattitude = strtok(NULL, tokenDelimiters);
     longitude = strtok(NULL, tokenDelimiters);
-
-    size_t size = 0;
-    while(lattitude != NULL && longitude != NULL && numToTransform != 0) {
-        
-        memcpy(*marker, id, strlen(id) * sizeof(char));
-        *marker += strlen(id) * sizeof(char);
-        memcpy(*marker, ",", sizeof(char));
-        *marker += sizeof(char);
-        memcpy(*marker, lattitude, strlen(lattitude) * sizeof(char));
-        *marker += strlen(lattitude) * sizeof(char);
-        memcpy(*marker, ",", sizeof(char));
-        *marker += sizeof(char);
-        memcpy(*marker, longitude, strlen(longitude) * sizeof(char));
-        *marker += strlen(longitude) * sizeof(char);
-        memcpy(*marker, "\n", sizeof(char));
-        *marker+= sizeof(char);
-        
-        size += (strlen(id) + strlen(lattitude) + strlen(longitude) + 3) * 
-            sizeof(char);
-        
-        lattitude = strtok(NULL, tokenDelimiters);
-        if (lattitude != NULL) {
-            longitude = strtok(NULL, tokenDelimiters);
-        }
-        
-        numToTransform--;
-        // printf("%d\n", numToTransform);
-    }
     
-    return numToTransform;
+    // Copy data in generalized format into output buffer
+    memcpy(*marker, id, strlen(id) * sizeof(char));
+    *marker += strlen(id) * sizeof(char);
+    memcpy(*marker, ",", sizeof(char));
+    *marker += sizeof(char);
+    memcpy(*marker, lattitude, strlen(lattitude) * sizeof(char));
+    *marker += strlen(lattitude) * sizeof(char);
+    memcpy(*marker, ",", sizeof(char));
+    *marker += sizeof(char);
+    memcpy(*marker, longitude, strlen(longitude) * sizeof(char));
+    *marker += strlen(longitude) * sizeof(char);
+    memcpy(*marker, "\n", sizeof(char));
+    *marker+= sizeof(char);
+    
+    return (strlen(id) + strlen(lattitude) + strlen(longitude) + 3) * 
+            sizeof(char);
 }
-
 
 
 // Converts the provided input file buffer into a generalized csv format and 
 // writes it into the provided output buffer
 // Returns the size of the output buffer
-void convert_to_csv(char *inputBuffer, char **outputBuffer, 
-		int numToTransform) {
+size_t convert_to_csv(char *inputBuffer, char **outputBuffer, 
+        int numToTransform) {
     char *fileDelimiters = "\n";
     char *token;
-    
+
     token = strtok(inputBuffer, fileDelimiters);
     char *marker = *outputBuffer;
     
@@ -107,11 +129,13 @@ void convert_to_csv(char *inputBuffer, char **outputBuffer,
     size_t fileSize = 0;
     while (token != NULL && numToTransform != 0) {
         inputBuffer += strlen(token) + 1;
-        numToTransform = input_coordinates(token, &marker, numToTransform);
+        fileSize += input_coordinates(token, &marker);
         token = strtok(inputBuffer, fileDelimiters);
+        numToTransform--;
     }
-    // return fileSize;
+    return fileSize;
 }
+
 
 // Writes file of provided file size with contents of provided buffer
 void write_csv_file(char * filepath, char *buffer, size_t fileSize) {
@@ -119,7 +143,6 @@ void write_csv_file(char * filepath, char *buffer, size_t fileSize) {
     fwrite(buffer, fileSize, sizeof(char), file);
     fclose(file);
 }
-
 
 int sort_compare(const void * a, const void * b) {
 	return ( *(int*)a - *(int*)b );
@@ -139,30 +162,37 @@ double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
 // Writes an array of doubles as pairs of indexes and their values to a csv file
 void write_doubles_to_csv_file(double *values, int numValues, char *name) {
 	char fileName[50];
-	sprintf(fileName, "%s%d.csv", name, numValues);
+	sprintf(fileName, "%sCoordTest%d.csv", name, numValues);
 	FILE *file = fopen(fileName, "w+");
 	int i;
 	for (i = 0; i < numValues; ++i) {
 		fprintf(file,"%d, %f\n", i + 1, values[i]);
-		printf("%d %f\n", i, values[i]);
+ 		printf("%d %f\n", i, values[i]);
 	}
 	fclose(file);
 }
 
+
 void main(int argc, char **argv){
-	int numImages = 1;
-	if (atoi(argv[1]) > NUM_COORDINATES || atoi(argv[1]) < 1) {
-		printf("%s\n", "Invalid Number of Images");
-		printf("%s\n", argv[1]);
-	} else {
-		numImages = atoi(argv[1]);
-	}
+	
     char *inputBuffer;
     char *outputBuffer;
     
     size_t inputSize = load_csv_to_buffer(INPUT_FILEPATH, 
             &inputBuffer);
     
+    char *inputBufferCopy = malloc(inputSize);
+	memcpy(inputBufferCopy, inputBuffer, inputSize);
+    int numCoordinates = count_GPS_coordinates(inputBufferCopy);
+    free(inputBufferCopy);
+    
+    int numImages = 1;
+	if (atoi(argv[1]) > numCoordinates || atoi(argv[1]) < 1) {
+		printf("%s\n", "Invalid Number of Images");
+		printf("%s\n", argv[1]);
+	} else {
+		numImages = atoi(argv[1]);
+	}
     
     double *timingArray;
 	timingArray = (double *) malloc(numImages * sizeof(double));
@@ -170,8 +200,8 @@ void main(int argc, char **argv){
 	struct timeval startTime, endTime;
 
 	int i, j;
-	int numRuns = 50;
-	int k = 5;
+	int numRuns = M;
+	int k = K;
 	
 	// time the transofrmation of all numbers of images up to numImages 
 	for (i = 0; i < numImages; ++i) {
@@ -179,8 +209,8 @@ void main(int argc, char **argv){
 		for (j = 0; j < numRuns; ++j) {	
 		    char *inputBufferCopy = malloc(inputSize);
 		    memcpy(inputBufferCopy, inputBuffer, inputSize);
-		    outputBuffer = malloc(NUM_COORDINATES * MAX_OUTPUT_LINE_SIZE *
-            sizeof(char));
+		    outputBuffer = malloc(numCoordinates * MAX_LINE_SIZE * 
+		            sizeof(char));
             int runs = i + 1;
 			gettimeofday(&startTime, NULL);
 			convert_to_csv(inputBufferCopy, &outputBuffer, runs);
@@ -195,8 +225,7 @@ void main(int argc, char **argv){
 	}
 
 	// write timing data (character to runtime) to csv file
-	write_doubles_to_csv_file(timingArray, numImages, TIMING_FILEPATH_CLOUD);
+	write_doubles_to_csv_file(timingArray, numImages, PLATFORM);
     
     free(inputBuffer);
 }
-

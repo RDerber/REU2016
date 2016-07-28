@@ -1,9 +1,30 @@
+/**
+ * Transforms a UNIPEN text-based vector file format (with input filepath 
+ * defined as a constant string) into individual TIFF images. The images are 
+ * named "image" + IMAGE_NUMBER + (CHARACTER) + ".tiff" and exported into a 
+ * folder named "TIFF"; the exported image names currently do not reflect 
+ * character labels (currently, CHARACTER is 0 for all images). The exported 
+ * images are based on strokes rather than full characters, and include both 
+ * character segments and full characters. Brush radius of the strokes is 
+ * defined as a constant. All of the vector data in the UNIPEN input file will 
+ * be transformed into TIFF images.
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-  
+
+#define FILE_PATH         "pendigits-orig.tes"
+
+#define BRUSH_RADIUS                        10
+
+#define PIXEL_DIMMENSION                   500
+
+#define BLACK                              255
+
+// UNIPEN KEYWORDS  
 #define PEN_UP                        "PEN_UP"
 #define PEN_DOWN                    "PEN_DOWN"
 #define INCLUDE                      "INCLUDE"
@@ -12,18 +33,12 @@
 #define SEGMENT                      "SEGMENT"
 #define HIERARCHY                  "HIERARCHY"
 
-#define FILE_PATH         "pendigits-orig.tes"
-
-#define VECTOR_DIMMENSION                  500
-#define IMAGE_DIMMENSION                    28
-#define BLACK                              255
-
-//TIFF HEADER CODES
+// TIFF HEADER CODES
 #define HEADER_ENDIAN_LITTLE            0x4949
 #define HEADER_ENDIAN_BIG               0x4D4D
 #define HEADER_MAGIC_NUMBER             0x002A
 
-//TIFF TAG ID CODES                           
+// TIFF TAG ID CODES                           
 #define TAG_WIDTH                       0x0100
 #define TAG_HEIGHT                      0x0101	
 #define TAG_BITS_PER_SAMPLE             0x0102
@@ -39,6 +54,8 @@
 #define NUM_TAGS                            11
 #define TIFF_END                    0x00000000
 
+// Loads input file at the provided filepath into the provided buffer
+// Returns the size of the input file
 size_t load_upen_to_buffer(char *filepath, char **buffer){
 	// open file
 	FILE *file = fopen(filepath, "r");
@@ -65,12 +82,12 @@ size_t load_upen_to_buffer(char *filepath, char **buffer){
 // UNUSED
 // Draws square with halfwidth of the provided brush radius, with center at the
 // provided coordinates
-void drawSquare(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
+void draw_square(unsigned char pixelArray[PIXEL_DIMMENSION][PIXEL_DIMMENSION], 
 		double x, double y, double brushRadius){
 	int i, j;
 	for (i = floor(x - brushRadius); i <= x + brushRadius; ++i) {
 		for (j = floor(y - brushRadius); j <= y + brushRadius; ++j) {
-			if (i >= VECTOR_DIMMENSION || j >= VECTOR_DIMMENSION || i < 0 || 
+			if (i >= PIXEL_DIMMENSION || j >= PIXEL_DIMMENSION || i < 0 || 
 					j < 0 || pixelArray[i][j] == BLACK) {
 				continue;
 			} 
@@ -99,10 +116,11 @@ void drawSquare(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 }
 
 
-// Checks if the pixel at position x, y is out of bounds or is already black 
+// Helper function to checks if the pixel at position x, y is out of bounds or 
+// is already black. 
 int is_bounded_filled(int x, int y, 
-		unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION]) {
-	if (x >= VECTOR_DIMMENSION || y >= VECTOR_DIMMENSION || 
+		unsigned char pixelArray[PIXEL_DIMMENSION][PIXEL_DIMMENSION]) {
+	if (x >= PIXEL_DIMMENSION || y >= PIXEL_DIMMENSION || 
   		x < 0 || y < 0 || pixelArray[x][y] == BLACK) {
 		return 0;
 	} else {
@@ -113,7 +131,7 @@ int is_bounded_filled(int x, int y,
 
 // UNUSED
 // Recursive fill starting from the center of the circle
-void flood_fill(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
+void flood_fill(unsigned char pixelArray[PIXEL_DIMMENSION][PIXEL_DIMMENSION], 
 		int x, int y){
 	if (pixelArray[x][y] == 0 && is_bounded_filled(x, y, pixelArray)) {
 		pixelArray[x][y] = BLACK;
@@ -130,8 +148,10 @@ void flood_fill(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 	}
 }
 
-// Fills the pixels below a given pixel until its center Y is reached
-void fill_below(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
+
+// Helper function to fill the pixels below a given pixel until its center Y is 
+// reached
+void fill_below(unsigned char pixelArray[PIXEL_DIMMENSION][PIXEL_DIMMENSION], 
 		double y0, double radius, int x, int y){
 	int i;
 	for (i = y0; i < y; ++i) {
@@ -139,8 +159,9 @@ void fill_below(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 	}
 }
 
-// Fills the pixels above a given pixel until its center Y is reached
-void fill_above(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
+// Helper function to fill the pixels above a given pixel until its center Y is 
+// reached
+void fill_above(unsigned char pixelArray[PIXEL_DIMMENSION][PIXEL_DIMMENSION], 
 		double y0, double radius, int x, int y){
 	int i;
 	for (i = y0; i > y; --i) {
@@ -152,7 +173,7 @@ void fill_above(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 // Draws the outer points of a circle with the provided radius using the 
 // midpoint circle algorithm, with its center at the given coordinates. Fills 
 // every pixel between each point and the circle's horizontal axis
-void draw_circle(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
+void draw_circle(unsigned char pixelArray[PIXEL_DIMMENSION][PIXEL_DIMMENSION], 
 		double x0, double y0, double radius)
 {
     int x = radius;
@@ -251,7 +272,7 @@ double calculate_other_coordinate(char XY, int coordinate, double slope,
 // Given the coordinates of two endpoints, finds the y = mx + b equation for the 
 // line and draws dots for every pixel in the relatively less constrained 
 // dimmension
-void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION], 
+void draw_line(unsigned char pixelArray[PIXEL_DIMMENSION][PIXEL_DIMMENSION], 
 		double brushRadius, int startY, int startX, int endY, int endX) {
 	double slope = (double)(endY - startY) / (endX - startX);
 	double b = calculate_b(startX, startY, slope);
@@ -266,7 +287,8 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 				if (startY == endY) {
 					double y = startY;
 				}
-				draw_circle(pixelArray, VECTOR_DIMMENSION - i, round(y), brushRadius);
+				draw_circle(pixelArray, PIXEL_DIMMENSION - i, round(y), 
+						brushRadius);
 			}
 		} else {
 			for (i = startX; i <= endX; ++i) {
@@ -274,7 +296,8 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 				if (startY == endY) {
 					double y = startY;
 				}
-				draw_circle(pixelArray, VECTOR_DIMMENSION - i, round(y), brushRadius);
+				draw_circle(pixelArray, PIXEL_DIMMENSION - i, round(y), 
+						brushRadius);
 			}
 		}
 	} else {
@@ -286,7 +309,8 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 				} else {
 					x = calculate_other_coordinate('x', i, slope, b);
 				}
-				draw_circle(pixelArray, VECTOR_DIMMENSION - round(x), i, brushRadius);
+				draw_circle(pixelArray, PIXEL_DIMMENSION - round(x), i, 
+						brushRadius);
 			}
 		} else {
 			for (i = startY; i <= endY; ++i) {
@@ -296,7 +320,8 @@ void draw_line(unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION],
 				} else {
 					x = calculate_other_coordinate('x', i, slope, b);
 				}
-				draw_circle(pixelArray, VECTOR_DIMMENSION - round(x), i, brushRadius);
+				draw_circle(pixelArray, PIXEL_DIMMENSION - round(x), i, 
+						brushRadius);
 			}
 		}	
 	}
@@ -334,7 +359,7 @@ struct header generate_tiff_header(unsigned int pixelCount){
 void write_file(unsigned char *buffer, unsigned int imageNumber, 
 		unsigned int label, size_t fileLength){
 	char fileName[50];
-	sprintf(fileName, "UNIPEN/image%d(%d).tiff", imageNumber, label);
+	sprintf(fileName, "TIFF/image%d(%d).tiff", imageNumber, label);
 	FILE *file = fopen(fileName, "wb");
 	fwrite(buffer, sizeof(unsigned char), fileLength, file);
 	fclose(file); 
@@ -363,9 +388,9 @@ void generate_tiff_file(struct header header, struct tag tags[11],
 	marker += sizeof(struct header);
 	//copy pixel data
 	int i;
-	for(i = 0; i < VECTOR_DIMMENSION; ++i) {
-		memcpy(marker, pixelDataBuffer[i], VECTOR_DIMMENSION);
-		marker += VECTOR_DIMMENSION;
+	for(i = 0; i < PIXEL_DIMMENSION; ++i) {
+		memcpy(marker, pixelDataBuffer[i], PIXEL_DIMMENSION);
+		marker += PIXEL_DIMMENSION;
 	}
 	//copy TIFF footer
 	memcpy(marker, &numTags, sizeof(numTags));
@@ -390,16 +415,16 @@ void generate_tiff_file(struct header header, struct tag tags[11],
 // based on the dimmensions of the image, and creates the actual tiff file.
 void draw_pixel_array(int *coordinates, size_t numCoordinates, 
 	unsigned int charLabel, unsigned int imageNumber){
-	unsigned char pixelArray[VECTOR_DIMMENSION][VECTOR_DIMMENSION] = {0};
+	unsigned char pixelArray[PIXEL_DIMMENSION][PIXEL_DIMMENSION] = {0};
 	int i, j;
 	if (numCoordinates > 4) {
 		for(i = 0; i < numCoordinates - 3; i += 2) {
-			draw_line(pixelArray, 10, coordinates[i], coordinates[i + 1], 
-					coordinates[i + 2], coordinates[i + 3]);
+			draw_line(pixelArray, BRUSH_RADIUS, coordinates[i], 
+					coordinates[i + 1], coordinates[i + 2], coordinates[i + 3]);
 		}
 	}
 
-	int pixelCount = VECTOR_DIMMENSION * VECTOR_DIMMENSION;
+	int pixelCount = PIXEL_DIMMENSION * PIXEL_DIMMENSION;
 
 	//generate header
 	struct header tiffHeader = generate_tiff_header(pixelCount);
@@ -408,13 +433,13 @@ void draw_pixel_array(int *coordinates, size_t numCoordinates,
 	enum dataTypes {TYPE_BYTE = 1, TYPE_ASCII, TYPE_SHORT, TYPE_LONG,
 		TYPE_RATIONAL};
 	struct tag tiffTags[11] = {
-		{TAG_WIDTH,             TYPE_LONG,  1, VECTOR_DIMMENSION}, 
-		{TAG_HEIGHT,            TYPE_LONG,  1, VECTOR_DIMMENSION},
+		{TAG_WIDTH,             TYPE_LONG,  1, PIXEL_DIMMENSION}, 
+		{TAG_HEIGHT,            TYPE_LONG,  1, PIXEL_DIMMENSION},
 		{TAG_BITS_PER_SAMPLE,   TYPE_SHORT, 1, 8},
 		{TAG_COMPRESSION,       TYPE_SHORT, 1, 1},
 		{TAG_INTERPRETATION,    TYPE_SHORT, 1, 0},
 		{TAG_STRIP_OFFSETS,     TYPE_LONG,  1, 8},
-		{TAG_ROWS_PER_STRIP,    TYPE_SHORT, 1, VECTOR_DIMMENSION},
+		{TAG_ROWS_PER_STRIP,    TYPE_SHORT, 1, PIXEL_DIMMENSION},
 		{TAG_STRIP_BYTE_COUNTS, TYPE_LONG,  1, pixelCount},
 		{TAG_X_RESOLUTION,      TYPE_LONG,  1, 1},
 		{TAG_Y_RESOLUTION,      TYPE_LONG,  1, 1},
@@ -428,7 +453,7 @@ void draw_pixel_array(int *coordinates, size_t numCoordinates,
 
 
 // Reads in segments of the token and interprets it as a coordinate if it is an 
-// integer. Passes the array to draw_pixel_array
+// integer. Passes the array to draw_pixel_array.
 size_t load_and_plot_coordinates(char *token, unsigned int charLabel, 
 	unsigned int imageNumber) {
 	size_t arraySize = 0;
@@ -447,13 +472,15 @@ size_t load_and_plot_coordinates(char *token, unsigned int charLabel,
 	return arraySize;
 }
 	
-int main(){
+void main(){
 	char *data;
 	size_t filesize = load_upen_to_buffer(FILE_PATH, &data);
 	
 	char *token = malloc(sizeof(char) * 1000);
 	token = strtok(data, ".");
 
+	// Search through sets of keywords and their values until PEN_DOWN is found, 
+	// and begin drawing the stroke
 	int firstTime = 1;
 	int i = 0;
 	while(token != NULL){
