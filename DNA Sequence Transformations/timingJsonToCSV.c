@@ -141,13 +141,15 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int m, int k){
 	
 	
 			
-	//Print out CSV Files
+//Print out CSV Files
+	
+	//Print out column headers 
+	fprintf(ofp,"%c%s,%s\n",'#', "Number Of Bases","Average Transform Time");
+	
+	//Print out data
 	for(i=0;i<maxNumInputs; ++i){
 		fprintf(ofp,"%d,%f\n", inArr[i],inputAvgEvalTime[i]);
-	//	printf("%s %d\n", "i:", i);
-	//	printf("%s %d, %p\n", "inArr[i]:", inArr[i], inArr);
-	//	printf("%s %f, %p\n", "inputAvgRunTime[i]:", inputAvgRunTime[i], inputAvgRunTime);
-	//	printf("%s %f, %p\n", "inputAvgEvalTime[i]:", inputAvgEvalTime[i], inputAvgEvalTime);
+
 	}
 	
 	return 0;

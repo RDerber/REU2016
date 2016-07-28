@@ -154,14 +154,14 @@ int timingJsonToCSV(char * input, FILE * ofp, int numKeys, int m, int k){
 	
 	
 			
-	//Print out CSV Files
+//Print out CSV Files
+	
+	//Print out column headers 
+	fprintf(ofp,"%c%s,%s,%s\n",'#', "Size of Key","PolyGen Time", "FileEvalTime");
+	
 	for(i=0;i<numKeys; ++i){
 		fprintf(ofp,"%d,%f,%f\n", inArr[i],inputAvgRunTime[i],inputAvgEvalTime[i]);
-	//	fprintf(ofp2,"%d,%f\n", inArr[i],inputAvgEvalTime[i]);
-	//	printf("%s %d\n", "i:", i);
-	//	printf("%s %d, %p\n", "inArr[i]:", inArr[i], inArr);
-	//	printf("%s %f, %p\n", "inputAvgRunTime[i]:", inputAvgRunTime[i], inputAvgRunTime);
-	//	printf("%s %f, %p\n", "inputAvgEvalTime[i]:", inputAvgEvalTime[i], inputAvgEvalTime);
+
 	}
 	
 	return 0;

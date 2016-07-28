@@ -238,11 +238,20 @@ int superJsonToCSV(char * input, FILE * ofp1, FILE* ofp2, int maxNumInputs, int 
 		
 	}
 			
-	//Print out CSV Files
+//Print out CSV Files
+	
+	//Print out column headers 
+	fprintf(ofp1,"%c%s,%s,%s\n",'#', "Number Of Inputs","Average Run Time", "Average Eval Time");
+
+	//Print out data
 	for(i=0;i<maxNumInputs; ++i){ 
 		fprintf(ofp1,"%d,%f,%f\n", inArr[i],inputAvgRunTime[i],inputAvgEvalTime[i]);
 	}
 	
+	//Print out column headers 
+	fprintf(ofp2,"%c%s,%s,%s\n",'#', "Number Of Operations","Average Run Time", "Average Eval Time");
+	
+	//Print out data
 	for(i=0;i<maxNumOps; ++i){ 
 		fprintf(ofp2,"%d,%f,%f\n", i+1,numOpAvgRunTime[i],numOpAvgEvalTime[i]);
 	}

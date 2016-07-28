@@ -184,14 +184,14 @@ int timingJsonToCSV(char * input, long inputSize, FILE * ofp, int maxNumInputs, 
 		inputAvgEvalTime[h] /= (double)numInputSets;
 	}
 	
-			
-	//Print out CSV Files
+//Print out CSV Files
+	
+	//Print out column headers 
+	fprintf(ofp,"%c%s,%s,%s\n",'#', "Size of Key","TreeGen Time", "FileEvalTime");
+	
 	for(i=0;i<maxNumInputs; ++i){
 		fprintf(ofp,"%d,%f,%f\n", inArr[i],inputAvgRunTime[i],inputAvgEvalTime[i]);
-	//	printf("%s %d\n", "i:", i);
-	//	printf("%s %d, %p\n", "inArr[i]:", inArr[i], inArr);
-	//	printf("%s %f, %p\n", "inputAvgRunTime[i]:", inputAvgRunTime[i], inputAvgRunTime);
-	//	printf("%s %f, %p\n", "inputAvgEvalTime[i]:", inputAvgEvalTime[i], inputAvgEvalTime);
+
 	}
 	
 	free(inArr);
