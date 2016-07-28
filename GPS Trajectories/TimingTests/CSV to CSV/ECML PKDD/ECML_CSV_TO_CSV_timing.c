@@ -4,7 +4,7 @@
  * first 0 to N GPS coordinates, and finds the average of the K (defined as 
  * constant) lowest times. Does not export the transofmred csv file. Exports a 
  * csv file with number of GPS coordinates vs time in microseconds. The csv file 
- * Will be named PLATFORM + "CoordTest" + NUMIMAGES + ".csv"; Platform is 
+ * Will be named PLATFORM + "CoordTest" + NUMCOORDINATES + ".csv"; Platform is 
  * defined and should be changed according to where the transformation is run.
  */
 
