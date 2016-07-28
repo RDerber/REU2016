@@ -1,3 +1,11 @@
+/** 
+ * Transforms an idx3-ubyte pixel data file and an idx1-ubyte label data file 
+ * (with filepaths defined as constant strings) into individual TIFF images. The 
+ * images are named "image" + IMAGE_NUMBER + (CHARACTER) + ".tiff" and exported 
+ * into a folder named "TIFF". All of the pixel data in the idx3-ubyte input 
+ * file will be transformed into TIFF images.
+ */
+ 
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -63,6 +71,7 @@ size_t idx_load_to_buffer(char *filepath, unsigned char **buffer) {
 	return fileLength;
 }
 
+
 // Sets the pointer of a given buffer for pixel data to the beginning of actual
 // pixel data within the given buffer holding the entire input file
 void set_buffer_to_pixel_array(unsigned char **imageDataBuffer, 
@@ -74,6 +83,7 @@ void set_buffer_to_pixel_array(unsigned char **imageDataBuffer,
 	*pixelDataBuffer = *imageDataBuffer + arrayStart;
 }
 
+
 // Reads a 2-byte int from 2 unsigned chars, given the offset from the high bit
 unsigned int read_2byte_int(unsigned char *imageDataBuffer, 
 		unsigned int offset){
@@ -81,6 +91,7 @@ unsigned int read_2byte_int(unsigned char *imageDataBuffer,
 	unsigned int numLowBit = *(imageDataBuffer + offset + 1);
 	return (numHighBit << 8 ) | (numLowBit);
 }
+
 
 // Finds the corresponding label value given the image number
 unsigned int idx1_read_label(unsigned char *labelDataBuffer, 
@@ -104,6 +115,7 @@ struct tag {
 		uint32_t value;
 };
 
+
 // Generates a tiff header with constants and the given pixel count
 struct header generate_tiff_header(unsigned int pixelCount){
 	struct header tiffHeader;
@@ -112,6 +124,7 @@ struct header generate_tiff_header(unsigned int pixelCount){
 	tiffHeader.ifdOffset = pixelCount + 8;
 	return tiffHeader;
 }
+
 
 // Writes TIFF file with given labels using the buffer of data
 void write_file(unsigned char *buffer, unsigned int imageNumber, 
@@ -122,6 +135,7 @@ void write_file(unsigned char *buffer, unsigned int imageNumber,
 	fwrite(buffer, sizeof(unsigned char), fileLength, file);
 	fclose(file); 
 }
+
 
 // Generates the TIFF file at a given image number; dependent on write_file
 void generate_tiff_file(struct header header, struct tag tags[11],
@@ -165,12 +179,11 @@ void generate_tiff_file(struct header header, struct tag tags[11],
 	free(buffer);
 }
 
-int main(int argc, char **argv){
-	
+
+void main(){
 	unsigned char *imageDataBuffer;
 	unsigned char *labelDataBuffer;
 	unsigned char *pixelDataBuffer;
-	
 
 	// load the files into buffers and store the length
 	size_t imageFileLength = idx_load_to_buffer(FILEPATH_IMG, &imageDataBuffer);
@@ -213,8 +226,5 @@ int main(int argc, char **argv){
 		generate_tiff_file(tiffHeader, tiffTags, pixelDataBuffer, labelDataBuffer,
 				pixelCount, i);
 	}
-
-	return 0;
-	
 }
 

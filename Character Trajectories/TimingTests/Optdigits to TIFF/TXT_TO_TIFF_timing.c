@@ -1,12 +1,33 @@
+/** 
+ * Modified TXT_TO_TIFF program to test runtimes. Takes in one command line 
+ * argument N, runs and times M (defined as constant) transformations of the 
+ * first 0 to N images, and finds the average of the K (defined as constant) 
+ * lowest times. Does not export any TIFF images. Exports a csv file with number 
+ * of images vs time in microseconds. The csv file Will be named PLATFORM + 
+ * "CharTest" + NUMIMAGES + ".csv"; Platform is defined and should be changed 
+ * according to where the transformation is run.
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/time.h>
 
+// NUMBER OF RUNS
+#define M                                   50
+// NUMBER OF LOWEST TIMES TO AVERAGE
+#define K                                    5
+
+// OUTPUT PLATFORMS
+#define CLOUD                          "Cloud"
+#define LOCAL                          "Local"
+
+// SET PLATFORM
+#define PLATFORM                         CLOUD
+
 #define INPUT_FILEPATH    "optdigits-orig.tra"
-#define TIMING_FILEPATH_CLOUD  "CloudCharTest"
-#define TIMING_FILEPATH_LOCAL  "LocalCharTest"
+
 #define LINE_OFFSET                          3
 #define MAX_LINE_SIZE                       60
 #define MAX_NUM_CHAR                      1934
@@ -290,11 +311,13 @@ void write_output_buffer(unsigned char *inputBuffer,
 }
 
 
+// Function passed into qsort to sort the runtimes
 int sort_compare(const void * a, const void * b) {
 	return ( *(int*)a - *(int*)b );
 }
 
-
+// Calculates the average of the k lowest runs in the provided array. Returns 
+// that average as a double.
 double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
 	qsort(*array, numRuns, sizeof(int), sort_compare);
 	int i, sum = 0;
@@ -305,16 +328,18 @@ double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
 }
 
 
-// Writes an array of doubles as pairs of indexes and their values to a csv file
+// Writes the timing data to a csv file as pairs of index and value. 
 void write_doubles_to_csv_file(double *values, int numValues, char *name) {
 	char fileName[50];
-	sprintf(fileName, "%s%d.csv", name, numValues);
+	sprintf(fileName, "%sCharTest%d.csv", name, numValues);
 	FILE *file = fopen(fileName, "w+");
 	int i;
+	printf("reached\n");
 	for (i = 0; i < numValues; ++i) {
 		fprintf(file,"%d, %f\n", i + 1, values[i]);
 		printf("%d %f\n", i, values[i]);
 	}
+	printf("reached\n");
 	fclose(file);
 }
 
@@ -341,8 +366,8 @@ void main(int argc, char **argv){
 	struct timeval startTime, endTime;
 
 	int i, j;
-	int numRuns = 50;
-	int k = 5;
+	int numRuns = M;
+	int k = K;
 	
 	// time the transofrmation of all numbers of images up to numImages 
 	for (i = 0; i < numImages; ++i) {
@@ -363,7 +388,7 @@ void main(int argc, char **argv){
 	}
 
 	// write timing data (character to runtime) to csv file
-	write_doubles_to_csv_file(timingArray, numImages, TIMING_FILEPATH_CLOUD);
+	write_doubles_to_csv_file(timingArray, numImages, PLATFORM);
 
     
     free(inputBuffer);

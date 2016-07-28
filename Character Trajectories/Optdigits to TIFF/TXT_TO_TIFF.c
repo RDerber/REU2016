@@ -1,3 +1,11 @@
+/**
+ * Transforms an opdigits text-based file format (with input filepath defined 
+ * as a constant string) into individual TIFF images. The images are named 
+ * "image" + IMAGE_NUMBER + (CHARACTER) + ".tiff" and exported into a folder 
+ * named "TIFF". All of the pixel data in the optdigits input file will be 
+ * transformed into TIFF images.
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -5,17 +13,17 @@
 #include <time.h>
 
 #define INPUT_FILEPATH    "optdigits-orig.tra"
-#define OUTPUT_FILEPATH                     ""
+
+// FILE FORMAT SPECIFICATIONS
 #define LINE_OFFSET                          3
 #define MAX_LINE_SIZE                       60
-#define CHARACTERS_TO_READ                   4
 
-//TIFF HEADER CODES
+// TIFF HEADER CODES
 #define HEADER_ENDIAN_LITTLE            0x4949
 #define HEADER_ENDIAN_BIG               0x4D4D
 #define HEADER_MAGIC_NUMBER             0x002A
 
-//TIFF TAG ID CODES                           
+// TIFF TAG ID CODES                           
 #define TAG_WIDTH                       0x0100
 #define TAG_HEIGHT                      0x0101	
 #define TAG_BITS_PER_SAMPLE             0x0102
@@ -85,7 +93,7 @@ struct header generate_tiff_header(int pixelCount){
 void write_file(unsigned char *buffer, unsigned int imageNumber, 
 		unsigned int label, size_t fileLength){
 	char fileName[50];
-	sprintf(fileName, "image%d(%d).tiff", imageNumber, label);
+	sprintf(fileName, "TIFF/image%d(%d).tiff", imageNumber, label);
 	FILE *file = fopen(fileName, "wb");
 	fwrite(buffer, sizeof(unsigned char), fileLength, file);
 	fclose(file); 
@@ -196,7 +204,7 @@ size_t append_pixels_as_tiff(unsigned char *inputBuffer,
 
 // Prepares the output buffer, tiff tags, and tiff header. Iterates through the
 // blocks of character data in the input file buffer and passes them to be 
-// appended into the output buffer as tiff files.
+// appended onto the output buffer as tiff files.
 void generate_output_buffer(unsigned char *inputBuffer, 
         unsigned char **outputBuffer, int width, int height, int numChars) {
 	uint16_t numTags = NUM_TAGS;
@@ -231,13 +239,14 @@ void generate_output_buffer(unsigned char *inputBuffer,
 
     unsigned char *marker = *outputBuffer;
     int i;
-    for (i = 0; i < CHARACTERS_TO_READ; ++i) {
+    for (i = 0; i < numChars; ++i) {
         size_t pixelBlockSize = append_pixels_as_tiff(inputBuffer, &marker, 
                 width, height, tiffHeader, tiffTags, i);
         inputBuffer += pixelBlockSize;
         marker += fileLength;
     }
 }
+
 
 // Given a string in the form "LABEL = VALUE", returns the integer value of 
 // VALUE.
@@ -247,6 +256,7 @@ int return_field(char *token) {
 	return atoi(strtok(NULL, tokenDelimiters));
 }
 
+
 // Reads and stores speicifcations at the beginning of the file. Transforms the 
 // character data to a TIFF format and appends it to the output buffer. 
 void write_output_buffer(unsigned char *inputBuffer, 
@@ -255,46 +265,49 @@ void write_output_buffer(unsigned char *inputBuffer,
     char *lineDelimiters = "\n";
     int tokenLength;
     
+    // Ignore first 2 lines
     int i;    
     for (i = 0; i < 2; ++i) {
     	token = strtok(inputBuffer, lineDelimiters);
     	printf("%s\n", token);
     	inputBuffer += strlen(token) + 1;
     }
-    
     inputBuffer++;
     
+    // Read the width field
     token = strtok(inputBuffer, lineDelimiters);
     tokenLength = strlen(token) + 1;
     int width = return_field(token);
     inputBuffer += tokenLength;
-
     printf("width: %d\n", width);
     
+    // Read the height field
     token = strtok(inputBuffer, lineDelimiters);
     tokenLength = strlen(token) + 1;
     int height = return_field(token);
     inputBuffer += tokenLength;
-
 	printf("height: %d\n", height);
 	
+	// Ignore the next 3 lines
     for (i = 0; i < 3; ++i) {
     	token = strtok(inputBuffer, lineDelimiters);
     	inputBuffer += strlen(token) + 1;
     }
     
+    // Read the number of characters field
     token = strtok(inputBuffer, lineDelimiters);
     tokenLength = strlen(token) + 1;
     int numChars = return_field(token);
     inputBuffer += tokenLength;
-    
     printf("numChars: %d\n", numChars);
     
+    // Ignore the next 12 lines
     for (i = 0; i < 12; ++i) {
     	token = strtok(inputBuffer, lineDelimiters);
     	inputBuffer += strlen(token) + 1;
     }
     
+    // Begin interpretting data from the current position of inputBuffer
     generate_output_buffer(inputBuffer, outputBuffer, width, height, numChars);
 }
 

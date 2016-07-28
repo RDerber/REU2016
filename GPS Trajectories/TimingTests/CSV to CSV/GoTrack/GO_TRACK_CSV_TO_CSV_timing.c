@@ -1,12 +1,32 @@
+/** 
+ * Modified GO_TRACK_CSV_TO_CSV program to test runtimes. Takes in one command 
+ * line argument N, runs and times M (defined as constant) transformations of 
+ * the first 0 to N GPS coordinates, and finds the average of the K (defined as 
+ * constant) lowest times. Does not export the transofmred csv file. Exports a 
+ * csv file with number of GPS coordinates vs time in microseconds. The csv file 
+ * Will be named PLATFORM + "CoordTest" + NUMIMAGES + ".csv"; Platform is 
+ * defined and should be changed according to where the transformation is run.
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 
+// NUMBER OF RUNS
+#define M                                   50
+// NUMBER OF LOWEST TIMES TO AVERAGE
+#define K                                    5
+
+// OUTPUT PLATFORMS
+#define CLOUD                          "Cloud"
+#define LOCAL                          "Local"
+
+// SET PLATFORM
+#define PLATFORM                         CLOUD
+
 #define INPUT_FILEPATH "go_track_trackspoints.csv"
-#define TIMING_FILEPATH_CLOUD  "CloudCharTest"
-#define TIMING_FILEPATH_LOCAL  "LocalCharTest"
 #define LINE_OFFSET 1
 #define MAX_LINE_SIZE 64
 
@@ -69,10 +89,6 @@ size_t input_coordinates(char *token, char **marker) {
     lattitude = strtok(NULL, tokenDelimiters);
     longitude = strtok(NULL, tokenDelimiters);
     
-    // printf("id: %s\n", id);
-    // printf("lattitude: %s\n", lattitude);
-    // printf("longitude: %s\n", longitude);
-    
     // Copy data in generalized format into output buffer
     memcpy(*marker, id, strlen(id) * sizeof(char));
     *marker += strlen(id) * sizeof(char);
@@ -128,11 +144,13 @@ void write_csv_file(char * filepath, char *buffer, size_t fileSize) {
     fclose(file);
 }
 
+// Function passed into qsort to sort the runtimes
 int sort_compare(const void * a, const void * b) {
 	return ( *(int*)a - *(int*)b );
 }
 
-
+// Calculates the average of the k lowest runs in the provided array. Returns 
+// that average as a double.
 double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
 	qsort(*array, numRuns, sizeof(int), sort_compare);
 	int i, sum = 0;
@@ -146,12 +164,12 @@ double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
 // Writes an array of doubles as pairs of indexes and their values to a csv file
 void write_doubles_to_csv_file(double *values, int numValues, char *name) {
 	char fileName[50];
-	sprintf(fileName, "%s%d.csv", name, numValues);
+	sprintf(fileName, "%sCoordTest%d.csv", name, numValues);
 	FILE *file = fopen(fileName, "w+");
 	int i;
 	for (i = 0; i < numValues; ++i) {
 		fprintf(file,"%d, %f\n", i + 1, values[i]);
-// 		printf("%d %f\n", i, values[i]);
+ 		printf("%d %f\n", i, values[i]);
 	}
 	fclose(file);
 }
@@ -184,8 +202,8 @@ void main(int argc, char **argv){
 	struct timeval startTime, endTime;
 
 	int i, j;
-	int numRuns = 50;
-	int k = 5;
+	int numRuns = M;
+	int k = K;
 	
 	// time the transofrmation of all numbers of images up to numImages 
 	for (i = 0; i < numImages; ++i) {
@@ -209,7 +227,7 @@ void main(int argc, char **argv){
 	}
 
 	// write timing data (character to runtime) to csv file
-	write_doubles_to_csv_file(timingArray, numImages, TIMING_FILEPATH_CLOUD);
+	write_doubles_to_csv_file(timingArray, numImages, PLATFORM);
     
     free(inputBuffer);
 }

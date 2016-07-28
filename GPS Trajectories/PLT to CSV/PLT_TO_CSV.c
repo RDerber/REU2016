@@ -1,3 +1,10 @@
+/**
+ * Transforms the PLT file format into a generalized GPS trajectory csv file 
+ * format of "ID,LATTITUDE,LONGITUDE". The input and output filepaths are 
+ * defined as constants. All GPS coordinates within the input file will be 
+ * included wihtin the exported generalized-format csv file.
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -34,6 +41,7 @@ size_t load_csv_to_buffer(char *filepath, char **buffer) {
 	return fileSize;
 }
 
+
 // Returns the number of lines(coordinates) in the provided buffer
 int count_GPS_coordinates(char *buffer) {
     char *token;
@@ -68,9 +76,7 @@ size_t input_coordinates(char *token, char **marker) {
     lattitude = strtok(token, tokenDelimiters);
     longitude = strtok(NULL, tokenDelimiters);
     
-    printf("id: %s\n", ID);
-    printf("lattitude: %s\n", lattitude);
-    printf("longitude: %s\n", longitude);
+     printf("%s,%s,%s\n", id, lattitude, longitude);
     
     // Copy data in generalized format into output buffer
     memcpy(*marker, ID, strlen(ID) * sizeof(char));
@@ -89,7 +95,6 @@ size_t input_coordinates(char *token, char **marker) {
     return (strlen(ID) + strlen(lattitude) + strlen(longitude) + 3) * 
             sizeof(char);
 }
-
 
 
 // Converts the provided input file buffer into a generalized csv format and 
@@ -119,12 +124,14 @@ size_t convert_to_csv(char *inputBuffer, char **outputBuffer) {
     return fileSize;
 }
 
+
 // Writes file of provided file size with contents of provided buffer
 void write_csv_file(char * filepath, char *buffer, size_t fileSize) {
     FILE *file = fopen(filepath, "w");
     fwrite(buffer, fileSize, sizeof(char), file);
     fclose(file);
 }
+
 
 void main() {
     char *inputBuffer;
@@ -137,6 +144,7 @@ void main() {
     
     outputBuffer = malloc(numCoordinates * MAX_LINE_SIZE * sizeof(char));
     
+    // Transfrom to csv file
     size_t outputSize = convert_to_csv(inputBuffer, &outputBuffer);
     
     write_csv_file(OUTPUT_FILEPATH, outputBuffer, 

@@ -1,8 +1,30 @@
+/** 
+ * Modified IDX3_TO_TIFF program to test runtimes. Takes in one command line 
+ * argument N, runs and times M (defined as constant) transformations of the 
+ * first 0 to N images, and finds the average of the K (defined as constant) 
+ * lowest times. Does not export any TIFF images. Exports a csv file with number 
+ * of images vs time in microseconds. The csv file Will be named PLATFORM + 
+ * "CharTest" + NUMIMAGES + ".csv"; Platform is defined and should be changed 
+ * according to where the transformation is run.
+ */
+ 
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/time.h>
+
+// NUMBER OF RUNS
+#define M                                   50
+// NUMBER OF LOWEST TIMES TO AVERAGE
+#define K                                   30
+
+// OUTPUT PLATFORMS
+#define CLOUD                          "Cloud"
+#define LOCAL                          "Local"
+
+// SET PLATFORM
+#define PLATFORM                         CLOUD
 
 // IDX1-UBYTE SPECIFIED BYTE OFFSETS
 #define IDX1_OFFSET_LABEL                    8
@@ -64,6 +86,7 @@ size_t idx_load_to_buffer(char *filepath, unsigned char **buffer) {
 	return fileLength;
 }
 
+
 // Sets the pointer of a given buffer for pixel data to the beginning of actual
 // pixel data within the given buffer holding the entire input file
 void set_buffer_to_pixel_array(unsigned char **imageDataBuffer, 
@@ -75,6 +98,7 @@ void set_buffer_to_pixel_array(unsigned char **imageDataBuffer,
 	*pixelDataBuffer = *imageDataBuffer + arrayStart;
 }
 
+
 // Reads a 2-byte int from 2 unsigned chars, given the offset from the high bit
 unsigned int read_2byte_int(unsigned char *imageDataBuffer, 
 		unsigned int offset){
@@ -82,6 +106,7 @@ unsigned int read_2byte_int(unsigned char *imageDataBuffer,
 	unsigned int numLowBit = *(imageDataBuffer + offset + 1);
 	return (numHighBit << 8 ) | (numLowBit);
 }
+
 
 // Finds the corresponding label value given the image number
 unsigned int idx1_read_label(unsigned char *labelDataBuffer, 
@@ -105,6 +130,7 @@ struct tag {
 		uint32_t value;
 };
 
+
 // Generates a tiff header with constants and the given pixel count
 struct header generate_tiff_header(unsigned int pixelCount){
 	struct header tiffHeader;
@@ -113,6 +139,7 @@ struct header generate_tiff_header(unsigned int pixelCount){
 	tiffHeader.ifdOffset = pixelCount + 8;
 	return tiffHeader;
 }
+
 
 // Writes TIFF file with given labels using the buffer of data
 void write_file(unsigned char *buffer, unsigned int imageNumber, 
@@ -123,6 +150,7 @@ void write_file(unsigned char *buffer, unsigned int imageNumber,
 	fwrite(buffer, sizeof(unsigned char), fileLength, file);
 	fclose(file); 
 }
+
 
 // Generates the TIFF file at a given image number; dependent on write_file
 void generate_tiff_file(struct header header, struct tag tags[11],
@@ -167,10 +195,13 @@ void generate_tiff_file(struct header header, struct tag tags[11],
 }
 
 
+// Function passed into qsort to sort the runtimes
 int sort_compare(const void * a, const void * b) {
 	return ( *(int*)a - *(int*)b );
 }
 
+// Calculates the average of the k lowest runs in the provided array. Returns 
+// that average as a double.
 double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
 	qsort(*array, numRuns, sizeof(int), sort_compare);
 	int i, sum = 0;
@@ -181,9 +212,10 @@ double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
 }
 
 
+// Writes the timing data to a csv file as pairs of index and value. 
 void write_doubles_to_csv_file(double *values, int numValues, char *name) {
 	char fileName[50];
-	sprintf(fileName, "%s.csv", name);
+	sprintf(fileName, "%sCharTest%d.csv", name, numValues);
 	FILE *file = fopen(fileName, "w+");
 	int i;
 	printf("reached\n");
@@ -195,12 +227,10 @@ void write_doubles_to_csv_file(double *values, int numValues, char *name) {
 	fclose(file);
 }
 
-int main(int argc, char **argv){
-	
+void main(int argc, char **argv){
 	unsigned char *imageDataBuffer;
 	unsigned char *labelDataBuffer;
 	unsigned char *pixelDataBuffer;
-	
 
 	// load the files into buffers and store the length
 	size_t imageFileLength = idx_load_to_buffer(FILEPATH_IMG, &imageDataBuffer);
@@ -217,24 +247,28 @@ int main(int argc, char **argv){
 		numImages = atoi(argv[1]);
 	}
 	
+	// Allocate memory for timing results
 	double *timingArray;
 	timingArray = (double *) malloc(numImages * sizeof(double));
 	
+	// Allocate memory for the number of coordinates
 	double *coordinateCounts;
 	coordinateCounts = (double *) malloc(numImages * sizeof(double));
-
+	
 	struct timeval startTime, endTime;
 
 	int i, j;
-	int numRuns = 50;
+	int numRuns = M;
+	int k = K;
 	// time the transofrmation of all numbers of images up to numImages 
 	for (i = 0; i < numImages; ++i) {
+		// allocate memory to hold all runtimes of a certain number of images
 		int *runsArray = (int *) malloc(numRuns * sizeof(int));
 		for (j = 0; j < numRuns; ++j) {	
+			// Start time
 			gettimeofday(&startTime, NULL);
+			
 			// store image specifications
-			//  unsigned int numImages = read_2byte_int(imageDataBuffer, 
-			//  		IDX3_OFFSET_IMAGE_NUM);
 			unsigned int height = *(imageDataBuffer + IDX3_OFFSET_ROW_NUM);
 			unsigned int width = *(imageDataBuffer + IDX3_OFFSET_COL_NUM);
 			unsigned int pixelCount = width * height;
@@ -269,19 +303,16 @@ int main(int argc, char **argv){
 				generate_tiff_file(tiffHeader, tiffTags, pixelDataBuffer, labelDataBuffer,
 						pixelCount, k);
 			}
+			// End time
 			gettimeofday(&endTime, NULL);
 			runsArray[j] = (endTime.tv_usec - startTime.tv_usec) + 
 					(endTime.tv_sec - startTime.tv_sec) * 1000000;
 		}
-		int k = 30;
 		timingArray[i] = calc_avg_k_lowest_runs(&runsArray, numRuns, k);
 		free(runsArray);
 	}
 
 	// write timing data (character to runtime) to csv file
-	write_doubles_to_csv_file(timingArray, numImages, "testMNIST");
-	
-	return 0;
-	
+	write_doubles_to_csv_file(timingArray, numImages, PLATFORM);
 }
 
