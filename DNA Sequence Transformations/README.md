@@ -46,6 +46,8 @@ Randomly Generated Data Sets
 For the timing of each program, the datasets used were created using the following random file generators: 
 
 randFileGen.c - creates random FASTA, Multi-FASTA, FASTQ, or SAM input files 
+
 keyGen.c - creates a random input/output key used to test divideAndOptimize.c or laGrangeGen.c
+
 randFromKey.c - generates a random input file of specified size using the input characters of a key
 
