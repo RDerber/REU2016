@@ -141,11 +141,13 @@ void write_csv_file(char * filepath, char *buffer, size_t fileSize) {
 }
 
 
+// Function passed into qsort to sort the runtimes
 int sort_compare(const void * a, const void * b) {
 	return ( *(int*)a - *(int*)b );
 }
 
-
+// Calculates the average of the k lowest runs in the provided array. Returns 
+// that average as a double.
 double calc_avg_k_lowest_runs(int **array, int numRuns, int k) {
 	qsort(*array, numRuns, sizeof(int), sort_compare);
 	int i, sum = 0;
