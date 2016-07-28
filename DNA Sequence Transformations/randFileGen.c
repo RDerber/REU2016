@@ -3,14 +3,16 @@
 *
 *Generates random DNA sequence files for testing
 *
-* Input: [char fileType] [int fileSize (in bytes)] [FileName] [number of sequences]
+* Input: [char fileType] [int fileSize (in bytes)] [FileName] [number of sequences]***
+*
+* ***number of sequences not required for fasta generation***
 *
 *File Types	Character
 *---------	---------
 *Fasta		    f
 *MultiFasta	    m
 *Sam		    s
-*Fastq		    q    * unavailable 
+*Fastq		    q   
 *Bam		    b    * unavailable
 */
 

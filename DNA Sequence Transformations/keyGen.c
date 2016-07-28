@@ -34,7 +34,7 @@ int writeKey(char *fileBuf, int *xvals, int *yvals, int numVals){
 	return f;
 }
 
-int main(int argc,char **argv){	//[max key size] [output folder path] [random number seed]
+int main(int argc,char **argv){	//[key size] [output folder path] [random number seed]
 	
 	if(argc != 4){
 		printf("Invalid Arguments. Need: [max key size] [output folder path] [random number seed]");

@@ -1,3 +1,12 @@
+/*
+* superOptimizer.c
+*
+* Performs and exhaustive search of the operations +, &, ^, |,<, and > to find an operation sequence 
+* that maps n input characters to the  numbers 0-(n-1).
+*
+* To view the discovered sequence, the last lines 12 lines of the main method need to be uncommented  
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -227,6 +236,11 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 //		if(numSeq[i] != 0) ++numOps;
 //	}
 
+
+/***************************************************************************
+* Uncomment the following code to display the discovered operation sequence
+****************************************************************************/
+
 //	if(success == 0){
 //		printf("Sequence Found: \n");
 //		int i, j;
@@ -234,8 +248,8 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 //		for(i=0;i < numOps; ++i){
 //			printf("%d%c ",i,':');
 //			int opit = maxNumOps - numOps + i;
-//			if(opsSeq[opit] == '&') numSeq[opit] = ~numSeq[opit];
-//			printf("%c %d",opsSeq[opit], numSeq[opit]);
+//			if(opsSeq[opit] == '1') numSeq[opit] = ~numSeq[opit];
+//			printf("%c %d",operations[opsSeq[opit]], numSeq[opit]);
 //			printf("\n");
 //		}
 //	} else printf("no sequence found");
