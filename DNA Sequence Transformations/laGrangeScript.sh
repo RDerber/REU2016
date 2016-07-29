@@ -2,7 +2,7 @@
 
 #Recompile all files before running temp1 function
 gcc -g jsonTitle.c -o jsonTitle
-gcc -g jsonData.c LaGrangeGen.c -o LaGrangeGen
+gcc -g jsonData.c laGrangeGen.c -o laGrangeGen
 gcc -g jsonData.c jsonSystemStats.c -o jsonSystemStats
 gcc -g laGrangeJsonToCSV.c -o laGrangeJsonToCSV 
 
@@ -25,12 +25,12 @@ folder="./tests/laGrangeTests/$today"
 ./jsonSystemStats $folder/laGrangeTimeStats.json
 
 #Test LaGrange for accuracy
-./LaGrangeGen tests/laGrangeTests/testKey.txt tests/laGrangeTests/testKeyIn.txt $folder/testOut.txt 1
+./laGrangeGen tests/laGrangeTests/testKey.txt tests/laGrangeTests/testKeyIn.txt $folder/testOut.txt 1
 
 DIFF=$(diff -a tests/laGrangeTests/testCheck.txt $folder/testOut.txt)
 if [ "$DIFF" != "" ] 
 then
-	echo "LaGrangeGen is no longer correct. Terminating timing script."
+	echo "laGrangeGen is no longer correct. Terminating timing script."
 	exit
 fi
 
@@ -49,7 +49,7 @@ do
 	echo "Current Key #: $i"
 	echo ""
 	#Run divideAndOptimize laGrange Tests and Store in temp1.json
-	./LaGrangeGen tests/laGrangeTests/key"$i".txt tests/laGrangeTests/key"$i"In.txt $folder/key"$i"Out.txt $runs
+	./laGrangeGen tests/laGrangeTests/key"$i".txt tests/laGrangeTests/key"$i"In.txt $folder/key"$i"Out.txt $runs
 
 	
 	if [ "$i" = "$numKeys" ]
@@ -66,7 +66,7 @@ do
 done
 
 #Add Title to laGrangeTimeStats.txt file
-./jsonTitle $folder/laGrangeTimeStats.json "LaGrangeGen" "-f"
+./jsonTitle $folder/laGrangeTimeStats.json "laGrangeGen" "-f"
 
 ./laGrangeJsonToCSV $folder/laGrangeTimeStats.json $folder/laGrangeTimeStats.csv $numKeys $runs $k
 
