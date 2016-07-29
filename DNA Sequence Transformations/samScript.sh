@@ -23,7 +23,7 @@ k=3
 folder="./tests/samTests/$today"
 
 #Test Fasta for accuracy
-./amTo2Bit tests/samTests/samTest.SAM $folder/testOut.txt  $folder/testHeaders.txt $folder/testPositions.txt 1
+./samTo2Bit tests/samTests/samTest.SAM $folder/testOut.txt  $folder/testHeaders.txt $folder/testPositions.txt 1
 
 DIFF=$(diff -a tests/samTests/testCheck.txt $folder/testOut.txt)
 if [ "$DIFF" != "" ] 
