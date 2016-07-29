@@ -7,7 +7,9 @@ Without this utitlity installed on your machine, the graphs will not be automati
 
 DNA Sequence Conversions
 ========================
-These files are our own implementations of transformations from many different DNA Sequence storage formats to others (mostly a 2-bit format defined by us). We chose this 2 bit format as it is the minimal amount of space in which one can store all 4 different bases. The specific mapping is: A:00 C:01 G:11 T:10. This mapping allows us to use a very fast transformation from ascii to 2-bit by extracting the second and third lowest priority bits in the ascii character.
+These files are our own implementations of transformations from many different DNA Sequence storage formats to others (mostly a 2-bit format defined by us). We chose this 2 bit format as it is the minimal amount of space in which one can store all 4 different bases. The specific mapping is: A:00 C:01 G:11 T:10. This mapping allows us to use a very fast transformation from ascii to 2-bit by extracting the second and third lowest priority bits in the ascii character. 
+This transformation is available for the following DNA Sequence file formats: FASTA, Multi-FASTA, FASTQ, SAM
+4 Bit transformations (A:0001	C:0011 G:0111 T:0100 N:1110) are also available for FASTA, Multi-FASTA, and SAM.
 
 Generalized Mapping Algorithms
 ==============================
