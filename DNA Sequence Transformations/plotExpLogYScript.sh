@@ -1,5 +1,7 @@
 #/bin/bash 
 
+# plots an exponential graph of the csv file, with the yaxis on a logarithmic scale
+
 #path to today's folder
 graph=ARG1
 
@@ -33,7 +35,6 @@ set key center top left title box 3
 a=100
 b=50
 n=2
-#set log y
 f(x)=a*x+b
 fit f(x) graph using xvals:(log($2)) via a,b
 title_f(a,b)=sprintf('f(x)=%.2f*x+%.2f',a,b)

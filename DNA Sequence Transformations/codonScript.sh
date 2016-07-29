@@ -85,7 +85,7 @@ output="codon.png"
 graph="$folder/$plotfile"
 touch $folder/$output
 outpath="$folder/$output"
-xlabel="Number of Codons"
+xlabel="Number of Bases"
 graphTitle="Codon To Amino Acid Transformation"
 xvals=1
 yvals=2

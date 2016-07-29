@@ -1,3 +1,16 @@
+/*
+* groupOptimizer.c
+*
+* This is another auxilary version of superOptimizer, very similar to duperOptimizer.c, which maps groups of input characters to output 
+* characters.
+*
+* This version requires that the user hard-codes the groups into the main method and then adds them to the input array as well.
+* Timing structures are also not present in this function.
+*
+* A predecessor to divideAndOptimize, this function was not utilitized very much. 
+*
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 

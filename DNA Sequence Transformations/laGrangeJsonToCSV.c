@@ -1,7 +1,12 @@
 /*
-*jsonToCSV.c
-
-*FIX REGEX PATTERN 
+* laGrangeJsonToCSV.c
+*
+* Takes JSON timing information file from a laGrangeGen timing test and converts it to a csv file containing the columns:
+* Size of Key, Polynomial Generation Time, File Evaluation Time
+*
+* Parameters:
+*	[input json file] [output csv] [numKeys] [m number of runs] [lowest k values to be averaged] 
+*
 */
 
 #include <stdio.h>

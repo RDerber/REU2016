@@ -1,7 +1,10 @@
 /*
-*randDivAndOptFile.c
+* randFromKey.c
 *
+* Generates a random input file of specified size using the input characters of a key (usually one generated with keyGen.c)
 *
+* Parameters:
+* 	[key] [outputFileSize] [outputFile]
 */
 
 #include <stdio.h>

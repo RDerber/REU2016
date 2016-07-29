@@ -5,6 +5,13 @@
 * that maps n input characters to the  numbers 0-(n-1).
 *
 * To view the discovered sequence, the last lines 12 lines of the main method need to be uncommented  
+*
+* Parameters:
+* 	[number of Distinct Inputs][file size][random seed][num of superOptruns][num of EvalRuns]
+*
+* The current version of superOptimizer generates its own random inputs using the specified number of distinct inputs and the random seed 
+*	provided as arguments. If custom inputs would like to be provided, one must remove the random input generator in the main method as 
+*	well as define their own input character array named "input" with size specified as "numDistInputs".
 */
 
 #include <stdio.h>
@@ -120,7 +127,7 @@ char evaluate(int input, char * opsSeq, int * numSeq, int maxNumOps, int numOps)
 	return output;
 }
 
-int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random seed] [num of superOptruns] [num of EvalRuns]
+int main(int argc, char** argv){//[number of Distinct Inputs][file size][random seed] [num of superOptruns] [num of EvalRuns]
 //	char input[] = {'\x00','\x01','\x02','\x03','\x04'};
 //	char input[] = {'A','C','G','T','N'};
 	int i,j,k;
@@ -151,7 +158,8 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 	numDistInputs = atoi(argv[1]);
 	input = calloc(sizeof(char),numDistInputs);
 	output = calloc(sizeof(char),numDistInputs);
-	
+
+// Random Input Generator // // // // // // // // //	
 	srand(atoi(argv[3]));
 	for(i=0;i<numDistInputs;++i){
 		input[i] = rand()%255;
@@ -162,7 +170,7 @@ int main(int argc, char** argv){	//[number of Distinct Inputs][file size][random
 			}
 		}
 	}
-	
+// // // // // // // // // // // // // // // // // 
 	char opsSeq [maxNumOps];
 	char opRep [maxNumOps];
 	int numSeq [maxNumOps] ;

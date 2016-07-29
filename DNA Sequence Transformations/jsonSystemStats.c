@@ -1,3 +1,17 @@
+/*
+* jsonSystemStats.c
+*
+* Used to write system information to data file
+*
+* Parameters: [filename]
+*
+* Information includes:
+* 	-System Name
+*	-System Release Information
+*	-Machine Type
+* 	-Current Date & Time
+*
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +28,7 @@
 #include "jsonData.h"
 
 
-int main(int argc, char** argv){ //[fileName]   Used to print system information to data file
+int main(int argc, char** argv){ //[fileName]  
 	// Writing System Information
 	int first = 1; 
 	int nest_level = 0;

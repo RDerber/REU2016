@@ -1,3 +1,20 @@
+/*
+* duperOptimizer.c
+*
+* A auxilary version of superOptimizer that maps input characters into groups 0 - (N-1), where N is the total number of groups into which 
+*  the input characters are divided.
+*
+* Example Mapping: 
+*		input[] = {'A','C','G','T'};
+*		output[] = {'0','0','1','4'};
+*		
+*		duperOptimzier will find a sequence of operations that will match A and C to the same number in the range 0-2,
+*		map C to a different number in the range, and map T to the last number in the range.
+*		Possible mapping: A=2, C=2, G=0, T=1
+*		
+* This function does not have any timing capabilites built into it, and was a precursor to divideAndOptimize. 
+*
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

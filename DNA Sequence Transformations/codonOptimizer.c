@@ -1,9 +1,20 @@
 /*
-*codonOptimizer.c
+* codonOptimizer.c
 *
-*Divides the original input array into smaller arrays using operations, splitting it in half each time, until final arrays of 2 are * *	*reached. Then the elements in the final arrays are mapped to the correct output groups.  
+* An auxilary version of divideAndOptimize:
+* Divides the original input array into smaller arrays using operations, splitting it in half each time, until final arrays of 2 are
+* reached. Then the elements in the final arrays are mapped to the correct output groups.  
 *
+* This version has a key reader designed to take in the codonAminoAcidKey.txt file which maps the 64 codon sequences to thier respective 20 *  amino acids. It takes in each 3 base codon and converts it to a 2 bit format with the first 2bits of each codon byte always set to 00. 
 *
+* This program will find the mapping sequence and then evaluate the given input FASTA format file, translating every three base codon into
+*   its amino acid character.
+* If the number of bases is not a multiple of 3, the outcome of the last amino acid conversion is undefined. 
+*
+* To see the mapping sequence found by codonOptimizer, one will need to uncomment the tree print method call on line 425 of the main method
+*
+* Parameters:
+*	[key][inputFile][outputFile][number of runs]
 */
 
 #include <stdio.h>

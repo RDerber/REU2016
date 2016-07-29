@@ -1,3 +1,12 @@
+/*
+ * reverseKey.c
+ *
+ * Generates a key that is the inverse of the one passed in as the first argument to it - switches the x and y values***
+ *	***Do not use on a key that maps multiple x values to the same y value, since the inverse will be undefined*** 
+ *
+ * Parameters:
+ *	[input key path] [output key path]
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -129,10 +138,7 @@ int main(int argc,char **argv){	//[input key path] [output key path]
 	char *output = malloc(iFSize * sizeof(char));
 	int oFSize = writeKey(output, yvals, xvals, keySize);
 	int i;
-//	for(i=0;i<keySize;++i){
-//		printf("%s%d %s%d\n", "xvals[i]:", xvals[i], "yvals[i]", yvals[i]);
-//		fflush(stdout);
-//	}
+
 	free(xvals);
 	free(yvals);
 	

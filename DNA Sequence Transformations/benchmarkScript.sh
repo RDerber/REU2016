@@ -1,10 +1,11 @@
 #/bin/bash
 #Creates a benchmark report of the following programs:
-# -FastaTo2Bit.c
-# -MultiFastaTo2Bit.c
-# -SamTo2Bit.c
-# -CodonOptimizer.c
+# -fastaTo2Bit.c
+# -multiFastaTo2Bit.c
+# -samTo2Bit.c
+# -codonOptimizer.c
 # -divideAndOptimize.c
+# -superOptimizer.c
 #
 # The benchmark consists of a directory titled with the current date, containing subdirectories with the following information for each function:
 #   - A .json output file with all timing information

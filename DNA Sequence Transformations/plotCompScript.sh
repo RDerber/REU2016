@@ -1,5 +1,7 @@
 #/bin/bash 
 
+# plots a linear graph of the csv file, with the y axis on a logarithmic scale
+
 #path to CSV FILE
 graph1=ARG1
 

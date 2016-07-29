@@ -24,7 +24,8 @@ maxNumInputs=3
 fileSize=10000
 numInputSets=10
 k=3
-#Run superOptimize for 100 times each for 1 through 200 inputs and store in timeStats.txt
+
+
 #Add new line character inbetween files when appending
 
 ./jsonSystemStats $folder/superInputTimeStats.json

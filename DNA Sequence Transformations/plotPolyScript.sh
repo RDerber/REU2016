@@ -1,5 +1,7 @@
 #/bin/bash 
 
+# plots a 3rd degree polynomial (x^3) graph of the csv file
+
 #path to today's folder
 graph=ARG1
 

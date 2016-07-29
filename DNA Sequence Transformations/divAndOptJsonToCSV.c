@@ -1,7 +1,13 @@
 /*
-*jsonToCSV.c
-
-*FIX REGEX PATTERN 
+* divAndOptJsonToCSV.c
+*
+* Takes JSON timing information file from a divideAndOptimize timing test and converts it to a csv file containing the columns:
+* Size of Key, Tree Generation Time, File Evaluation Time
+*
+* Parameters:
+*	[input json file][output csv][maxNumInputs][numInputSets][number of divAndOpt runs][number of evaluation runs]
+*	[lowest k values to be averaged] 
+*
 */
 
 #include <stdio.h>
@@ -93,39 +99,7 @@ int timingJsonToCSV(char * input, long inputSize, FILE * ofp, int maxNumInputs, 
 		}
 	}	
 	
-/* Regex Timing Match
-	if(regcomp(&re, timePattern, REG_EXTENDED) != 0){
-		printf("Regex Comparison Error");
-		return -1;
-	}	
-	
-	end=0; //reset end
-	for(i=0; i<numTimeMatches; ++i){
-		printf("%s %d\n","i:",i);
-		fflush(stdout);
-		status = regexec(&re, input+end, 1, &timingMatch, 0); 
-	
-		if(status != 0){
-			printf("%s %d", "i:", i);
-			printf("%s %s","The following expression was not found:", timePattern);
-			return -1;
-		}
-	
-		long loc = timingMatch.rm_eo+2;
-		char numBuf [20];
-		char c;
-		int a=0;
-		while((c=input[(loc++)+end]) != ',' && c!='\n' && c!='\r'){
-			numBuf[a++] = c;
-		}
-		numBuf[a] = '\x00';
-		timeArr[i] = atof(numBuf); 
-		end += timingMatch.rm_eo;
-	}
-	printf("numTimeMatches");
-	fflush(stdout);
-	regfree(&re);
-*/
+
 	
 	double *inputAvgRunTime = malloc (maxNumInputs * sizeof(double)); 
 	double *inputAvgEvalTime = malloc(maxNumInputs*sizeof(double));

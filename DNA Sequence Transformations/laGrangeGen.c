@@ -8,7 +8,7 @@
  *
  *Generalized LaGrange function
  *
- *Inputs: key.txt input.txt, output.txt 
+ *Inputs: [key.txt][inputFile.txt][outputFile.txt] [number of runs]
  *
  *Creates Lagrange polynomial that maps the characters (char1, char2, ...) to their corresponding yValues (yValue1, yValue2, ...)
  *

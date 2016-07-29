@@ -1,7 +1,13 @@
 /*
-*jsonToCSV.c
-
-*FIX REGEX PATTERN 
+* timingJsonToCSV.c
+*
+* Takes JSON timing information file from DNASequence Transformation and codonOptimizer timing test and converts it to a csv file
+* containing the columns:
+* Number Of Bases, Average Transform Time
+*
+* Parameters:
+*	[input json file][output csv][maxNumInputs][m number of runs][lowest k values to be averaged]
+*
 */
 
 #include <stdio.h>
@@ -50,20 +56,13 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int m, int k){
 		char c;
 		int a=0;
 		char numBuf[20];
-//		printf("%s %d\n","loc:",loc);
 		while((c = input[(loc++)+end]) != ' '){
-//			printf("%c",c);
 			numBuf[a++] = c;
 		}
 		numBuf[a] = '\x00';
 		inArr[i] = atoi(numBuf);
 		end += inputMatch.rm_eo;
 		
-		//printf("%s %d\n","i:",i);
-		//printf("%s %s\n","numBuff:", numBuf);
-//		printf("%s %d\n","inArr[i]:",atoi(numBuf));
-//		printf("%s %d\n","begin:",inputMatch.rm_so);
-//		printf("%s %d\n","end:",end);
 	}
 	
 	regfree(&re);
@@ -116,9 +115,7 @@ int timingJsonToCSV(char * input, FILE * ofp, int maxNumInputs, int m, int k){
 		int hiloPos = 0;
 		double time;
 		for(j=0; j<m; ++j){
-			//printf("%s %f\n", "hiloTime:", hiloTime);
 			if((time = timeArr[h*m+j]) < hiloTime){
-				//printf("%s %f %s %d\n","time:",time, "j:",j);
 				if(numStored < k){
 					lowTime[numStored++] = time;
 				}else {

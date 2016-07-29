@@ -1,3 +1,18 @@
+/*
+ * keyGen.c
+ *
+ * Generates a random input/output key of ascii characters in the range 33 (!) to 126 (~). 
+ *
+ * Parameters:
+ * 	[key size] [output folder path] [random number seed]
+ *
+ * 	The output file will be placed in the given folder with the automatically generated name: "key(keySize/2).txt"
+ *		Ex. If keySize is 20, then the key generated will be named key10.txt
+ * 		This custom was adopted to suite the our need to make many random keys quickly for testing and timing functions 
+ *
+ *	The random number seed is an random number that will be used to seed the random number generator used to create the keys
+ *
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,7 +52,7 @@ int writeKey(char *fileBuf, int *xvals, int *yvals, int numVals){
 int main(int argc,char **argv){	//[key size] [output folder path] [random number seed]
 	
 	if(argc != 4){
-		printf("Invalid Arguments. Need: [max key size] [output folder path] [random number seed]");
+		printf("Invalid Arguments. Need: [key size] [output folder path] [random number seed]");
 		return -1;
 	}
 	

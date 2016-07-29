@@ -1,9 +1,26 @@
 /*
  * jsonTitle.c
  *
- * Inserts a title to the json format file, then adds opening bracket and
- *	 indents the rest of the contents 4 spaces inwards
+ * Inserts a title to the json format file, in json format depending on the title flag given
  *
+ * Parameters:
+ * 	[file name][title][title flag]
+ *
+ *	title flag	title type		format example
+ *	---------	----------		--------------
+ *	 Nothing	 Default 		"title": {
+ *							data
+ *							}
+ *	
+ *	   -c		 Comma			"title": {
+ *							data
+ *							},
+ *
+ *	   -f		Final(or File)		{
+ *						"title": {
+ *							data
+ * 							}
+ *						}	
  */
 
 #include <stdio.h>
@@ -88,29 +105,27 @@ int jsonTitle(char* filename, char * title, char* titleType){
 		return -1; 
 	}
 
+	//Write out Title at the beginning of the file
 
 	if(titleType == NULL){
-		fprintf(ofp,"%s%s%s","\"",title,"\": {\n"); //Write out Title at the beginning of the file
-		fwrite(output, 1, outputSize, ofp);
-		fprintf(ofp,"%s","\n}");
+		fprintf(ofp,"%s%s%s","\"",title,"\": {\n"); // Default format:
+		fwrite(output, 1, outputSize, ofp);	//		"title": {
+		fprintf(ofp,"%s","\n}");		//			data
+							//			}
 	
 	}else if(!strcmp(titleType,"-c")){
+     		fprintf(ofp,"%s%s%s","\"",title,"\": {\n"); //Title with comma:
+		fwrite(output, 1, outputSize, ofp); 	//		"title": {
+		fprintf(ofp,"%s","\n},"); 		//			data
+							//			},
 
-     		fprintf(ofp,"%s%s%s","\"",title,"\": {\n"); //Write out Title at the beginning of the file
-		fwrite(output, 1, outputSize, ofp);
-		fprintf(ofp,"%s","\n},");
-
-	} else if(!strcmp(titleType,"-t")){
-     		fprintf(ofp,"%s%s%s","\"",title,"\": {\n"); //Write out Title at the beginning of the file
-		fwrite(output, 1, outputSize, ofp);
-		fprintf(ofp,"%s","\n}");	
-
-	} else if(!strcmp(titleType, "-f")){
-		fprintf(ofp,"%s%s%s","{\n\"",title,"\":{\n");
-		fwrite(output, 1, outputSize, ofp);
-		fprintf(ofp,"%s","\n}");
-		fprintf(ofp,"%s","\n}");
-
+	} else if(!strcmp(titleType, "-f")){		
+		fprintf(ofp,"%s%s%s","{\n\"",title,"\":{\n"); //Final Title with extra brackets for file begin/end:
+		fwrite(output, 1, outputSize, ofp); 	//		{
+		fprintf(ofp,"%s","\n}");		//		"title": {
+		fprintf(ofp,"%s","\n}");		//			data
+							//			}
+							//		}	
 	}
 
 
@@ -123,7 +138,7 @@ int jsonTitle(char* filename, char * title, char* titleType){
 }
 
 
-int main(int argc, char ** argv){	//[file name][title][title flag]
+int main(int argc, char ** argv){//[file name][title][title flag]
 	if(argc==3){
 		jsonTitle(argv[1],argv[2],NULL);
 		return 0;

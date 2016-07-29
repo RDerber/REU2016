@@ -1,5 +1,13 @@
 /*
 *superJsonToCSV.c
+*
+ Takes JSON timing information file from a superOptimizer timing test and converts it to 2 csv files containing the columns:
+* CSV 1 (Inputs): Number Of Inputs, Average Run Time, Average Eval Time
+* CSV 2 (Operations): Number Of Operations, Average Run Time, Average Eval Time
+*
+* Parameters:
+*	[input json file] [output csv filename1][output csv filename2][maxNumInputs][numInputSets][number of superOpt runs]
+*	[number of evaluation runs][lowest k values to be averaged] 
 */
 #include <stdio.h>
 #include <stdlib.h>

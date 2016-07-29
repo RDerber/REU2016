@@ -1,5 +1,7 @@
 #/bin/bash 
 
+# plots an exponential graph of the csv file
+
 #path to today's folder
 graph=ARG1
 

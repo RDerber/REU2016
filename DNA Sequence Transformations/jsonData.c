@@ -1,14 +1,20 @@
 /*
  * jsonData.c
  * Generates a .json output file with timing information for the following:
- *	- SuperOptimizer.c
+ *	- superOptimizer.c
  *		> Output provided in file named temp1.json
  *
- *	- DivideAndOptimize.c
+ *	- divideAndOptimize.c
  *		> Output provided in file named timing.json
  *
- *	- Any DNA sequence transformation functions (FastaTo2Bit.c, MultiFastaTo2Bit.c, etc.)
+ *	- Any DNA sequence transformation functions (fastaTo2Bit.c, multiFastaTo2Bit.c, etc.)
  *		> Output provided in file named timing.json
+ *
+ *	- laGrangeGen.c
+ *		> Output provided in file named temp1.json
+ *
+ * **If the names of any of the output files are changed, these changes will also need to be reflected in the respective timing scripts
+ *	 for each function
  */
 
 #include <stdio.h>
@@ -26,6 +32,7 @@
 #include <time.h> 
 #include "jsonData.h"
 
+// Name of output files //
 #define TEMP_FILE	"./temp1.json"
 #define TIME_OUT	"./timing.json"
 
