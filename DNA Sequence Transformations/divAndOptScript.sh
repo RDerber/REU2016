@@ -79,7 +79,6 @@ do
 	if [ "$i" = "$numKeys" ]
 	then
 		./jsonTitle temp2.json "key $i" 
-		echo "then!"
 	else
 		./jsonTitle temp2.json "key $i" "-c"
 		# Add new line character inbetween files when appending

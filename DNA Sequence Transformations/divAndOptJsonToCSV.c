@@ -48,8 +48,6 @@ int timingJsonToCSV(char * input, long inputSize, FILE * ofp, int maxNumInputs, 
 	}
 	
 	for(i=0; i<maxNumInputs; ++i){
-		printf("%s %d\n","i:",i);
-		fflush(stdout);
 		status = regexec(&re, input+end, 1, &inputMatch, 0); // Find Num Inputs
 		if(status != 0){
 			printf("%s %s","The following expression was not found:", inputPattern);
