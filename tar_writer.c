@@ -625,6 +625,8 @@ void make_static_hlist (struct huff_list **phlist, struct huff_list **pdlist, in
 		next_code[bits] = code = (code + (*bit_count)[bits-1]) << 1;
 
 	for (n = 0; n <= 287; n++) {
+		hlist[n].val = n;
+		
 		if ((len = hlist[n].hc_len) == 0) 
 			continue;
 
@@ -632,8 +634,9 @@ void make_static_hlist (struct huff_list **phlist, struct huff_list **pdlist, in
 		printf("hlist[%d] = %d (%d bits)\n", n, hlist[n].hcode, hlist[n].hc_len);
 	}
 
-	for (n = 0; n < 30; n++) {
+	for (n = 0; n < 32; n++) {
 		dlist[n].hc_len = 5;
+		dlist[n].val = n;
         	dlist[n].hcode = reverse_bits(n, 5);
 	}
 }
@@ -871,12 +874,14 @@ int lz77 (uint8_t *in, int bytes, struct lz_out **out, int win_size)
 		if (length > 2) {
 			(*out)[num].len = length;
 			(*out)[num].dist = pos;
+			//printf("%d (%d): pos %d len %d\n", i, in[i], pos, length);
 
 			i += length + 1;
 			num++, num_dc++;
 		} else {
 			(*out)[num].len = in[i];
 			(*out)[num].dist = 0;
+			//printf("%d (%d): lit %d\n", i, in[i], in[i]);
 
 			num++, i++;
 		}
@@ -896,7 +901,7 @@ void test_lz77 (void)
 	printf("[%s]: testing lzw\n", __func__);
 	printf("expected, output:\n<0, 97>, <1, 1, a>, <3, 4, c>, <3, 3, a>, <12, 3, />\n");
 	
-	lz77(in, strlen((char *)in), &bs, 1);
+	printf("%d\n", lz77(in, strlen((char *)in), &bs, 1));
 	
 	free(bs);
 	
@@ -1043,24 +1048,7 @@ void test_repcode (void)
 
 #ifdef GZIP_WRITER
 {
-#endif
-
-void reorder (uint16_t *dst, uint16_t *src) 
-{
-	int order[19] = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15};
-	int i;
-	
-	for (i = 0; i < 19; i++) 
-		dst[i] = src[order[i]];
-}
-
-void swap (char *a, char *b)
-{
-	char c = *a;
-	
-	*a = *b;
-	*b = c;
-}
+#endif 
 
 /* returns number of unique lengths */
 int copy_huff_lens (struct huff_list *dlist, int num, uint16_t *dst)
@@ -1069,9 +1057,9 @@ int copy_huff_lens (struct huff_list *dlist, int num, uint16_t *dst)
 	int *vcl = calloc(sizeof(int), num);
 	
 	for (i = 0; i < num; i++) {
-		if (dlist[i].count == 0) {
-			dlist[i].hc_len = 0;
-		}
+		//if (dlist[i].count == 0) {
+		//	dlist[i].hc_len = 0;
+		//}
 		//printf("%d: code %d len %d freq %d\n", i, dlist[i].val, 
 		//	dlist[i].hc_len, dlist[i].count);
 			
@@ -1090,14 +1078,9 @@ void map_huff_array (struct huff_list *src, struct huff_list *dst, int num)
 {
 	int i;
 	
-	for (i = 0; i < num; i++) {
-		//printf("src[%d] val = %d\n", i, src[i].val);
-		
+	for (i = 0; i < num; i++)
 		memcpy(&dst[src[i].val], &src[i], sizeof(struct huff_list));
-	
-	}
 }
-
 
 void reverse_write (struct bit_stream *bs, uint64_t in, int bits)
 {
@@ -1112,25 +1095,36 @@ void write_compressed_data (struct bit_stream *bs, struct lz_out *lz, int num,
 	struct huff_len_table *hp;
 	
 	for (i = 0; i < num; i++) {
+		printf("%d: len = %3d, dist = %3d\n", i, lz[i].len, lz[i].dist);
 		if (lz[i].dist) {
 			hp = &hlt[lz[i].len];
-			write_bit_stream(bs, hlist[hp->len_code].hcode,
+			reverse_write(bs, hlist[hp->len_code].hcode,
 					     hlist[hp->len_code].hc_len);
 			if (hp->num_exbits)
-				write_bit_stream(bs, hp->ext_val, hp->num_exbits);
+				reverse_write(bs, hp->ext_val, hp->num_exbits);
+			
+			printf("\twriting lc %3d -> %3d (%2d bits) + ext %3d (%2d bits)\n", 
+				hp->len_code, hlist[hp->len_code].hcode, 
+				hlist[hp->len_code].hc_len, hp->ext_val, hp->num_exbits);
 			
 			dist_code(lz[i].dist, &code, &eb, &ev);
-			write_bit_stream(bs, dlist[code].hcode, 
+			reverse_write(bs, dlist[code].hcode, 
 					     dlist[code].hc_len);
 			if (eb)
-				write_bit_stream(bs, ev, eb);
+				reverse_write(bs, ev, eb);
+				
+			printf("\twriting dc %3d -> %3d (%2d bits) + ext %3d (%2d bits)\n",
+				code, dlist[code].hcode, dlist[code].hc_len, ev, eb);
 		} else {
-			write_bit_stream(bs, hlist[lz[i].len].hcode, 
+			reverse_write(bs, hlist[lz[i].len].hcode, 
 					     hlist[lz[i].len].hc_len);
+			
+			printf("\twriting literal %3d (%2d bits)\n", 
+				hlist[lz[i].len].hcode, hlist[lz[i].len].hc_len);
 		}
 	}
 		
-	write_bit_stream(bs, hlist[256].hcode, hlist[256].hc_len);
+	reverse_write(bs, hlist[256].hcode, hlist[256].hc_len);
 }
 
 int max_code (struct huff_list *hl, int num)
@@ -1141,7 +1135,7 @@ int max_code (struct huff_list *hl, int num)
 		if (hl[i].count && hl[i].val > hl[c].val)
 			c = i;
 
-	printf("max val = ind %d = %d\n", c, hl[c].val);
+	printf("[%s]: max = %d at ind %d out of %d\n", __func__, hl[c].val, c, num);
 
 	return c;
 }
@@ -1215,12 +1209,12 @@ int write_rle_trees (struct bit_stream *bs, uint16_t *lens, uint16_t *dist,
 			write_bit_stream(bs, hp->hcode, hp->hc_len);
 				 	
 		if (rt[i].ext_val) 
-			write_bit_stream(bs, rt[i].ext_val, rt[i].num_exbits);
-			
+			write_bit_stream(bs, rt[	i].ext_val, rt[i].num_exbits);
+		/*	
 		printf("%3d: code %3d for %3d (%3d bits) + extra %3d (%1d bits) count %3d\n", 
 			i, hlist[rt[i].len_code].hcode, rt[i].len_code,
 			hlist[rt[i].len_code].hc_len, rt[i].ext_val, 
-			rt[i].num_exbits, hlist[rt[i].len_code].count);
+			rt[i].num_exbits, hlist[rt[i].len_code].count);*/
 	}
 	
 	free(hlist);
@@ -1231,7 +1225,7 @@ int write_rle_trees (struct bit_stream *bs, uint16_t *lens, uint16_t *dist,
 	return count;	
 }
 
-#if 1
+#if 0
 int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 {
 	int pos = 0, toc, i, j, num, num_dist, num_lenc, max_dist, max_lenc;
@@ -1242,16 +1236,18 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 	struct lz_out *lz;
 	int code, eb, ev;
 	uint16_t *lens, *dist;
+	int *bl_count;
 	
 	make_hufftable(hlt);
 	
 	alloc_bit_stream(&bs, len * 2);
 	
+	make_static_hlist (&hhlist, &ddlist, &bl_count);
+	
 	while (pos < len) {
 		if ((toc = (len - pos)) > blk_size)
 			toc = blk_size;
 		
-		//alloc_bit_stream(&bs, len * 2);
 		num = lz77(src + pos, toc, &lz, 512);
 
 		lens = calloc(sizeof(uint16_t), toc + 288);
@@ -1264,8 +1260,11 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 				dist_code(lz[i].dist, &code, &eb, &ev);
 				dist[i] = code;
 				lens[i] = hlt[lz[i].len].len_code;
+				//printf("\t%3d: dist %d (code %d), len %d (code %d)\n", 
+				//	i, lz[i].dist, code, lz[i].len, lens[i]);
 			} else {
 				lens[i] = lz[i].len;
+				//printf("\t%3d: literal %d\n", i, lens[i]);
 			}
 		}
 		
@@ -1278,31 +1277,27 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 		map_huff_array(dlist, ddlist, num_dist);
 		map_huff_array(hlist, hhlist, num_lenc);
 		
-		max_lenc = max_code(hlist, 288);
-		max_dist = max_code(dlist, 32);
+		max_lenc = max_code(hhlist, 288);
+		max_dist = max_code(ddlist, 32);
 		
-		print_huffcodes(hlist, 0, 288);
-		print_huffcodes(dlist, 0, 31);
+		print_huffcodes(hhlist, 0, 288);
+		print_huffcodes(ddlist, 0, 31);
 		
 		printf("[%s]: encoded length/dist trees: \n"
 			"\t# length = %d (%d max), %d unique\n"
 			"\t# dist = %d (%d max), %d unique\n", __func__,
-			num_lenc, max_lenc, copy_huff_lens(hlist, max_lenc, lens),
-			num_dist, max_dist, copy_huff_lens(dlist, max_dist, dist));
+			num_lenc, max_lenc, copy_huff_lens(hhlist, max_lenc, lens),
+			num_dist, max_dist, copy_huff_lens(ddlist, max_dist, dist));
 			
 		i = write_rle_trees(bs, lens, dist, &rlist, max_lenc + 1,
 				max_dist + 1, ((toc != blk_size) ? 1 : 0));
 
 		printf("wrote %d length codes\n", i);
 
-		write_compressed_data(bs, lz, num, hlist, dlist, hlt);
-		
-		//if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
-		//	return -1;	
+		write_compressed_data(bs, lz, num, hhlist, ddlist, hlt);	
 		
 		printf("%d bytes to %d\n", toc, bs->byte_pos);
 
-		//free_bit_stream(bs);
 		free(lz);
 		free(hlist);
 		free(dlist);
@@ -1311,20 +1306,75 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 		free(dist);
 		
 		free(hhlist);
-		free(ddlist);
+		free(ddlist);	
 		
 		pos += toc;
 	}
 
+	free(bl_count);
+	//free(hhlist);
+	//free(ddlist);		
+	
 	if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
 		return -1;	
 		
 	printf("%d bytes to %d\n", len, bs->byte_pos);
 	
+	free_bit_stream(bs);
+	
+	
+	return 0;
+}
+#endif
+
+#if 1
+int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
+{ /* static huffman codes */
+	int pos = 0, toc, num;
+	struct huff_len_table hlt[288];
+	struct bit_stream *bs;
+	struct huff_list *hhlist, *ddlist;
+	struct lz_out *lz;
+	int *bl_count;
+	
+	make_hufftable(hlt);
+	
+	alloc_bit_stream(&bs, len * 2);
+	
+	make_static_hlist (&hhlist, &ddlist, &bl_count);
+
+	while (pos < len) {
+		if ((toc = (len - pos)) > blk_size)
+			toc = blk_size;
+		
+		num = lz77(src + pos, toc, &lz, 512);
+
+		write_bit_stream(bs, ((toc != blk_size) ? 1 : 0) + (1 << 1), 3);
+
+		write_compressed_data(bs, lz, num, hhlist, ddlist, hlt);	
+		
+		printf("%d bytes to %d\n", toc, bs->byte_pos);
+
+		free(lz);
+		
+		pos += toc;
+	}
+
+	free(bl_count);
+	free(hhlist);
+	free(ddlist);
+	
+	if (write(fd, bs->buf, bs->byte_pos) != bs->byte_pos)
+		return -1;	
+		
+	printf("%d bytes to %d\n", len, bs->byte_pos);
+	
+	free_bit_stream(bs);
 	
 	return 0;
 }
 #else
+
 int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 {
 	int ret, pos = 0, toc;
