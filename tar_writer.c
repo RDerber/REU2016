@@ -254,6 +254,7 @@ struct bit_stream {
 	
 	unsigned char *buf;
 	int bytes;
+	int bi_buf;
 };
 
 void print_bits (uint64_t in, int num)
@@ -297,7 +298,7 @@ int alloc_bit_stream (struct bit_stream **bs, int bytes_max)
 	return 0;
 }
 //#define PRINT_BITS
-int write_bit_stream (struct bit_stream *bs, uint64_t src, int bits)
+/*int write_bit_stream (struct bit_stream *bs, uint64_t src, int bits)
 {
 	int i;
 	
@@ -321,6 +322,25 @@ int write_bit_stream (struct bit_stream *bs, uint64_t src, int bits)
 #endif
 
 	return 0;
+}*/
+
+void put_short (uint16_t w, struct bit_stream *bs)
+{
+	bs->buf[bs->byte_pos++] = (uint8_t)(w & 0xFF);
+	bs->buf[bs->byte_pos++] = (uint8_t)((uint16_t)w >> 8);
+}
+
+void write_bit_stream (struct bit_stream *bs, int value, int length)
+{
+	if (bs->bit_pos > (int)16 - length) {
+		bs->bi_buf |= (value << bs->bit_pos);
+		put_short(bs->bi_buf, bs);
+		bs->bi_buf = (uint16_t)value >> (16 - bs->bit_pos);
+		bs->bit_pos += length - 16;
+	} else {
+		bs->bi_buf |= value << bs->bit_pos;
+		bs->bit_pos += length;
+	}
 }
 
 void print_bit_stream (struct bit_stream *bs)
@@ -359,8 +379,8 @@ void test_bit_stream (void)
 	write_bit_stream(bs, 0, 8);
 	write_bit_stream(bs, 1, 2);
 	write_bit_stream(bs, 0xFFFF, 11);*/
-	write_bit_stream(bs, 1065509, 21);
-	write_bit_stream(bs, reverse_bits(1065509, 21), 21);
+	//write_bit_stream(bs, 1065509, 21);
+	//write_bit_stream(bs, reverse_bits(1065509, 21), 21);
 	
 	print_bit_stream(bs);
 	
@@ -613,9 +633,9 @@ int huff_encode (uint16_t *src, int num, int chars, struct huff_list **hlist)
 
 void make_static_hlist (struct huff_list **phlist, struct huff_list **pdlist)
 {
-	int n = 0, len, bits;
-	uint16_t next_code[16];
-	uint16_t code;
+	int n = 0, len = 0, bits = 0;
+	uint16_t next_code[16] = { 0 };
+	uint16_t code = 0;
 	int *bit_count = calloc(sizeof(int), 288);
 	struct huff_list *hlist = (*phlist) = calloc(sizeof(struct huff_list), 288);
 	struct huff_list *dlist = (*pdlist) = calloc(sizeof(struct huff_list), 32);
@@ -696,14 +716,14 @@ struct huff_len_table {
 	uint16_t ext_val;
 };
 
-void make_hufftable (struct huff_len_table hlt[259])
+void make_hufftable (struct huff_len_table hlt[288])
 {
 	int length = 3, n, code;
 	static const short lext[29] = 
 		{ 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
 		  3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0 };
 
-	memset(hlt, 0, sizeof(struct huff_len_table) * 259);
+	memset(hlt, 0, sizeof(struct huff_len_table) * 288);
 
 	for (code = 0; code < 29-1; code++) {
 		for (n = 0; n < (1 << lext[code]); n++) {
@@ -721,14 +741,14 @@ void make_hufftable (struct huff_len_table hlt[259])
 
 void encode_hlist (struct huff_list *hlist, int num)
 {
-	struct huff_len_table hlt[259];
+	struct huff_len_table hlt[288];
 	int len;
 	
 	printf("[%s]: testing huffman length coding\n", __func__);
 	
 	make_hufftable(hlt);
 	
-	for (len = 0; len < 259; len++) {
+	for (len = 0; len < 288; len++) {
 		printf("len %d = code %d with %d extra bits (%d)\n", len, hlt[len].len_code, 
 			hlt[len].num_exbits, hlt[len].ext_val);	
 	}
@@ -828,7 +848,7 @@ void test_dlcoder (void)
 void get_longest_match (uint8_t *in, int bytes, int cp, int *dist, int *len)
 {
 	int eob = MIN((cp + LA_SIZ), (bytes + 1));
-	int i, l, a, m, p;
+	int i, m, a, l, p;
 	int reps, last;
 	uint8_t subs[WIN_SIZ];
 	uint8_t match[WIN_SIZ];
@@ -870,7 +890,7 @@ struct lz_out {
 
 int lz77 (uint8_t *in, int bytes, struct lz_out **out, int win_size)
 {
-	int i = 0, length, pos;
+	int i = 0, length = 0, pos = 0;
 	int num_dc = 0, num = 0;
 
 	*out = calloc(sizeof(struct lz_out), bytes);
@@ -878,12 +898,14 @@ int lz77 (uint8_t *in, int bytes, struct lz_out **out, int win_size)
 	while (i < bytes) {
 		get_longest_match(in, bytes, i, &pos, &length);
 		
-		if (length == 99999999){ // > 2) {
+		//printf("%d: char %d pos %d len %d\n", i, in[i], pos, length);
+		
+		if (length == 99999999) {//> 2) {
 			(*out)[num].len = length;
 			(*out)[num].dist = pos;
 			//printf("%d (%d): pos %d len %d\n", i, in[i], pos, length);
 
-			i += length + 1;
+			i += length;
 			num++, num_dc++;
 		} else {
 			(*out)[num].len = in[i];
@@ -1111,18 +1133,18 @@ void write_compressed_data (struct bit_stream *bs, struct lz_out *lz, int num,
 			if (hp->num_exbits)
 				write_bit_stream(bs, hp->ext_val, hp->num_exbits);
 			
-			//printf("\twriting lc %3d -> %3d (%2d bits) + ext %3d (%2d bits)\n", 
-			//	hp->len_code, hlist[hp->len_code].hcode, 
-			//	hlist[hp->len_code].hc_len, hp->ext_val, hp->num_exbits);
+			/*printf("\twriting lc %3d -> %3d (%2d bits) + ext %3d (%2d bits)\n", 
+				hp->len_code, hlist[hp->len_code].hcode, 
+				hlist[hp->len_code].hc_len, hp->ext_val, hp->num_exbits);*/
 			
 			dist_code(lz[i].dist, &code, &eb, &ev);
 			write_bit_stream(bs, dlist[code].hcode, 
 					     dlist[code].hc_len);
-			if (eb)
+			if (eb) 
 				write_bit_stream(bs, ev, eb);
 			
-			//printf("\twriting dc %3d -> %3d (%2d bits) + ext %3d (%2d bits)\n",
-			//	code, dlist[code].hcode, dlist[code].hc_len, ev, eb);
+			printf("\twriting dc %3d -> %3d (%2d bits) + ext %3d (%2d bits)\n",
+				code, dlist[code].hcode, dlist[code].hc_len, ev, eb);
 		} else {
 			write_bit_stream(bs, hlist[lz[i].len].hcode, 
 					     hlist[lz[i].len].hc_len);
@@ -1131,7 +1153,7 @@ void write_compressed_data (struct bit_stream *bs, struct lz_out *lz, int num,
 			//	hlist[lz[i].len].hcode, hlist[lz[i].len].hc_len);
 		}
 	}
-		
+	
 	write_bit_stream(bs, hlist[256].hcode, hlist[256].hc_len);
 }
 
@@ -1348,10 +1370,10 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 		
 		num = lz77(src + pos, toc, &lz, 512);
 
-		write_bit_stream(bs, ((toc != blk_size) ? 2 : 0), 1);
+		write_bit_stream(bs, ((toc != blk_size) ? 1 : 0), 1);
 		write_bit_stream(bs, 1, 2);
 		
-		//reverse_write(bs, ((toc != blk_size) ? 1 : 0) | (1 << 1), 3);
+		//write_bit_stream(bs, ((toc != blk_size) ? 1 : 0) | (1 << 1), 3);
 		write_compressed_data(bs, lz, num, hhlist, ddlist, hlt);	
 		
 		printf("%d bytes to %d, hdr: ", toc, bs->byte_pos);
@@ -1360,15 +1382,16 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 		free(lz);
 		
 		pos += toc;
-	}
+	} 
 
 	free(hhlist);
 	free(ddlist);
 	
-	//bs->buf[bs->byte_pos] <<= (8 - bs->bit_pos);
-	
-	//write_bit_stream(bs, len, 32);
-	//write_bit_stream(bs, crc(src, len), 32);
+	if (bs->bit_pos > 8) {
+		put_short(bs->bi_buf, bs);
+	} else if (bs->bit_pos > 0) {
+		bs->buf[bs->byte_pos++] = (uint8_t)bs->bi_buf;
+    	}
 	
 	printf("bit pos %d, byte pos: \n\t%d: ", bs->bit_pos, bs->byte_pos - 2);
 	print_bits(bs->buf[bs->byte_pos - 2], 8);
@@ -1457,7 +1480,7 @@ int write_gzfile (const char *src, const char *dst)
 	head.id1 = 0x8b;
 	
 	head.comp_method = 8;
-	head.mtime = st.st_mtime;
+	head.mtime = 0;//st.st_mtime;
 	head.os = 0xFF;
 	
 	if ((len = read_file(src, &buf)) < 0)
@@ -1520,6 +1543,6 @@ int main (void)
 				"/Users/nobody1/Desktop/test.tar");
 				
 	return write_gzfile("/Users/nobody1/Desktop/test.tar",
-				"/Users/nobody1/Desktop/test1.gz");
+				"/Users/nobody1/Desktop/test1.tar.gz");
 }
 
