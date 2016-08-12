@@ -37,7 +37,7 @@ struct tar_header {
 	char cksum[8];		/* header checksum */
 	char link;		/* 1 for linked file, 2 for symlink, 0 otherwise */
 	char linkname[100];	/* name of linked file */
-}; 
+} __attribute__((packed)) ; 
 
 unsigned int calc_header_checksum (struct tar_header *hdr)
 {
@@ -145,6 +145,7 @@ int write_file_entry (char *wpath, const char *d_name, struct dirent *ds,
 		
 	if (S_ISDIR(st.st_mode)) {
 		hdr->name[strlen(hdr->name)] = '/';
+		hdr->name[strlen(hdr->name) + 1] = '\0';
 		generate_padded_octal(hdr->size, 0, sizeof(hdr->size));
 	} else {
 		generate_padded_octal(hdr->size, st.st_size, sizeof(hdr->size));
@@ -165,6 +166,7 @@ int write_file_entry (char *wpath, const char *d_name, struct dirent *ds,
 	if (S_ISDIR(st.st_mode) || (len = read_file(wpath, &buf)) < 0) {
 		len = 0;
 		i = 0;
+		printf("error %s\n", wpath);
 	} else {
 		for (i = 0; i < 512; i++)
 			if (!((len + i) & 0x1ff))
@@ -269,15 +271,23 @@ void print_bits (uint64_t in, int num)
 	printf("\n");
 }
 
-uint64_t reverse_bits (uint64_t in, int num)
+uint64_t reverse_bits (uint64_t code, int len)
 {
-	uint64_t out = 0;
+	/*uint64_t out = 0;
 	int i;
 	
 	for (i = 0; i < num; i++)
 		out = (out << 1) | ((in & (1 << i)) ? 1 : 0);
 	
 	return out;
+	*/
+	uint64_t res = 0;
+	do {
+		res |= code & 1;
+		code >>= 1, res <<= 1;
+	} while (--len > 0);
+	
+	return res >> 1;
 }
 
 int alloc_bit_stream (struct bit_stream **bs, int bytes_max)
@@ -630,6 +640,7 @@ int huff_encode (uint16_t *src, int num, int chars, struct huff_list **hlist)
 	return j;
 }
 
+/* works */
 void make_static_hlist (struct huff_list **phlist, struct huff_list **pdlist)
 {
 	int n = 0, len = 0, bits = 0;
@@ -843,118 +854,17 @@ struct lz_out {
 	uint16_t dist;
 };
 
-#if 0 /* old lzw */
+#define HASH_BITS 	12
+#define HASH_SIZE 	(1 << HASH_BITS)
+
+#define MIN_MATCH 	3
+#define MAX_MATCH 	3
+
+#define MAX_OFFSET 	32768
+
+int lz77 (uint8_t *src, int slen, struct lz_out **out)
 {
-
-#define LA_SIZ	8
-#define WIN_SIZ	256
-
-#define MAX(x,y) (((x) > (y)) ? (x) : (y))
-#define MIN(x,y) (((x) < (y)) ? (x) : (y))
-
-void get_longest_match (uint8_t *in, int bytes, int cp, int *dist, int *len)
-{
-	int eob = MIN((cp + LA_SIZ), (bytes + 1));
-	int i, m, a, l, p;
-	int reps, last;
-	uint8_t subs[WIN_SIZ];
-	uint8_t match[WIN_SIZ];
-	
-	*dist = *len = -1;
-	
-	for (i = cp + 1; i < eob; i++) {
-		a = i - cp;
-		l = MAX((cp - WIN_SIZ), 0);
-		
-		memset(subs, 0, sizeof(subs));
-		memcpy(subs, in + cp, a);
-
-		for (; l < cp; l++) {
-			memset(match, 0, sizeof(match));
-			p = cp - l;
-			
-			reps = a / p;
-			last = a % p;
-
-			for (m = 0; m < reps; m++)
-				memcpy(match + (m * p), in + l, p);
-
-			if (last)
-				memcpy(match + (m * p), in + l, last);
-
-			if (!strcmp((char *)match, (char *)subs) && a > *len) {
-				*dist = p;
-				*len = a;
-			}
-		}
-	}
-}
-
-
-
-int lz77 (uint8_t *in, int bytes, struct lz_out **out, int win_size)
-{
-	int i = 0, length = 0, pos = 0;
-	int num_dc = 0, num = 0;
-
-	*out = calloc(sizeof(struct lz_out), bytes);
-
-	while (i < bytes) {
-		//get_longest_match(in, bytes, i, &pos, &length);
-		
-		//printf("%d: char %d pos %d len %d\n", i, in[i], pos, length);
-		
-		if (length > 2) {
-			//printf("[len=%d, pos=%d]: \n", length, pos);
-			//int j;
-			//for (j = 0; j < length; j++)
-			//	printf("\t%d = %d\n", in[i + j], in[i - pos + j]);
-			(*out)[num].len = length;
-			(*out)[num].dist = pos;
-			//printf("%d (%d): pos %d len %d\n", i, in[i], pos, length);
-
-			i += length;
-			num++, num_dc++;
-		} else {
-			(*out)[num].len = in[i];
-			(*out)[num].dist = 0;
-			//printf("%d (%d): lit %d\n", i, in[i], in[i]);
-
-			num++, i++;
-		}
-	}
-	
-	fprintf(stderr, "[%s] %d bytes to total chars: %d, num LZ77: %d\n", __func__, 
-		bytes, num, num_dc);
-	
-	return num;
-}
-}
-#else
-
-#define HASH_BITS 12
-#define HASH_SIZE (1<<HASH_BITS)
-
-/* Minimum and maximum length of matches to look for, inclusive */
-#define MIN_MATCH 3
-#define MAX_MATCH 258
-/* Max offset of the match to look for, inclusive */
-#define MAX_OFFSET 0
-
-/* Hash function can be defined as macro or as inline function */
-
-/*#define HASH(p) (p[0] + p[1] + p[2])*/
-
-/* This is hash function from liblzf */
-static inline int HASH(const uint8_t *p) {
-    int v = (p[0] << 16) | (p[1] << 8) | p[2];
-    int hash = ((v >> (3*8 - HASH_BITS)) - v) & (HASH_SIZE - 1);
-    return hash;
-}
-
-int lz77 (uint8_t *src, int slen, struct lz_out **out, int win_size)
-{
-	int num = 0, h, len;
+	int num = 0, h, len, v;
 	const uint8_t *hashtable[HASH_SIZE] = {0};
 	const uint8_t *top = src + slen - MIN_MATCH;
 	const uint8_t *m, *subs, **bucket;
@@ -962,7 +872,10 @@ int lz77 (uint8_t *src, int slen, struct lz_out **out, int win_size)
 	*out = calloc(sizeof(struct lz_out), slen + 2);
 	
 	while (src < top) {
-		h = HASH(src);
+		/* calculate hash */
+		v = (src[0] << 16) | (src[1] << 8) | src[2];
+		h = ((v >> (3 * 8 - HASH_BITS)) - v) & (HASH_SIZE - 1);
+		
 		bucket = &hashtable[h & (HASH_SIZE - 1)];
 		subs = *bucket;
 		*bucket = src;
@@ -972,43 +885,23 @@ int lz77 (uint8_t *src, int slen, struct lz_out **out, int win_size)
 			src += MIN_MATCH;
 			m = subs + MIN_MATCH;
 			len = MIN_MATCH;
-			while (*src == *m && len < MAX_MATCH) {
-				src++; m++; len++;
-			}
+			
+			while (*src == *m && len < MAX_MATCH)
+				src++, m++, len++;
             
 			(*out)[num].len = len;
 			(*out)[num].dist = src - len - subs;
 			num++;
-			
-			/*printf("match found len %d pos %d\n", len, src - len - subs);
-			int k;
-			for (k = 0; k < len; k++) 
-				printf("\tsrc[] = src[] = %d = %d\n",
-					src[k - len], 
-					src[k - len - (*out)[num - 1].dist]);
-			*/
-			//copy(data, src - len - subs, len);
 		} else {
-			(*out)[num].len = *src++;
-			(*out)[num].dist = 0;
-			num++;
-			//literal(data, *src++);
+			(*out)[num++].len = *src++;
 		}
 	}
-	
-	// Process buffer tail, which is less than MIN_MATCH
-	// (and so it doesn't make sense to look for matches there)
-	top += MIN_MATCH;
-	while (src < top) {
-		(*out)[num].len = *src++;
-		(*out)[num].dist = 0;
-		num++;
-		//literal(data, *src++);
-	}
+
+	for (top += MIN_MATCH; src < top; )
+		(*out)[num++].len = *src++;
     
 	return num;
 }
-#endif
 
 void test_lz77 (void)
 {
@@ -1019,7 +912,7 @@ void test_lz77 (void)
 	printf("[%s]: testing lzw\n", __func__);
 	printf("expected, output:\n<0, 97>, <1, 1, a>, <3, 4, c>, <3, 3, a>, <12, 3, />\n");
 	
-	printf("%d\n", lz77(in, strlen((char *)in), &bs, 1));
+	printf("%d\n", lz77(in, strlen((char *)in), &bs));
 	
 	free(bs);
 	
@@ -1317,7 +1210,7 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 		if ((toc = (len - pos)) > blk_size)
 			toc = blk_size;
 		
-		num = lz77(src + pos, toc, &lz, 512);
+		num = lz77(src + pos, toc, &lz);
 
 		lens = calloc(sizeof(uint16_t), toc + 288);
 		dist = calloc(sizeof(uint16_t), toc + 288);
@@ -1459,11 +1352,11 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 	
 	make_static_hlist (&hhlist, &ddlist);
 
-	//while (pos < len) {
+	while (pos < len) {
 		if ((toc = (len - pos)) > blk_size)
 			toc = blk_size;
 		
-		num = lz77(src + pos, toc, &lz, 512);
+		num = lz77(src + pos, toc, &lz);
 
 		write_bit_stream(bs, ((toc != blk_size) ? 1 : 0), 1);
 		write_bit_stream(bs, 1, 2);
@@ -1474,7 +1367,7 @@ int write_gzdata_unc (unsigned char *src, int len, int fd, int blk_size)
 		free(lz);
 		
 		pos += toc;
-	//} 
+	} 
 
 	free(hhlist);
 	free(ddlist);
@@ -1560,7 +1453,7 @@ int write_gzfile (const char *src, const char *dst)
 	head.id1 = 0x8b;
 	
 	head.comp_method = 8;
-	head.mtime = 0;//st.st_mtime;
+	head.mtime = st.st_mtime;
 	head.os = 0xFF;
 	
 	if ((len = read_file(src, &buf)) < 0)
@@ -1574,7 +1467,7 @@ int write_gzfile (const char *src, const char *dst)
 	}
 	
 	if (write(src_fd, &head, 10) != 10 ||
-	    write_gzdata_unc(buf, len, src_fd, 999999999) < 0 ||
+	    write_gzdata_unc(buf, len, src_fd, 9999999) < 0 ||
 	    write(src_fd, &crc32, 4) != 4 ||
 	    write(src_fd, &len, 4) != 4) {
 		close(src_fd);
