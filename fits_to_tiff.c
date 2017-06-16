@@ -872,11 +872,9 @@ const char *KernelSource = "\n" \
 "   __global unsigned char * dst, 					\n" \
 "   int num)								\n" \
 "{                                                                      \n" \
-	"int glid = get_group_id(0); 					\n" \
-	"int nloc = get_local_size(0);					\n" \
-	"int i, x, imax = 0;						\n" \
+	"int glid = get_global_id(0); 					\n" \
+	"int start = 0, x, imax = 0;					\n" \
 	"float tmp;							\n" \
-	"int start = 0;							\n" \
 	"for (x = 0; x < glid; x++)					\n" \
 		"start += sizes[x];					\n" \
 	"for (x = 0; x < sizes[glid]; x++) {				\n" \
@@ -1032,7 +1030,8 @@ const char *KernelSource = "\n" \
     checkError(err, "Setting kernel arguments");
 
     global = num;
-    err = clEnqueueNDRangeKernel(commands, ko_vadd, 1, NULL, 
+    size_t local = 1;
+    err = clEnqueueNDRangeKernel(commands, ko_vadd, 1, &local, 
     		&global, NULL, 0, NULL, NULL);
     checkError(err, "Enqueueing kernel");
 
