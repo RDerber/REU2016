@@ -9,9 +9,19 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/utsname.h>
+#include <sys/types.h>
+#include <dirent.h>
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#include <unistd.h>
+#else
+#include <CL/cl.h> 
+#endif
+#include "device_picker.h"
+#include "err_code.h"
 
 struct fits_convert {
-	const char *path_input;
+	char *path_input;
 
 	int x, y;
 	int bitpix;
@@ -692,135 +702,154 @@ int make_histogram (unsigned char *buf, unsigned char *data, int size,
 	return tmp;
 } 
 
-#include <sys/types.h>
-#ifdef __APPLE__
-#include <OpenCL/opencl.h>
-#include <unistd.h>
-#else
-#include <CL/cl.h> 
-#endif
-#include "device_picker.h"
-#include "err_code.h"
+//gcc -framework OpenCL -DAPPLE fits_to_tiff.c; ./a.out fits\ examples
+
 
 int do_f32convert_cl_bulk (struct fits_convert *array, int *sizes, int num)
 {
-const char *KernelSource = "\n" \
-"__kernel void vadd(                                                 \n" \
-"   __global float* big_endian,                                         \n" \
-"   __global int *sizes,						\n" \
-"   __global unsigned char * dst, 					\n" \
-"   __global unsigned char * hist0,					\n" \
-"   __global unsigned char * hist1)					\n" \
+	const char *KernelSource = "__kernel void vadd(			\n" \
+"				__global float *big_endian,		\n" \
+"				__global int *sizes,			\n" \
+"				__global unsigned char * dst, 		\n" \
+"				__global unsigned char * hist0,		\n" \
+"				__global unsigned char * hist1,		\n" \
+"				__local int *counts,			\n" \
+"				__local float *imax,			\n" \
+"				const int lcsize,			\n" \
+"				__global int *test)			\n" \
 "{                                                                      \n" \
-	"int glid = get_global_id(0); 					\n" \
-	"int start = 0, x, imax = 0;					\n" \
-	"float tmp;							\n" \
-	"if (sizes[glid] == 0)						\n" \
-		"return;						\n" \
-	"for (x = 0; x < glid; x++)					\n" \
-		"start += sizes[x];					\n" \
-	"for (x = 0; x < sizes[glid]; x++) {				\n" \
-		"tmp = big_endian[start + x];				\n" \
-		"char *ptr = (char *)&tmp;				\n" \
-		"char c = ptr[0];					\n" \
-		"ptr[0] = ptr[3];					\n" \
-		"ptr[3] = c;						\n" \
-		"c = ptr[1];						\n" \
-		"ptr[1] = ptr[2];					\n" \
-		"ptr[2] = c;						\n" \
-		"big_endian[start + x] = log(tmp);			\n" \
-		"if (big_endian[start + x] > big_endian[start + imax])	\n" \
-			"imax = x;					\n" \
-	"}								\n" \
-	"tmp = big_endian[start + imax] / 255.0f;			\n" \
-	"for (x = 0; x < sizes[glid]; x++)				\n" \
-		"dst[start + x] = (big_endian[start + x] / tmp);	\n" \
-"	int counts[256];						\n" \
-"	int hstart = glid * 256 * 256;					\n" \
+"	int glid = get_group_id(0); 					\n" \
+"	int lsize = sizes[glid] / lcsize;				\n" \
+"	int start = get_local_id(0) * lsize;				\n" \
+"	float tmp, mt;							\n" \
+"	int hstart = glid * 256 * 256, x, maxp = 1, ind;		\n" \
 "	int i, max = 0, tmpl, off = ((256 - 1) * 256), pos;		\n" \
-"	for (i = 0; i < 256; i++)					\n" \
-"		counts[i] = 0;						\n" \
-"	for (i = 0; i < sizes[glid]; i++)				\n" \
+"	for (x = 0; x < glid; x++)					\n" \
+"		start += sizes[x];					\n" \
+"	if (get_local_id(0) == 0) {					\n" \
+"		tmp = big_endian[start];				\n" \
+"		char *ptr = (char *)&tmp;				\n" \
+"		char c = ptr[0];					\n" \
+"		ptr[0] = ptr[3];					\n" \
+"		ptr[3] = c;						\n" \
+"		c = ptr[1];						\n" \
+"		ptr[1] = ptr[2];					\n" \
+"		ptr[2] = c;						\n" \
+"		*imax = tmp;						\n" \
+"		for (i = 0; i < 256; i++)				\n" \
+"			counts[i] = 0;					\n" \
+"	}								\n" \
+"	barrier(CLK_LOCAL_MEM_FENCE);					\n" \
+"	for (x = 0; x < lsize; x++) {					\n" \
+"		tmp = big_endian[start + x];				\n" \
+"		char *ptr = (char *)&tmp;				\n" \
+"		char c = ptr[0];					\n" \
+"		ptr[0] = ptr[3];					\n" \
+"		ptr[3] = c;						\n" \
+"		c = ptr[1];						\n" \
+"		ptr[1] = ptr[2];					\n" \
+"		ptr[2] = c;						\n" \
+"		big_endian[start + x] = log(tmp);			\n" \
+"		if (tmp > *imax)					\n" \
+"			*imax = tmp;					\n" \
+"	}	 							\n" \
+"	barrier(CLK_LOCAL_MEM_FENCE);					\n" \
+"	tmp = log(*imax) / 255.0f;					\n" \
+"	for (x = 0; x < lsize; x++) {					\n" \
+"		mt = (float)(big_endian[start + x] / tmp);		\n" \
+"		dst[start + x] = (unsigned char)mt;			\n" \
+"	}								\n" \
+"	for (i = 0; i < lsize; i++)					\n" \
 "		counts[dst[start + i]]++;				\n" \
-"	for (i = 0; i < 256; i++)					\n" \
-"		if (counts[max] < counts[i])				\n" \
-"			max = i;					\n" \
-"	for (i = 0; i < 256; i++) {					\n" \
-"		tmpl = (int)((float)(256 * ((float)counts[i] / (float)counts[max]))); \n" \
-"		for (pos = off + i; tmpl > 0; tmpl--, pos -= 256)	\n" \
-"			hist0[pos + hstart] = 128;			\n" \
+"	barrier(CLK_LOCAL_MEM_FENCE);					\n" \
+"	if (get_local_id(0) == 0) {					\n" \
+"		for (i = 0; i < 256; i++)				\n" \
+"			if (counts[max] < counts[i])			\n" \
+"				max = i;				\n" \
+"		mt = (float)counts[max];				\n" \
+"		for (i = 0; i < 256; i++) {				\n" \
+"			tmpl = (int)((float)(256 * ((float)counts[i] / mt))); 	\n" \
+"			for (pos = off + i; tmpl > 0; tmpl--, pos -= 256)	\n" \
+"				hist0[pos + hstart] = 128;		\n" \
+"		}							\n" \
+"		for (i = 0; i < 256; i++)				\n" \
+"			if (i != max && (counts[maxp] < counts[i]))	\n" \
+"				maxp = i;				\n" \
+"		mt = (float)counts[maxp];				\n" \
+"		for (i = 0; i < 256; i++) {				\n" \
+"			ind = ((i == max) ? maxp : i);			\n" \
+"			tmpl = (int)((float)(256 * ((float)counts[ind] / mt)));	\n" \
+"			for (pos = off + i; tmpl > 0; tmpl--, pos -= 256)	\n" \
+"				hist1[pos + hstart] = 128;		\n" \
+"		}							\n" \
 "	}								\n" \
-"	int maxp = 1, ind;						\n" \
-"	off = ((256 - 1) * 256);					\n" \
-"	for (i = 0; i < 256; i++)					\n" \
-"		if (i != max && (counts[maxp] < counts[i]))		\n" \
-"			maxp = i;					\n" \
-"	for (i = 0; i < 256; i++) {					\n" \
-"		ind = ((i == max) ? maxp : i);				\n" \
-"		tmpl = (int)((float)(256 * ((float)counts[ind] / (float)counts[maxp]))); \n" \
-"		for (pos = off + i; tmpl > 0; tmpl--, pos -= 256)	\n" \
-"			hist1[pos + hstart] = 128;			\n" \
-"	}								\n" \
+"		test[0] = get_global_size(0);				\n" \
+"		test[1] = get_global_id(0);				\n" \
+"		test[2] = get_local_size(0);				\n" \
+"		test[3] = get_local_id(0);				\n" \
+"		test[4] = get_num_groups(0);				\n" \
+"		test[5] = get_group_id(0);				\n" \
+"		test[6] = (int)log(*imax);				\n" \
 "}									\n" \
 "\n";
 
-	int i, j, err, pos = 0;
-	size_t global = num, local = 1, memsz = 0;
-	unsigned char *buf, *out;
+	int gsize = 16;
+	int i, j, err, pos = 0, hpos = 0;
+	size_t global = num * gsize, local = gsize, memsz = 0;
+	unsigned char *out;
 	cl_device_id     device_id;
 	cl_context       context;
 	cl_command_queue commands;
 	cl_program       program;
 	cl_kernel        ko_vadd;
-	cl_mem d_a, d_d, d_b, h0, h1;
+	cl_mem d_a, d_d, d_b, h0, h1, test;
 	cl_uint numPlatforms;
 	int hist_buf_sz = NUM * NUM * num;
 	unsigned char *h0_tmp = calloc(hist_buf_sz, 1);
 	unsigned char *h1_tmp = calloc(hist_buf_sz, 1);
+	float *data_big;
 	
 #ifndef DEVICE
 #define DEVICE CL_DEVICE_TYPE_DEFAULT
 #endif
-//gcc -framework OpenCL -DAPPLE fits_to_tiff.c; ./a.out fits\ examples
 	for (j = 0; j < num; j++) {
 		if (array[j].bitpix != -32 || !array[j].img_out) 
 			sizes[j] = 0;
 		memsz += sizes[j];
 		printf("num %d j %d sz %lu\n", num, j, memsz);
 	}
-	
-	float *data_big = calloc(memsz, sizeof(float));
 
-	if (!data_big || !(out = calloc(memsz, 1)))
+	if (!(data_big = calloc(memsz, sizeof(float))) || !(out = calloc(memsz, 1))) {
 		perror("alloc");
+		return -1;
+	}
 	
 	for (j = 0; j < num; j++) {
 		if (array[j].bitpix != -32 || !array[j].img_out) 
 			continue;
-		printf("pos = %d / %lu + %d %d\n", pos, memsz * sizeof(float), sizes[j], array[j].img_size);
+		printf("pos = %d / %lu + %d %d\n", pos, memsz * sizeof(float), 
+			sizes[j], array[j].img_size);
 		memcpy(data_big + pos, (array[j].img_out + array[j].img_size), 
 			sizes[j] * sizeof(float));
 		pos += sizes[j];
-		//free((void *)array[j].path_input);
-		//free((void *)array[j].img_out);
 	}
 
-    // Find number of platforms
-    err = clGetPlatformIDs(0, NULL, &numPlatforms);
-    checkError(err, "Finding platforms");
-    if (numPlatforms == 0) {
-        printf("Found 0 platforms!\n");
-        return EXIT_FAILURE;
-    }
-  // Get all platforms
-    cl_platform_id pt[numPlatforms];
-    err = clGetPlatformIDs(numPlatforms, pt, NULL);
-    checkError(err, "Getting platforms");
+	// Find number of platforms
+	err = clGetPlatformIDs(0, NULL, &numPlatforms);
+	checkError(err, "Finding platforms");
+	if (numPlatforms == 0) {
+		printf("Found 0 platforms!\n");
+		return EXIT_FAILURE;
+	}
+	// Get all platforms
+	cl_platform_id pt[numPlatforms];
+	err = clGetPlatformIDs(numPlatforms, pt, NULL);
+	checkError(err, "Getting platforms");
 
-    // Secure a GPU
-    for (i = 0; i < numPlatforms; i++)
-        if ((err = clGetDeviceIDs(pt[i], DEVICE, 1, &device_id, NULL)) == CL_SUCCESS)
-            break;
+	// Secure a GPU
+	for (i = 0; i < numPlatforms; i++)
+		if ((err = clGetDeviceIDs(pt[i], DEVICE, 1, &device_id, NULL)) == CL_SUCCESS)
+			break;
 
     if (device_id == NULL)
         checkError(err, "Finding a device");
@@ -876,15 +905,23 @@ const char *KernelSource = "\n" \
     h1  = clCreateBuffer(context,  CL_MEM_WRITE_ONLY, hist_buf_sz, NULL, &err);
     checkError(err, "Creating buffer h1");
 
+    test = clCreateBuffer(context,  CL_MEM_WRITE_ONLY, sizeof(int) * 10, NULL, &err);
+    checkError(err, "Creating buffer h1");
+
+
     err  = clSetKernelArg(ko_vadd, 0, sizeof(cl_mem), &d_a);
     err |= clSetKernelArg(ko_vadd, 1, sizeof(cl_mem), &d_b);
     err |= clSetKernelArg(ko_vadd, 2, sizeof(cl_mem), &d_d);
     err |= clSetKernelArg(ko_vadd, 3, sizeof(cl_mem), &h0);
     err |= clSetKernelArg(ko_vadd, 4, sizeof(cl_mem), &h1);
+    err |= clSetKernelArg(ko_vadd, 5, 256 * sizeof(int), NULL);
+    err |= clSetKernelArg(ko_vadd, 6, sizeof(float), NULL);
+    err |= clSetKernelArg(ko_vadd, 7, sizeof(int), &gsize);
+    err |= clSetKernelArg(ko_vadd, 8, sizeof(cl_mem), &test);
     checkError(err, "Setting kernel arguments");
 
-    err = clEnqueueNDRangeKernel(commands, ko_vadd, 1, &local, 
-    		&global, NULL, 0, NULL, NULL);
+    err = clEnqueueNDRangeKernel(commands, ko_vadd, 1, NULL, 
+    		&global, &local, 0, NULL, NULL);
     checkError(err, "Enqueueing kernel");
 
     // Wait for the commands to complete before stopping the timer
@@ -892,133 +929,112 @@ const char *KernelSource = "\n" \
     checkError(err, "Waiting for kernel to finish");
 
     // Read back the results from the compute device
-    if ((err = clEnqueueReadBuffer(commands, d_d, CL_TRUE, 0, memsz, out, 0, NULL, NULL)) != CL_SUCCESS)
-    {
+    if ((err = clEnqueueReadBuffer(commands, d_d, CL_TRUE, 0, memsz, 
+    		out, 0, NULL, NULL)) != CL_SUCCESS) {
         printf("Error: Failed to read output array!\n%s\n", err_code(err));
-        exit(1);
+        return -1;
     }
     
-    if ((err = clEnqueueReadBuffer(commands, h0, CL_TRUE, 0, hist_buf_sz, h0_tmp, 0, NULL, NULL)) != CL_SUCCESS)
-    {
+    if ((err = clEnqueueReadBuffer(commands, h0, CL_TRUE, 0, hist_buf_sz, 
+    		h0_tmp, 0, NULL, NULL)) != CL_SUCCESS) {
         printf("Error: Failed to read output array!\n%s\n", err_code(err));
-        exit(1);
+        return -1;
     }
     
-    if ((err = clEnqueueReadBuffer(commands, h1, CL_TRUE, 0, hist_buf_sz, h1_tmp, 0, NULL, NULL)) != CL_SUCCESS)
-    {
+    if ((err = clEnqueueReadBuffer(commands, h1, CL_TRUE, 0, hist_buf_sz, 
+    		h1_tmp, 0, NULL, NULL)) != CL_SUCCESS) {
         printf("Error: Failed to read output array!\n%s\n", err_code(err));
-        exit(1);
+        return -1;
     }
-    int hpos = 0;
-    pos = 0;
-    for (i = 0; i < num; i++) {
-	if (array[i].bitpix != -32 || !array[i].img_out || !sizes[i])
-		printf("skipp %d\n", i); 
-	else {
+    
+    
+    int test_out[10] = { 0 };
+    if ((err = clEnqueueReadBuffer(commands, test, CL_TRUE, 0, sizeof(test_out), 
+    		test_out, 0, NULL, NULL)) != CL_SUCCESS) {
+        printf("Error: Failed to read output array!\n%s\n", err_code(err));
+        return -1;
+    }
+    
+    printf("global size = %d id = %d | local size = %d id = %d | num groups %d id %d imax %d\n",
+    	test_out[0], test_out[1], test_out[2], test_out[3], test_out[4], 
+    	test_out[5], test_out[6]);
+
+	pos = 0;
+	for (i = 0; i < num; i++) {
+		if (array[i].bitpix != -32 || !array[i].img_out || !sizes[i]) {
+			printf("skipp %d\n", i); 
+			continue;
+		}
 		array[i].hist0 = calloc(NUM, NUM);
 		array[i].hist1 = calloc(NUM, NUM);
 		memcpy(array[i].hist0, h0_tmp + hpos, NUM * NUM);
 		memcpy(array[i].hist1, h1_tmp + hpos, NUM * NUM);
-		hpos += NUM * NUM;
-		//printf("%d %d %d\n", pos, sizes[i], memsz);
 		memcpy(array[i].img_out, out + pos, sizes[i]); 
+		hpos += NUM * NUM;
 		pos += sizes[i];
 	}
-    }
+	clReleaseMemObject(test);
+	clReleaseMemObject(d_a);
+	clReleaseMemObject(d_b);
+	clReleaseMemObject(d_d);
+	clReleaseMemObject(h0);
+	clReleaseMemObject(h1);
+	clReleaseProgram(program);
+	clReleaseKernel(ko_vadd);
+	clReleaseCommandQueue(commands);
+	clReleaseContext(context);
+	free(out);
+	free(data_big);
+	free(h0_tmp);
+	free(h1_tmp);
 
-    // cleanup then shutdown
-    clReleaseMemObject(d_a);
-    clReleaseMemObject(d_b);
-    clReleaseMemObject(d_d);
-    clReleaseMemObject(h0);
-    clReleaseMemObject(h1);
-    clReleaseProgram(program);
-    clReleaseKernel(ko_vadd);
-    clReleaseCommandQueue(commands);
-    clReleaseContext(context);
-    free(out);
-    free(data_big);
-    free(h0_tmp);
-    free(h1_tmp);
-    
-    return 0;
+	return 0;
 }
 
-
-/* returns execution time in microseconds */
-uint64_t run_conversion (unsigned char *buf, int file_size, struct fits_convert *fts)
+void save_all (struct fits_convert *array, int num)
 {
-	int datapos = 0, sz;
-	unsigned char *data;
-	struct timeval t0, t1;
-	unsigned char *hbuf = calloc(NUM, NUM);
-	unsigned char *hbuf1 = calloc(NUM, NUM);
-	
-	gettimeofday(&t0, NULL);
-	
-	sz = fts->x * fts->y;
-	data = calloc(fts->x, fts->y);
-
-	//f32_to_u8_scaled
-	if (fts->bitpix == -32)
-		f32_to_u8_scaled((float *)(buf + datapos), data, sz);
-	//else if (fts->bitpix == 16)
-//		u16_to_u8_scaled((uint16_t *)(buf + datapos), data, sz);
-	else
-		printf("unsupported bit size %d\n", fts->bitpix);
-
-	make_histogram(hbuf, data, sz, NUM, 0);
-	make_histogram(hbuf1, data, sz, NUM, 1);
-	fts->hs0 = write_tiff_file(&fts->hist0, hbuf, NUM, NUM);
-	fts->hs1 = write_tiff_file(&fts->hist1, hbuf1, NUM, NUM);
-	
-	fts->img_size = write_tiff_file(&fts->img_out, data, fts->x, fts->y);
-		
-	free(data);
-	free(hbuf);
-	free(hbuf1);
-	gettimeofday(&t1, NULL);
-	
-	return (t1.tv_sec - t0.tv_sec) * 1000000LL + t1.tv_usec - t0.tv_usec;
-} 
- 
-void save_results (struct fits_convert fts)
-{
+	int j, len;
 	char buf[512];
-	int len = (int)strlen(fts.path_input);
-	strncpy(buf, fts.path_input, sizeof(buf));
+	
+	for (j = 0; j < num; j++) {
+		if (!array[j].path_input || !array[j].img_out || array[j].bitpix != -32)
+			continue;
+		memset(buf, 0, sizeof(buf));
+		len = (int)strlen(array[j].path_input);
+		strncpy(buf, array[j].path_input, sizeof(buf));
 
-	strcpy(buf + len, "_histo_full.tiff");
-	create_file_with_data(buf, fts.hist0, fts.hs0);
+		strcpy(buf + len, "_histo_full.tiff");
+		create_file_with_data(buf, array[j].hist0, array[j].hs0);
 
-	strcpy(buf + len, "_histo_cutoff.tiff");
-	create_file_with_data(buf, fts.hist1, fts.hs1);
+		strcpy(buf + len, "_histo_cutoff.tiff");
+		create_file_with_data(buf, array[j].hist1, array[j].hs1);
 
-	strcpy(buf + len, ".tiff");
-	create_file_with_data(buf, fts.img_out, fts.img_size);
+		strcpy(buf + len, ".tiff");
+		create_file_with_data(buf, array[j].img_out, array[j].img_size);
 		
-	strcpy(buf + len, "_metadata.json");
-	create_file_with_data(buf, (unsigned char *)fts.metadata, fts.metadata_size);
-}
+		strcpy(buf + len, "_metadata.json");
+		create_file_with_data(buf, (unsigned char *)array[j].metadata, 
+			array[j].metadata_size);
 
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <dirent.h>
+		free(array[j].metadata);
+		free(array[j].img_out);
+		free(array[j].hist0);
+		free(array[j].hist1);
+		free((void *)array[j].path_input);
+	}
+}
 
 int fill_fits_array (struct fits_convert **dst, int **sizes, const char *path)
 {
-	struct fits_convert *array;
+	struct fits_convert *ptr;
 	int count = 0, ind = 0;
 	struct dirent *ds;
 	DIR *dp;
-	char tmp_buf[128] = { 0 };
 	char path_buf[256] = { 0 };
 	
-	dp = opendir(path);
+	if (!(dp = opendir(path)))
+		return -1;
+
 	while ((ds = readdir(dp)))
 		if (!strcmp(".fits", ds->d_name + strlen(ds->d_name) - 5))
 			if (strlen(ds->d_name) > 5)
@@ -1028,47 +1044,137 @@ int fill_fits_array (struct fits_convert **dst, int **sizes, const char *path)
 	*dst = calloc(sizeof(struct fits_convert), count);
 	*sizes = calloc(sizeof(int), count);
 	
-	dp = opendir(path);
-	while ((ds = readdir(dp)))
-		if (!strcmp(".fits", ds->d_name + strlen(ds->d_name) - 5)) {
-			if (strlen(ds->d_name) <= 5)
-				continue;
-				
-			printf("%s\n", ds->d_name);
-			memset(path_buf, 0, sizeof(path_buf));
-			snprintf(path_buf, sizeof(path_buf), "%s/%s", path, ds->d_name);
-			(*dst)[ind].path_input = strdup(path_buf);
+	if (!(dp = opendir(path)))
+		return -1;
+
+	while ((ds = readdir(dp))) {
+		if (strcmp(".fits", ds->d_name + strlen(ds->d_name) - 5))
+			continue;
 			
-			if (((*dst)[ind].input_size = (int)read_file((*dst)[ind].path_input, 
-				&(*dst)[ind].img_out)) < 0) {
-				printf("invalid file %s\n", (*dst)[ind].path_input);
-				continue;
-			}
+		if (strlen(ds->d_name) <= 5)
+			continue;
 
-			if (((*dst)[ind].metadata_size = count_fits_tags(
-				(const char *)(*dst)[ind].img_out)) < 0) {
-				fprintf(stderr, "[%s]: could not count fits tags\n", __func__);
-				continue;
-			}
-
-			(*dst)[ind].metadata = calloc((*dst)[ind].metadata_size, 81);
-
-			if (((*dst)[ind].img_size = read_fits_tags(
-				(const char *)(*dst)[ind].img_out, &(*dst)[ind])) < 0) {
-				fprintf(stderr, "[%s]: could not read fits tags\n", __func__);		
-				continue;
-			}
-	
-			(*sizes)[ind] = (*dst)[ind].x * (*dst)[ind].y;
-			ind++;
-
+		memset(path_buf, 0, sizeof(path_buf));
+		snprintf(path_buf, sizeof(path_buf), "%s/%s", path, ds->d_name);
+		
+		ptr = &((*dst)[ind]);
+		ptr->path_input = strdup(path_buf);
+		
+		if ((ptr->input_size = (int)read_file(path_buf, &ptr->img_out)) < 0) {
+			fprintf(stderr, "[%s]: invalid file %s\n", __func__, path_buf);
+			continue;
 		}
+
+		if ((ptr->metadata_size = count_fits_tags((const char *)ptr->img_out)) < 0) {
+			fprintf(stderr, "[%s]: could not count fits tags\n", __func__);
+			continue;
+		}
+
+		ptr->metadata = calloc(ptr->metadata_size, 81);
+
+		if ((ptr->img_size = read_fits_tags((const char *)ptr->img_out, ptr)) < 0) {
+			fprintf(stderr, "[%s]: could not read fits tags\n", __func__);		
+			continue;
+		}
+		
+		if (ptr->bitpix != -32) {
+			fprintf(stderr, "[%s]: invalid pixel size\n", __func__);
+			free(ptr->metadata);
+			free(ptr->img_out);
+			free((void *)ptr->path_input);
+			memset(ptr, 0, sizeof(struct fits_convert));
+			continue;
+		}
+
+		(*sizes)[ind] = ptr->x * ptr->y;
+		fprintf(stderr, "[%s]: read file %s size %d\n", __func__, 
+			path_buf, (*sizes)[ind]);
+		ind++;
+	}
 	closedir(dp);
 
 	return ind;
 
 }
-/* convert back to 32 bit and determine "error" or amount of data lost per type of filter */
+
+int do_run_cl (struct fits_convert *array, int *sizes, int num)
+{
+	unsigned char *buf = NULL; 
+	unsigned char *hbuf = calloc(NUM, NUM + 1);
+	unsigned char *hbuf1 = calloc(NUM, NUM + 1);
+	int i, j;
+
+	do_f32convert_cl_bulk(array, sizes, num);
+
+	for (j = 0; j < num; j++) {
+		printf("%d: %s (pix %d %d x %d) %d\n", j, array[j].path_input, 
+			array[j].bitpix, array[j].x, array[j].y, sizes[j]);
+		memset(hbuf, 0, NUM * NUM);
+		memset(hbuf1, 0, NUM * NUM);
+
+		if (!array[j].img_out || !array[j].hist0)
+			continue;
+
+		memcpy(hbuf, array[j].hist0, NUM * NUM);
+		memcpy(hbuf1, array[j].hist1, NUM * NUM);
+		free(array[j].hist0);
+		free(array[j].hist1);
+
+		array[j].img_size = write_tiff_file(&buf, array[j].img_out, 
+				array[j].x, array[j].y);
+		free(array[j].img_out);
+		array[j].img_out = buf;		
+
+		array[j].hs0 = write_tiff_file(&array[j].hist0, hbuf, NUM, NUM);
+		array[j].hs1 = write_tiff_file(&array[j].hist1, hbuf1, NUM, NUM);
+	}
+	
+	free(hbuf);
+	free(hbuf1);
+	
+	return 0;
+}
+
+int do_run (struct fits_convert *array, int *sizes, int num)
+{
+	unsigned char *buf = NULL; 
+	unsigned char *hbuf = calloc(NUM, NUM + 1);
+	unsigned char *hbuf1 = calloc(NUM, NUM + 1);
+	int i, j;
+
+	for (j = 0; j < num; j++) {
+		printf("%d: %s (pix %d %d x %d) %d\n", j, array[j].path_input, 
+			array[j].bitpix, array[j].x, array[j].y, sizes[j]);
+		memset(hbuf, 0, NUM * NUM);
+		memset(hbuf1, 0, NUM * NUM);
+
+		if (array[j].bitpix != -32 || !sizes[j])
+			continue;
+			
+		buf = calloc(array[j].x, array[j].y);
+
+		f32_to_u8_scaled((float *)(array[j].img_out + array[j].img_size), 
+				buf, sizes[j]);
+
+		free(array[j].img_out);
+
+		make_histogram(hbuf, buf, sizes[j], NUM, 0);
+		make_histogram(hbuf1, buf, sizes[j], NUM, 1);
+		
+		array[j].img_size = write_tiff_file(&array[j].img_out, buf, 
+				array[j].x, array[j].y);
+	
+		free(buf);
+
+		array[j].hs0 = write_tiff_file(&array[j].hist0, hbuf, NUM, NUM);
+		array[j].hs1 = write_tiff_file(&array[j].hist1, hbuf1, NUM, NUM);
+	}
+	
+	free(hbuf);
+	free(hbuf1);
+	
+	return 0;
+}
 
 #define USE_CL
 
@@ -1076,91 +1182,27 @@ int main (int argc, const char **argv)
 {
 	struct fits_convert *array;//fts;
 	unsigned char *buf = NULL; 
-	int i, k = 1, runs = 1; /*k = 30, runs = 50;*/
+	int i, k = 1, runs = 1, *sizes, j, num, len = (int)strlen(argv[1]); 
 	float *time_array = calloc(runs, sizeof(float));
 	struct timeval t0, t1;
-	int *sizes;
+	char path[512];
 
-	//memset(&fts, 0, sizeof(struct fits_convert));
-
-	//fts.path_input = argv[1];
-	
-		unsigned char *hbuf = calloc(NUM, NUM + 1);
-	unsigned char *hbuf1 = calloc(NUM, NUM + 1);
-	
-	int j, num;
 	for (i = 0; i < runs; i++) {
 		num = fill_fits_array(&array, &sizes, argv[1]);
 		gettimeofday(&t0, NULL);
 #ifdef USE_CL
-		do_f32convert_cl_bulk(array, sizes, num);
-#endif
-		for (j = 0; j < num; j++) {
-			printf("%d: %s (pix %d %d x %d) %d\n", j, array[j].path_input, array[j].bitpix, 
-				array[j].x, array[j].y, sizes[j]);
-			memset(hbuf, 0, NUM * NUM);
-			memset(hbuf1, 0, NUM * NUM);
-#ifdef USE_CL
-			if (!array[j].img_out || !array[j].hist0)
-				continue;
-			unsigned char *out_file;
-			//int sz = array[j].x * array[j].y;
-			//make_histogram(hbuf, array[j].img_out, sz, NUM, 0);
-			//make_histogram(hbuf1, array[j].img_out, sz, NUM, 1);
-			memcpy(hbuf, array[j].hist0, NUM * NUM);
-			memcpy(hbuf1, array[j].hist1, NUM * NUM);
-			free(array[j].hist0);
-			free(array[j].hist1);
-
-			array[j].img_size = write_tiff_file(&out_file, array[j].img_out, 
-					array[j].x, array[j].y);
-			free(array[j].img_out);
-			array[j].img_out = out_file;		
+		do_run_cl(array, sizes, num);
 #else
-			if (array[j].bitpix != -32 || !sizes[j])
-				continue;
-				
-			unsigned char *data = calloc(array[j].x, array[j].y);
-
-			if (array[j].bitpix == -32)
-				f32_to_u8_scaled((float *)(array[j].img_out + array[j].img_size), data, sizes[j]);
-			//else if (fts->bitpix == 16)
-		//		u16_to_u8_scaled((uint16_t *)(buf + datapos), data, sz);
-			else
-				printf("unsupported bit size %d\n", array[j].bitpix);
-		
-			free(array[j].img_out);
-
-			make_histogram(hbuf, data, sizes[j], NUM, 0);
-			make_histogram(hbuf1, data, sizes[j], NUM, 1);
-			
-			array[j].img_size = write_tiff_file(&array[j].img_out, data, array[j].x, array[j].y);
-		
-			free(data);
+		do_run(array, sizes, num);
 #endif
-			array[j].hs0 = write_tiff_file(&array[j].hist0, hbuf, NUM, NUM);
-			array[j].hs1 = write_tiff_file(&array[j].hist1, hbuf1, NUM, NUM);
-			
-			save_results(array[j]);
-	
-			free(array[j].metadata);
-			free(array[j].img_out);
-			free(array[j].hist0);
-			free(array[j].hist1);
-			free((void *)array[j].path_input);
-			free(buf);
-		}
 		gettimeofday(&t1, NULL);
-		time_array[i] = (t1.tv_sec - t0.tv_sec) * 1000000LL + t1.tv_usec - t0.tv_usec;
+		time_array[i] = (t1.tv_sec - t0.tv_sec) * 1000000LL + 
+				t1.tv_usec - t0.tv_usec;
+		save_all(array, num);
 		free(array);
 		free(sizes);
 	}
-	
-	free(hbuf);
-	free(hbuf1);
 
-	char path[512];
-	int len = (int)strlen(argv[1]);
 	strncpy(path, argv[1], sizeof(path));
 	strcpy(path + len, "_time.json"); 
 	printf("writing %s\n", path);
