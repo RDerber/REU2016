@@ -671,6 +671,81 @@ void f32_to_u8_scaled (float *big_endian, unsigned char *dst, int num)
 }
 
 #define NUM 256
+#define KERNEL_SOURCE \
+"float switch_endian (float inp)					\n" \
+"{									\n" \
+"	char c, *ptr = (char *)&inp;					\n" \
+"	c = ptr[0], ptr[0] = ptr[3], ptr[3] = c;			\n" \
+"	c = ptr[1], ptr[1] = ptr[2], ptr[2] = c;			\n" \
+"	return inp;							\n" \
+"}									\n" \
+"__kernel void vadd(__global float *big_endian,				\n" \
+"		__global int *sizes,					\n" \
+"		__global unsigned char * dst, 				\n" \
+"		__global unsigned char * hist0,				\n" \
+"		__global unsigned char * hist1,				\n" \
+"		__local int *counts,					\n" \
+"		__local float *imax,					\n" \
+"		__global int *test)					\n" \
+"{                                                                      \n" \
+"	int glid = get_group_id(0); 					\n" \
+"	int lsize = sizes[glid] / get_local_size(0);			\n" \
+"	int start = get_local_id(0) * lsize;				\n" \
+"	int total_size = 0;						\n" \
+"	float tmp, mt;							\n" \
+"	int hstart = glid * 256 * 256, x, maxp = 1, ind;		\n" \
+"	int i, max = 0, tmpl, off = ((256 - 1) * 256), pos;		\n" \
+"	for (x = 0; x < get_num_groups(0); x++)				\n" \
+"		total_size += sizes[x];					\n" \
+"	int avg_chunk = (total_size / get_global_size(0));		\n" \
+"	int avg_start = avg_chunk * get_global_id(0);			\n" \
+"	int avg_end = avg_start + avg_chunk;				\n" \
+"	if (get_global_id(0) + 1 == get_global_size(0))			\n" \
+"		avg_end = total_size;					\n" \
+"	for (x = avg_start; x < avg_end; x++)				\n" \
+"		big_endian[x] = switch_endian(big_endian[x]);		\n" \
+"	barrier(CLK_GLOBAL_MEM_FENCE);					\n" \
+"	for (x = 0; x < glid; x++)					\n" \
+"		start += sizes[x];					\n" \
+"	barrier(CLK_LOCAL_MEM_FENCE);					\n" \
+"	if (get_local_id(0) == 0) {					\n" \
+"		*imax = (big_endian[start]);				\n" \
+"		for (i = 0; i < 256; i++)				\n" \
+"			counts[i] = 0;					\n" \
+"	}								\n" \
+"	barrier(CLK_LOCAL_MEM_FENCE);					\n" \
+"	for (x = 0; x < lsize; x++) {					\n" \
+"		if (big_endian[x + start] > *imax)			\n" \
+"			*imax = big_endian[x + start];			\n" \
+"	}	 							\n" \
+"	barrier(CLK_LOCAL_MEM_FENCE);					\n" \
+"	tmp = log(*imax) / 255.0f;					\n" \
+"	for (x = 0; x < lsize; x++) {					\n" \
+"		mt = (float)(log(big_endian[start + x]) / tmp);		\n" \
+"		dst[start + x] = (unsigned char)mt;			\n" \
+"	}								\n" \
+"	for (i = 0; i < lsize; i++)					\n" \
+"		counts[dst[start + i]]++;				\n" \
+"	if (get_local_id(0) != 0)					\n" \
+"		return;							\n" \
+"	for (i = 0; i < 256; i++)					\n" \
+"		if (counts[max] < counts[i])				\n" \
+"			max = i;					\n" \
+"	for (mt = (float)counts[max], i = 0; i < 256; i++) {		\n" \
+"		tmpl = (int)((float)(256 * ((float)counts[i] / mt))); 	\n" \
+"		for (pos = off + i; tmpl > 0; tmpl--, pos -= 256)	\n" \
+"			hist0[pos + hstart] = 128;			\n" \
+"	}								\n" \
+"	for (i = 0; i < 256; i++)					\n" \
+"		if (i != max && (counts[maxp] < counts[i]))		\n" \
+"			maxp = i;					\n" \
+"	for (mt = (float)counts[maxp], i = 0; i < 256; i++) {		\n" \
+"		ind = ((i == max) ? maxp : i);				\n" \
+"		tmpl = (int)((float)(256 * ((float)counts[ind] / mt)));	\n" \
+"		for (pos = off + i; tmpl > 0; tmpl--, pos -= 256)	\n" \
+"			hist1[pos + hstart] = 128;			\n" \
+"	}								\n" \
+"}									\n\n"
 
 int make_histogram (unsigned char *buf, unsigned char *data, int size, 
 		int height, int omit_largest)
@@ -704,95 +779,21 @@ int make_histogram (unsigned char *buf, unsigned char *data, int size,
 
 //gcc -framework OpenCL -DAPPLE fits_to_tiff.c; ./a.out fits\ examples
 
+int read_cl_buf (cl_command_queue commands, cl_mem mem, int memsz, void *dst)
+{
+	int err;
+	
+	if ((err = clEnqueueReadBuffer(commands, mem, CL_TRUE, 0, memsz, 
+    		dst, 0, NULL, NULL)) == CL_SUCCESS)
+    		return 0;
+
+        printf("Error: Failed to read output array!\n%s\n", err_code(err));
+        return -1;
+}
+    
 
 int do_f32convert_cl_bulk (struct fits_convert *array, int *sizes, int num)
 {
-	const char *KernelSource = "__kernel void vadd(			\n" \
-"				__global float *big_endian,		\n" \
-"				__global int *sizes,			\n" \
-"				__global unsigned char * dst, 		\n" \
-"				__global unsigned char * hist0,		\n" \
-"				__global unsigned char * hist1,		\n" \
-"				__local int *counts,			\n" \
-"				__local float *imax,			\n" \
-"				const int lcsize,			\n" \
-"				__global int *test)			\n" \
-"{                                                                      \n" \
-"	int glid = get_group_id(0); 					\n" \
-"	int lsize = sizes[glid] / lcsize;				\n" \
-"	int start = get_local_id(0) * lsize;				\n" \
-"	float tmp, mt;							\n" \
-"	int hstart = glid * 256 * 256, x, maxp = 1, ind;		\n" \
-"	int i, max = 0, tmpl, off = ((256 - 1) * 256), pos;		\n" \
-"	for (x = 0; x < glid; x++)					\n" \
-"		start += sizes[x];					\n" \
-"	if (get_local_id(0) == 0) {					\n" \
-"		tmp = big_endian[start];				\n" \
-"		char *ptr = (char *)&tmp;				\n" \
-"		char c = ptr[0];					\n" \
-"		ptr[0] = ptr[3];					\n" \
-"		ptr[3] = c;						\n" \
-"		c = ptr[1];						\n" \
-"		ptr[1] = ptr[2];					\n" \
-"		ptr[2] = c;						\n" \
-"		*imax = tmp;						\n" \
-"		for (i = 0; i < 256; i++)				\n" \
-"			counts[i] = 0;					\n" \
-"	}								\n" \
-"	barrier(CLK_LOCAL_MEM_FENCE);					\n" \
-"	for (x = 0; x < lsize; x++) {					\n" \
-"		tmp = big_endian[start + x];				\n" \
-"		char *ptr = (char *)&tmp;				\n" \
-"		char c = ptr[0];					\n" \
-"		ptr[0] = ptr[3];					\n" \
-"		ptr[3] = c;						\n" \
-"		c = ptr[1];						\n" \
-"		ptr[1] = ptr[2];					\n" \
-"		ptr[2] = c;						\n" \
-"		big_endian[start + x] = log(tmp);			\n" \
-"		if (tmp > *imax)					\n" \
-"			*imax = tmp;					\n" \
-"	}	 							\n" \
-"	barrier(CLK_LOCAL_MEM_FENCE);					\n" \
-"	tmp = log(*imax) / 255.0f;					\n" \
-"	for (x = 0; x < lsize; x++) {					\n" \
-"		mt = (float)(big_endian[start + x] / tmp);		\n" \
-"		dst[start + x] = (unsigned char)mt;			\n" \
-"	}								\n" \
-"	for (i = 0; i < lsize; i++)					\n" \
-"		counts[dst[start + i]]++;				\n" \
-"	barrier(CLK_LOCAL_MEM_FENCE);					\n" \
-"	if (get_local_id(0) == 0) {					\n" \
-"		for (i = 0; i < 256; i++)				\n" \
-"			if (counts[max] < counts[i])			\n" \
-"				max = i;				\n" \
-"		mt = (float)counts[max];				\n" \
-"		for (i = 0; i < 256; i++) {				\n" \
-"			tmpl = (int)((float)(256 * ((float)counts[i] / mt))); 	\n" \
-"			for (pos = off + i; tmpl > 0; tmpl--, pos -= 256)	\n" \
-"				hist0[pos + hstart] = 128;		\n" \
-"		}							\n" \
-"		for (i = 0; i < 256; i++)				\n" \
-"			if (i != max && (counts[maxp] < counts[i]))	\n" \
-"				maxp = i;				\n" \
-"		mt = (float)counts[maxp];				\n" \
-"		for (i = 0; i < 256; i++) {				\n" \
-"			ind = ((i == max) ? maxp : i);			\n" \
-"			tmpl = (int)((float)(256 * ((float)counts[ind] / mt)));	\n" \
-"			for (pos = off + i; tmpl > 0; tmpl--, pos -= 256)	\n" \
-"				hist1[pos + hstart] = 128;		\n" \
-"		}							\n" \
-"	}								\n" \
-"		test[0] = get_global_size(0);				\n" \
-"		test[1] = get_global_id(0);				\n" \
-"		test[2] = get_local_size(0);				\n" \
-"		test[3] = get_local_id(0);				\n" \
-"		test[4] = get_num_groups(0);				\n" \
-"		test[5] = get_group_id(0);				\n" \
-"		test[6] = (int)log(*imax);				\n" \
-"}									\n" \
-"\n";
-
 	int gsize = 16;
 	int i, j, err, pos = 0, hpos = 0;
 	size_t global = num * gsize, local = gsize, memsz = 0;
@@ -808,6 +809,7 @@ int do_f32convert_cl_bulk (struct fits_convert *array, int *sizes, int num)
 	unsigned char *h0_tmp = calloc(hist_buf_sz, 1);
 	unsigned char *h1_tmp = calloc(hist_buf_sz, 1);
 	float *data_big;
+	const char *KernelSource = KERNEL_SOURCE;
 	
 #ifndef DEVICE
 #define DEVICE CL_DEVICE_TYPE_DEFAULT
@@ -851,29 +853,29 @@ int do_f32convert_cl_bulk (struct fits_convert *array, int *sizes, int num)
 		if ((err = clGetDeviceIDs(pt[i], DEVICE, 1, &device_id, NULL)) == CL_SUCCESS)
 			break;
 
-    if (device_id == NULL)
-        checkError(err, "Finding a device");
+	if (device_id == NULL)
+	checkError(err, "Finding a device");
 
-    char name[512];
-    clGetDeviceInfo(device_id, CL_DEVICE_NAME, sizeof(name), name, NULL);
-    printf("\nUsing OpenCL device: %s\n", name);
-    
-    cl_ulong sz;
-    clGetDeviceInfo(device_id, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(sz), &sz, NULL);
-    printf("\nmax size %llu, requested %lu\n", sz, memsz);
+	char name[512];
+	clGetDeviceInfo(device_id, CL_DEVICE_NAME, sizeof(name), name, NULL);
+	printf("\nUsing OpenCL device: %s\n", name);
 
-    // Create a compute context
-    context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
-    checkError(err, "Creating context");
+	cl_ulong sz;
+	clGetDeviceInfo(device_id, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(sz), &sz, NULL);
+	printf("\nmax size %llu, requested %lu\n", sz, memsz);
 
-    // Create a command queue
-    commands = clCreateCommandQueue(context, device_id, 0, &err);
-    checkError(err, "Creating command queue");
+	// Create a compute context
+	context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
+	checkError(err, "Creating context");
 
-    // Create the compute program from the source buffer
-    program = clCreateProgramWithSource(context, 1, 
-    		(const char **)&KernelSource, NULL, &err);
-    checkError(err, "Creating program");
+	// Create a command queue
+	commands = clCreateCommandQueue(context, device_id, 0, &err);
+	checkError(err, "Creating command queue");
+
+	// Create the compute program from the source buffer
+	program = clCreateProgramWithSource(context, 1, 
+		(const char **)&KernelSource, NULL, &err);
+	checkError(err, "Creating program");
  
     // Build the program
     if ((err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL)) != CL_SUCCESS) {
@@ -916,8 +918,7 @@ int do_f32convert_cl_bulk (struct fits_convert *array, int *sizes, int num)
     err |= clSetKernelArg(ko_vadd, 4, sizeof(cl_mem), &h1);
     err |= clSetKernelArg(ko_vadd, 5, 256 * sizeof(int), NULL);
     err |= clSetKernelArg(ko_vadd, 6, sizeof(float), NULL);
-    err |= clSetKernelArg(ko_vadd, 7, sizeof(int), &gsize);
-    err |= clSetKernelArg(ko_vadd, 8, sizeof(cl_mem), &test);
+    err |= clSetKernelArg(ko_vadd, 7, sizeof(cl_mem), &test);
     checkError(err, "Setting kernel arguments");
 
     err = clEnqueueNDRangeKernel(commands, ko_vadd, 1, NULL, 
@@ -955,10 +956,9 @@ int do_f32convert_cl_bulk (struct fits_convert *array, int *sizes, int num)
         return -1;
     }
     
-    printf("global size = %d id = %d | local size = %d id = %d | num groups %d id %d imax %d\n",
-    	test_out[0], test_out[1], test_out[2], test_out[3], test_out[4], 
-    	test_out[5], test_out[6]);
-
+    printf("%d groups chunk %d start %d end %d total %d group %d\n", test_out[0], 
+    	test_out[1], test_out[2], test_out[3], test_out[4], test_out[5]);
+    
 	pos = 0;
 	for (i = 0; i < num; i++) {
 		if (array[i].bitpix != -32 || !array[i].img_out || !sizes[i]) {
