@@ -685,8 +685,7 @@ void f32_to_u8_scaled (float *big_endian, unsigned char *dst, int num)
 "		__global unsigned char * hist0,				\n" \
 "		__global unsigned char * hist1,				\n" \
 "		__local int *counts,					\n" \
-"		__local float *imax,					\n" \
-"		__global int *test)					\n" \
+"		__local float *imax)					\n" \
 "{                                                                      \n" \
 "	int glid = get_group_id(0); 					\n" \
 "	int lsize = sizes[glid] / get_local_size(0);			\n" \
@@ -779,6 +778,7 @@ int make_histogram (unsigned char *buf, unsigned char *data, int size,
 
 //gcc -framework OpenCL -DAPPLE fits_to_tiff.c; ./a.out fits\ examples
 
+/* read back results after exec */
 int read_cl_buf (cl_command_queue commands, cl_mem mem, int memsz, void *dst)
 {
 	int err;
@@ -790,52 +790,31 @@ int read_cl_buf (cl_command_queue commands, cl_mem mem, int memsz, void *dst)
         printf("Error: Failed to read output array!\n%s\n", err_code(err));
         return -1;
 }
-    
 
-int do_f32convert_cl_bulk (struct fits_convert *array, int *sizes, int num)
+/* writes to ptr if null, otherwise reads from ptr */
+cl_mem make_cl_buf (cl_context context, void *ptr, size_t size)
 {
-	int gsize = 16;
-	int i, j, err, pos = 0, hpos = 0;
-	size_t global = num * gsize, local = gsize, memsz = 0;
-	unsigned char *out;
-	cl_device_id     device_id;
-	cl_context       context;
-	cl_command_queue commands;
-	cl_program       program;
-	cl_kernel        ko_vadd;
-	cl_mem d_a, d_d, d_b, h0, h1, test;
+	int err;
+	
+	cl_mem dst = clCreateBuffer(context, (!ptr ? CL_MEM_WRITE_ONLY : 
+		(CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR)), size, ptr, &err);
+	checkError(err, "creating buffer");
+	
+	return dst;
+}
+
+/* sets up opencl environment */
+int init_cl (cl_context *context, cl_command_queue *commands, 
+		cl_program *program, cl_kernel *ko_vadd)
+{
+	int i, err;
+	cl_device_id device_id;
 	cl_uint numPlatforms;
-	int hist_buf_sz = NUM * NUM * num;
-	unsigned char *h0_tmp = calloc(hist_buf_sz, 1);
-	unsigned char *h1_tmp = calloc(hist_buf_sz, 1);
-	float *data_big;
 	const char *KernelSource = KERNEL_SOURCE;
 	
 #ifndef DEVICE
 #define DEVICE CL_DEVICE_TYPE_DEFAULT
 #endif
-	for (j = 0; j < num; j++) {
-		if (array[j].bitpix != -32 || !array[j].img_out) 
-			sizes[j] = 0;
-		memsz += sizes[j];
-		printf("num %d j %d sz %lu\n", num, j, memsz);
-	}
-
-	if (!(data_big = calloc(memsz, sizeof(float))) || !(out = calloc(memsz, 1))) {
-		perror("alloc");
-		return -1;
-	}
-	
-	for (j = 0; j < num; j++) {
-		if (array[j].bitpix != -32 || !array[j].img_out) 
-			continue;
-		printf("pos = %d / %lu + %d %d\n", pos, memsz * sizeof(float), 
-			sizes[j], array[j].img_size);
-		memcpy(data_big + pos, (array[j].img_out + array[j].img_size), 
-			sizes[j] * sizeof(float));
-		pos += sizes[j];
-	}
-
 	// Find number of platforms
 	err = clGetPlatformIDs(0, NULL, &numPlatforms);
 	checkError(err, "Finding platforms");
@@ -862,109 +841,122 @@ int do_f32convert_cl_bulk (struct fits_convert *array, int *sizes, int num)
 
 	cl_ulong sz;
 	clGetDeviceInfo(device_id, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(sz), &sz, NULL);
-	printf("\nmax size %llu, requested %lu\n", sz, memsz);
+	printf("\nmax size %llu\n", sz);
 
 	// Create a compute context
-	context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
+	*context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
 	checkError(err, "Creating context");
 
 	// Create a command queue
-	commands = clCreateCommandQueue(context, device_id, 0, &err);
+	*commands = clCreateCommandQueue(*context, device_id, 0, &err);
 	checkError(err, "Creating command queue");
 
 	// Create the compute program from the source buffer
-	program = clCreateProgramWithSource(context, 1, 
+	*program = clCreateProgramWithSource(*context, 1, 
 		(const char **)&KernelSource, NULL, &err);
 	checkError(err, "Creating program");
  
-    // Build the program
-    if ((err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL)) != CL_SUCCESS) {
-        size_t len;
-        char buffer[2048];
-        printf("Error: Failed to build program executable!\n%s\n", err_code(err));
-        clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, 
-        			sizeof(buffer), buffer, &len);
-        printf("%s\n", buffer);
-        return EXIT_FAILURE;
-    }
+	// Build the program
+	if ((err = clBuildProgram(*program, 0, NULL, NULL, NULL, NULL)) != CL_SUCCESS) {
+		size_t len;
+		char buffer[2048];
+		printf("Error: Failed to build program executable!\n%s\n", err_code(err));
+		clGetProgramBuildInfo(*program, device_id, CL_PROGRAM_BUILD_LOG, 
+					sizeof(buffer), buffer, &len);
+		printf("%s\n", buffer);
+		return EXIT_FAILURE;
+	}
 
-    ko_vadd = clCreateKernel(program, "vadd", &err);
-    checkError(err, "Creating kernel");
+	*ko_vadd = clCreateKernel(*program, "vadd", &err);
+	checkError(err, "Creating kernel");
 
-    d_a  = clCreateBuffer(context, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR, 
-    		memsz * sizeof(float), data_big, &err);
-    checkError(err, "Creating buffer d_a");
-    d_b  = clCreateBuffer(context, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, 
-    		sizeof(int) * num, sizes, &err);
-    checkError(err, "Creating buffer d_a");
+	return 0;
+}
 
-    d_d  = clCreateBuffer(context,  CL_MEM_WRITE_ONLY, memsz, NULL, &err);
-    checkError(err, "Creating buffer d_d");
+/* wrapper function to transfer data between cpu and device and run opencl */
+int exec_cl (float *data_big, int *sizes, int num, size_t memsz, unsigned char *out,
+		unsigned char *h0_tmp, unsigned char *h1_tmp, size_t local)
+{
+	int i, err = 0, hist_buf_sz = NUM * NUM * num;
+	size_t global = num * local;
+	cl_context       context;
+	cl_command_queue commands;
+	cl_program       program;
+	cl_kernel        ko_vadd;
+	cl_mem mem[5];
 
-    h0  = clCreateBuffer(context,  CL_MEM_WRITE_ONLY, hist_buf_sz, NULL, &err);
-    checkError(err, "Creating buffer h0");
-    
-    h1  = clCreateBuffer(context,  CL_MEM_WRITE_ONLY, hist_buf_sz, NULL, &err);
-    checkError(err, "Creating buffer h1");
+	if (init_cl(&context, &commands, &program, &ko_vadd))
+		return -1;
 
-    test = clCreateBuffer(context,  CL_MEM_WRITE_ONLY, sizeof(int) * 10, NULL, &err);
-    checkError(err, "Creating buffer h1");
+	mem[0] = make_cl_buf(context, data_big, memsz * sizeof(float));
+	mem[1] = make_cl_buf(context, sizes, sizeof(int) * num);
+	mem[2] = make_cl_buf(context, NULL, memsz);
+	mem[3] = make_cl_buf(context, NULL, hist_buf_sz);
+	mem[4] = make_cl_buf(context, NULL, hist_buf_sz);
+	
+	for (i = 0; i < 5; i++)
+		err |= clSetKernelArg(ko_vadd, i, sizeof(cl_mem), &mem[i]);
+	err |= clSetKernelArg(ko_vadd, 5, 256 * sizeof(int), NULL);
+	err |= clSetKernelArg(ko_vadd, 6, sizeof(float), NULL);
+	checkError(err, "Setting kernel arguments");
 
+	err = clEnqueueNDRangeKernel(commands, ko_vadd, 1, NULL, 
+		&global, &local, 0, NULL, NULL);
+	checkError(err, "Enqueueing kernel");
 
-    err  = clSetKernelArg(ko_vadd, 0, sizeof(cl_mem), &d_a);
-    err |= clSetKernelArg(ko_vadd, 1, sizeof(cl_mem), &d_b);
-    err |= clSetKernelArg(ko_vadd, 2, sizeof(cl_mem), &d_d);
-    err |= clSetKernelArg(ko_vadd, 3, sizeof(cl_mem), &h0);
-    err |= clSetKernelArg(ko_vadd, 4, sizeof(cl_mem), &h1);
-    err |= clSetKernelArg(ko_vadd, 5, 256 * sizeof(int), NULL);
-    err |= clSetKernelArg(ko_vadd, 6, sizeof(float), NULL);
-    err |= clSetKernelArg(ko_vadd, 7, sizeof(cl_mem), &test);
-    checkError(err, "Setting kernel arguments");
+	err = clFinish(commands);
+	checkError(err, "Waiting for kernel to finish");
 
-    err = clEnqueueNDRangeKernel(commands, ko_vadd, 1, NULL, 
-    		&global, &local, 0, NULL, NULL);
-    checkError(err, "Enqueueing kernel");
+	if (read_cl_buf(commands, mem[2], memsz, out) ||
+	    read_cl_buf(commands, mem[3], hist_buf_sz, h0_tmp) || 
+	    read_cl_buf(commands, mem[4], hist_buf_sz, h1_tmp))
+		return -1;
+		
+	for (i = 0; i < 5; i++)
+		clReleaseMemObject(mem[i]);
+	clReleaseProgram(program);
+	clReleaseKernel(ko_vadd);
+	clReleaseCommandQueue(commands);
+	clReleaseContext(context);
+	
+	return 0;
+}
 
-    // Wait for the commands to complete before stopping the timer
-    err = clFinish(commands);
-    checkError(err, "Waiting for kernel to finish");
+/* converts array of structs to flat buffers and calls opencl routine */
+int do_f32convert_cl_bulk (struct fits_convert *array, int *sizes, int num)
+{
+	int i, j, pos = 0, hpos = 0;
+	size_t memsz = 0;
+	unsigned char *out, *h0_tmp, *h1_tmp;
+	float *data_big;
 
-    // Read back the results from the compute device
-    if ((err = clEnqueueReadBuffer(commands, d_d, CL_TRUE, 0, memsz, 
-    		out, 0, NULL, NULL)) != CL_SUCCESS) {
-        printf("Error: Failed to read output array!\n%s\n", err_code(err));
-        return -1;
-    }
-    
-    if ((err = clEnqueueReadBuffer(commands, h0, CL_TRUE, 0, hist_buf_sz, 
-    		h0_tmp, 0, NULL, NULL)) != CL_SUCCESS) {
-        printf("Error: Failed to read output array!\n%s\n", err_code(err));
-        return -1;
-    }
-    
-    if ((err = clEnqueueReadBuffer(commands, h1, CL_TRUE, 0, hist_buf_sz, 
-    		h1_tmp, 0, NULL, NULL)) != CL_SUCCESS) {
-        printf("Error: Failed to read output array!\n%s\n", err_code(err));
-        return -1;
-    }
-    
-    
-    int test_out[10] = { 0 };
-    if ((err = clEnqueueReadBuffer(commands, test, CL_TRUE, 0, sizeof(test_out), 
-    		test_out, 0, NULL, NULL)) != CL_SUCCESS) {
-        printf("Error: Failed to read output array!\n%s\n", err_code(err));
-        return -1;
-    }
-    
-    printf("%d groups chunk %d start %d end %d total %d group %d\n", test_out[0], 
-    	test_out[1], test_out[2], test_out[3], test_out[4], test_out[5]);
-    
-	pos = 0;
-	for (i = 0; i < num; i++) {
-		if (array[i].bitpix != -32 || !array[i].img_out || !sizes[i]) {
-			printf("skipp %d\n", i); 
-			continue;
+	for (j = 0; j < num; j++) {
+		if (array[j].bitpix != -32 || !array[j].img_out || !sizes[j]) {
+			printf("invalid input\n");
+			return -1;
 		}
+		memsz += sizes[j];
+	}
+
+	if (!(data_big = calloc(memsz, sizeof(float))) || !(out = calloc(memsz, 1)) ||
+	    !(h0_tmp = calloc(NUM * NUM, num)) || !(h1_tmp = calloc(NUM * NUM, num))) {
+		perror("allocating flat buffers");
+		return -1;
+	}
+	
+	for (j = 0; j < num; j++) {
+		printf("pos = %d / %lu + %d\n", pos, memsz, sizes[j]);
+		memcpy(data_big + pos, (array[j].img_out + array[j].img_size), 
+			sizes[j] * sizeof(float));
+		pos += sizes[j];
+	}
+
+	if (exec_cl(data_big, sizes, num, memsz, out, h0_tmp, h1_tmp, 16)) {
+		printf("error running cl\n");
+		return -1;
+	}
+
+	for (pos = i = 0; i < num; i++) {
 		array[i].hist0 = calloc(NUM, NUM);
 		array[i].hist1 = calloc(NUM, NUM);
 		memcpy(array[i].hist0, h0_tmp + hpos, NUM * NUM);
@@ -973,16 +965,7 @@ int do_f32convert_cl_bulk (struct fits_convert *array, int *sizes, int num)
 		hpos += NUM * NUM;
 		pos += sizes[i];
 	}
-	clReleaseMemObject(test);
-	clReleaseMemObject(d_a);
-	clReleaseMemObject(d_b);
-	clReleaseMemObject(d_d);
-	clReleaseMemObject(h0);
-	clReleaseMemObject(h1);
-	clReleaseProgram(program);
-	clReleaseKernel(ko_vadd);
-	clReleaseCommandQueue(commands);
-	clReleaseContext(context);
+
 	free(out);
 	free(data_big);
 	free(h0_tmp);
@@ -991,6 +974,7 @@ int do_f32convert_cl_bulk (struct fits_convert *array, int *sizes, int num)
 	return 0;
 }
 
+/* writes array of convert structs to disk and frees memory */
 void save_all (struct fits_convert *array, int num)
 {
 	int j, len;
@@ -1024,6 +1008,7 @@ void save_all (struct fits_convert *array, int num)
 	}
 }
 
+/* fills array of convert structs and array of pixel sizes from disk */
 int fill_fits_array (struct fits_convert **dst, int **sizes, const char *path)
 {
 	struct fits_convert *ptr;
@@ -1097,104 +1082,69 @@ int fill_fits_array (struct fits_convert **dst, int **sizes, const char *path)
 
 }
 
-int do_run_cl (struct fits_convert *array, int *sizes, int num)
-{
-	unsigned char *buf = NULL; 
-	unsigned char *hbuf = calloc(NUM, NUM + 1);
-	unsigned char *hbuf1 = calloc(NUM, NUM + 1);
-	int i, j;
-
-	do_f32convert_cl_bulk(array, sizes, num);
-
-	for (j = 0; j < num; j++) {
-		printf("%d: %s (pix %d %d x %d) %d\n", j, array[j].path_input, 
-			array[j].bitpix, array[j].x, array[j].y, sizes[j]);
-		memset(hbuf, 0, NUM * NUM);
-		memset(hbuf1, 0, NUM * NUM);
-
-		if (!array[j].img_out || !array[j].hist0)
-			continue;
-
-		memcpy(hbuf, array[j].hist0, NUM * NUM);
-		memcpy(hbuf1, array[j].hist1, NUM * NUM);
-		free(array[j].hist0);
-		free(array[j].hist1);
-
-		array[j].img_size = write_tiff_file(&buf, array[j].img_out, 
-				array[j].x, array[j].y);
-		free(array[j].img_out);
-		array[j].img_out = buf;		
-
-		array[j].hs0 = write_tiff_file(&array[j].hist0, hbuf, NUM, NUM);
-		array[j].hs1 = write_tiff_file(&array[j].hist1, hbuf1, NUM, NUM);
-	}
-	
-	free(hbuf);
-	free(hbuf1);
-	
-	return 0;
-}
-
-int do_run (struct fits_convert *array, int *sizes, int num)
-{
-	unsigned char *buf = NULL; 
-	unsigned char *hbuf = calloc(NUM, NUM + 1);
-	unsigned char *hbuf1 = calloc(NUM, NUM + 1);
-	int i, j;
-
-	for (j = 0; j < num; j++) {
-		printf("%d: %s (pix %d %d x %d) %d\n", j, array[j].path_input, 
-			array[j].bitpix, array[j].x, array[j].y, sizes[j]);
-		memset(hbuf, 0, NUM * NUM);
-		memset(hbuf1, 0, NUM * NUM);
-
-		if (array[j].bitpix != -32 || !sizes[j])
-			continue;
-			
-		buf = calloc(array[j].x, array[j].y);
-
-		f32_to_u8_scaled((float *)(array[j].img_out + array[j].img_size), 
-				buf, sizes[j]);
-
-		free(array[j].img_out);
-
-		make_histogram(hbuf, buf, sizes[j], NUM, 0);
-		make_histogram(hbuf1, buf, sizes[j], NUM, 1);
-		
-		array[j].img_size = write_tiff_file(&array[j].img_out, buf, 
-				array[j].x, array[j].y);
-	
-		free(buf);
-
-		array[j].hs0 = write_tiff_file(&array[j].hist0, hbuf, NUM, NUM);
-		array[j].hs1 = write_tiff_file(&array[j].hist1, hbuf1, NUM, NUM);
-	}
-	
-	free(hbuf);
-	free(hbuf1);
-	
-	return 0;
-}
-
 #define USE_CL
 
 int main (int argc, const char **argv)
 {
 	struct fits_convert *array;//fts;
-	unsigned char *buf = NULL; 
-	int i, k = 1, runs = 1, *sizes, j, num, len = (int)strlen(argv[1]); 
+	int i, j, k = 1, runs = 1, *sizes, num, len = (int)strlen(argv[1]); 
 	float *time_array = calloc(runs, sizeof(float));
 	struct timeval t0, t1;
+	unsigned char *hbuf = calloc(NUM, NUM + 1);
+	unsigned char *hbuf1 = calloc(NUM, NUM + 1);
 	char path[512];
 
 	for (i = 0; i < runs; i++) {
 		num = fill_fits_array(&array, &sizes, argv[1]);
 		gettimeofday(&t0, NULL);
+
+		unsigned char *buf = NULL; 
 #ifdef USE_CL
-		do_run_cl(array, sizes, num);
-#else
-		do_run(array, sizes, num);
+		do_f32convert_cl_bulk(array, sizes, num);
 #endif
+		for (j = 0; j < num; j++) {
+			printf("%d: %s (pix %d %d x %d) %d\n", j, array[j].path_input, 
+				array[j].bitpix, array[j].x, array[j].y, sizes[j]);
+			memset(hbuf, 0, NUM * NUM);
+			memset(hbuf1, 0, NUM * NUM);
+
+#ifdef USE_CL
+			if (!array[j].img_out || !array[j].hist0)
+				continue;
+
+			memcpy(hbuf, array[j].hist0, NUM * NUM);
+			memcpy(hbuf1, array[j].hist1, NUM * NUM);
+			free(array[j].hist0);
+			free(array[j].hist1);
+
+			array[j].img_size = write_tiff_file(&buf, array[j].img_out, 
+					array[j].x, array[j].y);
+			free(array[j].img_out);
+			array[j].img_out = buf;		
+#else
+			if (array[j].bitpix != -32 || !sizes[j])
+				continue;
+			
+			buf = calloc(array[j].x, array[j].y);
+
+			f32_to_u8_scaled((float *)(array[j].img_out + array[j].img_size), 
+					buf, sizes[j]);
+
+			free(array[j].img_out);
+
+			make_histogram(hbuf, buf, sizes[j], NUM, 0);
+			make_histogram(hbuf1, buf, sizes[j], NUM, 1);
+		
+			array[j].img_size = write_tiff_file(&array[j].img_out, buf, 
+					array[j].x, array[j].y);
+	
+			free(buf);
+#endif
+
+			array[j].hs0 = write_tiff_file(&array[j].hist0, hbuf, NUM, NUM);
+			array[j].hs1 = write_tiff_file(&array[j].hist1, hbuf1, NUM, NUM);
+		}
+
 		gettimeofday(&t1, NULL);
 		time_array[i] = (t1.tv_sec - t0.tv_sec) * 1000000LL + 
 				t1.tv_usec - t0.tv_usec;
@@ -1209,6 +1159,8 @@ int main (int argc, const char **argv)
 	write_time_file(path, time_array, runs, k);
 	
 	free(time_array);
+	free(hbuf);
+	free(hbuf1);
 	
 	return 0;
 }
